@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<module version="2.0">
+  <name>FeatureLocalisation</name>
+  <desc>FeatureLocalisation</desc>
+  <trigger event="thread"/>
+  <dependencies>
+  </dependencies>
+  <properties>
+   
+  </properties>
+  <pins>
+    <input name="LaneData_Rx">
+      <interface data_type="HAD_LaneMarkingsDetected::LaneMarkingsPolynomialsYZDepX" include="GlobalInterfaces/I111_LaneMarkingsDetected.h"/>
+      <adtf major="ADTF_MEDIA_TYPE_I111_LANEMARKINGSDETECTED_HAD_LANEMARKINGSDETECTED_LANEMARKINGSPOLYNOMIALSYZDEPX" minor="IDL_HASH_I111_LANEMARKINGSDETECTED"/>
+    </input>
+    <input name="land_mark_poles">
+      <interface data_type="LIDAR_Marker::Transmittable::LidarMarkerList" include="GlobalInterfaces/I090_LidarMarker.h"/>
+      <adtf major="ADTF_MEDIA_TYPE_I090_LIDARMARKER_LIDAR_MARKER_TRANSMITTABLE_LIDARMARKERLIST" minor="IDL_HASH_I090_LIDARMARKER"/>
+    </input>
+    <input name="land_mark_reflectives">
+      <interface data_type="LIDAR_Marker::Transmittable::LidarMarkerList" include="GlobalInterfaces/I090_LidarMarker.h"/>
+      <adtf major="ADTF_MEDIA_TYPE_I090_LIDARMARKER_LIDAR_MARKER_TRANSMITTABLE_LIDARMARKERLIST" minor="IDL_HASH_I090_LIDARMARKER"/>
+    </input>
+    <input name="land_mark_poles_low">
+      <interface data_type="LIDAR_Marker::Transmittable::LidarMarkerList" include="GlobalInterfaces/I090_LidarMarker.h"/>
+      <adtf major="ADTF_MEDIA_TYPE_I090_LIDARMARKER_LIDAR_MARKER_TRANSMITTABLE_LIDARMARKERLIST" minor="IDL_HASH_I090_LIDARMARKER"/>
+    </input>
+    <output name="transform_world">
+      <interface data_type="PoseStructures::WGS84Coordinate" include="GlobalInterfaces/I092_PoseStructures.h"/>
+      <adtf major="ADTF_MEDIA_TYPE_I092_POSESTRUCTURES_POSESTRUCTURES_WGS84COORDINATE" minor="IDL_HASH_I092_POSESTRUCTURES"/>
+    </output>
+    <output name="transform_map">
+      <interface data_type="PoseStructures::Pose3D" include="GlobalInterfaces/I092_PoseStructures.h"/>
+      <adtf major="ADTF_MEDIA_TYPE_I092_POSESTRUCTURES_POSESTRUCTURES_POSE3D" minor="IDL_HASH_I092_POSESTRUCTURES"/>
+    </output>
+    <output name="localisation_state">
+      <interface data_type="I049_LocalisationState::LocalisationState" include="GlobalInterfaces/I049_LocalisationState.h"/>
+      <adtf major="ADTF_MEDIA_TYPE_I049_LOCALISATION_STATE_STATE" minor="IDL_HASH_I049_LOCALISATIONSTATE"/>
+    </output>
+  </pins>
+</module>

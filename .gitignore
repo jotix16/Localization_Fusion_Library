@@ -1,0 +1,5 @@
+.deps/python_virtualenv/
+build/
+bin/
+.build/
+.bin/
