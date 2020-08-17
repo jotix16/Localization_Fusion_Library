@@ -1,0 +1,3 @@
+[submodule ".deps/IDL/ROSInterfaces"]
+	path = .deps/IDL/ROSInterfaces
+	url = ../../../ad-software/0_global/rosinterfaces.git
