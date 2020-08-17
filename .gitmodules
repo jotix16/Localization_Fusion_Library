@@ -4,3 +4,6 @@
 [submodule ".deps/cmake"]
 	path = .deps/cmake
 	url = ../../../Tools/cmakescripts.git
+[submodule ".deps/IDL/GlobalInterfaces"]
+	path = .deps/IDL/GlobalInterfaces
+	url = ../../../ad-software/0_global/globalinterfaces.git
