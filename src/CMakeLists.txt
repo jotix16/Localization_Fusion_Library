@@ -3,6 +3,7 @@ set(TargetName ${CMAKE_PROJECT_NAME})
 # set the relevant files
 set(MOTION_MODEL
 "motion_model/include/motion_model.h"
+"motion_model/src/motion_model.cpp"
 )
 
 # add library
@@ -33,4 +34,3 @@ target_include_directories( ${TargetName} PUBLIC include)
  
 # install
 install_library(TARGET ${TargetName} EXPORT_NAME  CONFIGURATIONS Debug)
-install_include(DIRECTORY include)
