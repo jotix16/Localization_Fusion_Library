@@ -1,3 +1,5 @@
+#include <array>
+#include<iostream>
 namespace iav{ namespace state_predictor { namespace motion_model {
 	
 
@@ -16,9 +18,9 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	class MotionModelCtra : public MotionModel<num_states, ValueT>
 	{
 	public:		
-		using MotionModel = MotionModel<num_states, ValueT>;
-		using StateVector = typename MotionModel::StateVector;
-		using StateMatrix = typename MotionModel::StateMatrix;
+		using MM = MotionModel<num_states, ValueT>;
+		using StateVector = typename MM::StateVector;
+		using StateMatrix = typename MM::StateMatrix;
 
 		static StateMatrix compute_jacoby(const StateVector& state) {
 			// implement 			
@@ -28,6 +30,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		static StateVector predict(const StateVector& state) {
 			return StateVector{ 1,1,1,1,1,1 };
 		}
+		
 	};
 
 	// ctrv
@@ -35,9 +38,9 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	class MotionModelCtrv : public MotionModel<num_states, ValueT>
 	{
 	public:
-		using MotionModel = MotionModel<num_states, ValueT>;
-		using StateVector = typename MotionModel::StateVector;
-		using StateMatrix = typename MotionModel::StateMatrix;
+		using MM = MotionModel<num_states, ValueT>;
+		using StateVector = typename MM::StateVector;
+		using StateMatrix = typename MM::StateMatrix;
 
 		static StateMatrix compute_jacoby(const StateVector& state) {
 			// implement 			
@@ -47,9 +50,12 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		static StateVector predict(const StateVector& state) {
 			return StateVector{ 10,10,10,10,10,10, 10,10 };
 		}
+		static void call() {
+			std::cout<<"CALLING MotionModelCtrv"<<std::endl;
+		}
 	};
 
-
+	using MyCtrv = MotionModelCtrv<3, double>;
 } // end namespace motion_model 
 } // end namespace state_predictor
 } // end namespace iav
