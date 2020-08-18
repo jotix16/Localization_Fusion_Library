@@ -30,7 +30,7 @@ set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${CMAKE_CURRENT_LIST_DIR}/scripts/cm
 include(utilities)
 
 # Import main CMake module
-include("${CMAKE_CURRENT_LIST_DIR}/.deps/cmake/ModuleCompilation.cmake")
+# include("${CMAKE_CURRENT_LIST_DIR}/.deps/cmake/ModuleCompilation.cmake")
 
 # Add compiler definitions
 add_definitions(-D${NAME_ROOT}_VERSION=${${NAME_ROOT}_VERSION})
@@ -54,5 +54,5 @@ endif()
 
 include (GenerateExportHeader)
 add_subdirectory(${${NAME_ROOT}_SRC_PATH})   
-
+add_subdirectory(${${NAME_ROOT}_EXAMPLES_PATH})  
 
