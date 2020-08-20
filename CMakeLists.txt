@@ -30,7 +30,7 @@ set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${CMAKE_CURRENT_LIST_DIR}/scripts/cm
 include(utilities)
 
 # Import main CMake module
-include("${CMAKE_CURRENT_LIST_DIR}/.deps/cmake/ModuleCompilation.cmake")
+# include("${CMAKE_CURRENT_LIST_DIR}/.deps/cmake/ModuleCompilation.cmake")
 
 # Add compiler definitions
 add_definitions(-D${NAME_ROOT}_VERSION=${${NAME_ROOT}_VERSION})
@@ -43,9 +43,9 @@ set(${NAME_ROOT}_ROOT_PATH           ${CMAKE_CURRENT_LIST_DIR})
 set(${NAME_ROOT}_MODULE_PATH         ${CMAKE_CURRENT_LIST_DIR}/module)
 set(${NAME_ROOT}_EXAMPLES_PATH       ${CMAKE_CURRENT_LIST_DIR}/examples)
 set(${NAME_ROOT}_SRC_PATH            ${CMAKE_CURRENT_LIST_DIR}/src)
-set(${NAME_ROOT}_TESTS_PATH          ${CMAKE_CURRENT_LIST_DIR}/tests)
+set(${NAME_ROOT}_TESTS_PATH          ${CMAKE_CURRENT_LIST_DIR}/test)
 set(${NAME_ROOT}_TOOLS_PATH          ${CMAKE_CURRENT_LIST_DIR}/tools)
-set(${NAME_ROOT}_THIRDPARTY_PATH     ${CMAKE_CURRENT_LIST_DIR}/3rdparty)
+set(${NAME_ROOT}_THIRDPARTY_PATH     ${CMAKE_CURRENT_LIST_DIR}/3rdParty)
 
 # Set the default install prefix if it's not set by the user
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -53,6 +53,8 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 include (GenerateExportHeader)
+add_subdirectory(${${NAME_ROOT}_THIRDPARTY_PATH})
 add_subdirectory(${${NAME_ROOT}_SRC_PATH})   
-
+add_subdirectory(${${NAME_ROOT}_EXAMPLES_PATH})  
+add_subdirectory(${${NAME_ROOT}_TESTS_PATH}) 
 
