@@ -1,3 +1,1 @@
-add_boost_test(
-    MAIN_SRC_FILE
-)
+add_subdirectory(tst_libraries)
