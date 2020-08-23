@@ -1,17 +1,22 @@
-#include<rapidjson/document.h>
-#include<Eigen/Dense>
+#include<motion_model/motion_model.h>
 #include<iostream>
+#include<Eigen/Dense>
 
-using namespace rapidjson;
+using namespace Eigen;
+
 int main()
 {
-    Eigen::MatrixXd m(2,2);
-    std::cout<< m<<"\n";
+    std::cout<< "MOTION MODEL"<<std::endl;
+    iav::state_predictor::motion_model::Ctra2D my_ctra;
+    using State = iav::state_predictor::motion_model::Ctra2D::StateVector;
+    using Matris = iav::state_predictor::motion_model::Ctra2D::StateMatrix;
+    Matris x;
+    x.setIdentity(8,8);
+    x(1,2) = 2;
+    x(1,3) = 3;
 
-    //Parse a JSON string into doc.
-    const char* json = "{\"project\":\"rapidjson\",\"stars\":10}";
-    Document d;
-    d.Parse(json);
-
-    std::cout<<d["project"].GetString();
+    State s;
+    s << 1,1,1,1,1,1,1,1;
+    my_ctra.predict(s,1);
+    std::cout<<"Your state is: "<<s << "\n";
 }

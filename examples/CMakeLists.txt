@@ -1,1 +1,2 @@
 add_subdirectory(ex_libraries)
+add_subdirectory(ex_motion_model)
