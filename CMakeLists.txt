@@ -31,6 +31,7 @@ include(utilities)
 
 # Import main CMake module
 # include("${CMAKE_CURRENT_LIST_DIR}/.deps/cmake/ModuleCompilation.cmake")
+enable_testing(True)
 
 # Add compiler definitions
 add_definitions(-D${NAME_ROOT}_VERSION=${${NAME_ROOT}_VERSION})
