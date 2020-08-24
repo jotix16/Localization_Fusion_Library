@@ -1,12 +1,33 @@
+/*! \file
+*
+* Copyright (c) 1983-2020 IAV GmbH. All rights reserved.
+*
+* \authors Mikel Zhobro, Robert Treiber IAV GmbH
+*
+* Correspondence should be directed to IAV.
+*
+* IAV GmbH\n
+* Carnotstraße 1\n
+* 10587 Berlin
+*
+* GERMANY
+*
+* \note
+* Neither IAV GmbH nor the authors admit liability
+* nor provide any warranty for any of this software.
+* Until the distribution is granted by IAV GmbH
+* this source code is under non disclosure and must
+* only be used within projects with controlling
+* interest of IAV GmbH.
+*/
+
 #pragma once
 
 #include <gtest/gtest.h>
-#include "TestHelper.h"
-#include <motion_model/motion_model.h>
 
-#ifndef M_PI
-    #define M_PI 3.141592653589793238462643383279503L
-#endif
+#include <motion_model/motion_model.h>
+#include "TestHelper.h"
+
 
 TEST(TestCtrv, PredictAndJacobi)
 {
@@ -23,7 +44,7 @@ TEST(TestCtrv, PredictAndJacobi)
     // set state
     const double vx = -1.0F;
     const double vy = 2.0F;
-    const double yaw = M_PI/2;
+    const double yaw = iav::state_predictor::PI/3;
 
     CtrvState x;
     x << 0.0F, 0.0F, yaw, vx, vy, 0;

@@ -16,11 +16,11 @@ if(BUILD_TESTING)
 #   add_executable(tst_motion_model_ctra ${TESTS} ${HEADERS})
   # motion model ctrv
   add_executable(tst_motion_model_ctrv tst_motion_model_ctrv.cpp ${HEADERS})
-  target_link_libraries(tst_motion_model_ctrv gtest_main motion_model)
+  target_link_libraries(tst_motion_model_ctrv gtest_main estimator)
   add_test(MotionModelCtrv tst_motion_model_ctrv)
 
   # motion model ctra
   add_executable(tst_motion_model_ctra tst_motion_model_ctra.cpp ${HEADERS})
-  target_link_libraries(tst_motion_model_ctra gtest_main motion_model)
+  target_link_libraries(tst_motion_model_ctra gtest_main estimator)
   add_test(MotionModelCtra tst_motion_model_ctra)
 endif()
