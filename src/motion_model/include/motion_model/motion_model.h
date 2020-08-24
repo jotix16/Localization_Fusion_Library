@@ -3,6 +3,9 @@
 #include <iostream>
 #include<Eigen/Dense>
 
+
+//TO_DO: No AngleWrapping done yet, with the motivation that 
+// 	 	 it is better done in KalmanWrapper after both observation_step and prediction_step
 namespace iav{ namespace state_predictor { namespace motion_model {
 	using namespace Eigen;
 	
