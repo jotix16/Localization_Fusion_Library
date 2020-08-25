@@ -33,7 +33,6 @@
 //TO_DO: No AngleWrapping done yet, with the motivation that 
 // 	 	 it is better done in KalmanWrapper after both observation_step and prediction_step
 namespace iav{ namespace state_predictor { namespace motion_model {
-	using namespace Eigen;
 	
 	// @brief Type trait base class -> called primary template class
 	template<int num_states, typename T = double>
@@ -41,8 +40,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	{
 	public:		
 		static constexpr int number_states = num_states;
-		using StateVector = Matrix<T, num_states, 1>;
-		using StateMatrix = Matrix<T, num_states, num_states>;
+		using StateVector = Eigen::Matrix<T, num_states, 1>;
+		using StateMatrix = Eigen::Matrix<T, num_states, num_states>;
 	};
 
 	// @brief ctra2D: Constant turning rate and acceleration
