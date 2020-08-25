@@ -47,6 +47,14 @@ namespace iav{ namespace state_predictor { namespace utilities {
   */
   double clamp_rotation(double rotation);
 
+  /**
+  * @brief Utility method that transforms standard datatypes to string
+  * @param[in] x - Variable of certain standard datatyp
+  * @return corresponding string
+  */
+#define SSTR( x ) static_cast< std::ostringstream & >( \
+        ( std::ostringstream() << std::dec << x ) ).str()
+
 }  // namespace utilities
 }  // namespace state_predictor
 }  // namespace iav
