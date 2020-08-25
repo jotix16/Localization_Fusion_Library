@@ -9,12 +9,16 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 
+#include<utilities/filter_utilities.h>
+
 namespace iav{ namespace state_predictor { namespace filter {
 
-#define SSTR( x ) static_cast< std::ostringstream & >( \
-        ( std::ostringstream() << std::dec << x ) ).str()
-
-
+  /**
+  * @brief Templated function to print out arrays of different types T
+  * @param[in] arr - array to be printed
+  * @param[in] a - nr of rows
+  * @param[in] b - nr of columns
+  */
 template<typename T>
 void printt(T* arr, int a, int b){
     for (int i = 0; i < a; i++)
@@ -27,6 +31,9 @@ void printt(T* arr, int a, int b){
     }
 }
 
+/**
+* @brief A class that holds information about one single sensor
+*/
 struct SensorConfig{
     using Document = rapidjson::Document;
     public:
@@ -35,6 +42,13 @@ struct SensorConfig{
     double m_acc_mahalanobis_thresh[3];
     double m_speed_mahalanobis_thresh[6];
 
+    /**
+     * @brief Constructor that parses the sensor parameters.
+     * @param[in] doc - Document that holds the informations to be parsed
+     * @param[in] sensor_name - The name of the sensor, e.g. odom_1, imu_0 or ..
+     * @param[in] type - One of the four types{1:"odom_", 2:"pose_", 3:"twist_", 4:"imu_"}
+     * @return SensorConfig object
+     */
     SensorConfig(const Document& doc, const char* sensor_name, const int type)
     {
         for (int i = 0; i < 15; i++)
@@ -67,6 +81,9 @@ struct SensorConfig{
         }
     }
 
+  /**
+  * @brief Prints out SensorConfig information
+  */
     void print()
     {
         std::cout<<"\n Update_vector \n";
@@ -80,6 +97,9 @@ struct SensorConfig{
     }
 };
 
+/**
+* @brief A class that holds information about a filter instance and all sensors it uses.
+*/
 template<int num_state>
 struct FilterConfig{
     using Document = rapidjson::Document;
@@ -88,6 +108,11 @@ struct FilterConfig{
     double m_process_noise[num_state*num_state];
     std::map<std::string, struct SensorConfig> m_sensor_configs;
 
+    /**
+     * @brief Constructor that parses the filter parameters and all of its sensors.
+     * @param[in] path - Path to the .json file normally in the folder config/.
+     * @return FilterConfig object
+     */
     FilterConfig(const char* path){
         // Create stream and check if valid
         std::ifstream ifs {path};
@@ -126,6 +151,9 @@ struct FilterConfig{
         }
     }
 
+  /**
+  * @brief Prints out SensorConfig information
+  */
     void print()
     {
         std::cout<<"\nInit_estimate_covariance\n";
