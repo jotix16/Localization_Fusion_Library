@@ -57,8 +57,8 @@ TEST(TestCtra, PredictAndJacobi)
         std::cout << "Ctra: Testing Predict with dt=" << dt*1000 << "ms.\n";
         model.predict(x,dt);
         CtrvState x1;
-        x1 << vx*dt*cos(yaw) + vy*dt*sin(yaw) + 0.5*dt*dt*ax*cos(yaw) + 0.5*dt*dt*ay*sin(yaw),
-            vx * dt * sin(yaw) + vy * dt * cos(yaw) + 0.5*dt*dt * ax * sin(yaw) +  0.5*dt*dt * ay * cos(yaw),
+        x1 << vx*dt*cos(yaw) - vy*dt*sin(yaw) + 0.5*dt*dt*ax*cos(yaw) - 0.5*dt*dt*ay*sin(yaw),
+            vx*dt*sin(yaw) + vy*dt*cos(yaw) + 0.5*dt*dt*ax * sin(yaw) +  0.5*dt*dt*ay*cos(yaw),
             yaw,
             vx + dt*ax,
             vy + dt*ay,
@@ -86,11 +86,11 @@ TEST(TestCtra, PredictAndJacobi)
 
         jacobi1.setIdentity();
         jacobi1(States::X, States::V_X) = dt_c_yaw;
-        jacobi1(States::X, States::V_Y) = dt_s_yaw;
-        jacobi1(States::X, States::YAW) = -dt_s_yaw * vx + dt_c_yaw * vy
-                                        - dt_dt_s_yaw_05 * ax + dt_dt_c_yaw_05 * ay;
+        jacobi1(States::X, States::V_Y) = -dt_s_yaw;
+        jacobi1(States::X, States::YAW) = -dt_s_yaw * vx - dt_c_yaw * vy
+                                        - dt_dt_s_yaw_05 * ax - dt_dt_c_yaw_05 * ay;
         jacobi1(States::X, States::A_X) = dt_dt_c_yaw_05;
-        jacobi1(States::X, States::A_Y) = dt_dt_s_yaw_05;
+        jacobi1(States::X, States::A_Y) = -dt_dt_s_yaw_05;
         jacobi1(States::V_X, States::A_X) = dt;
 
         jacobi1(States::Y, States::V_X) = dt_s_yaw;

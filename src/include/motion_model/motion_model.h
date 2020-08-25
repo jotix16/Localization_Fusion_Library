@@ -101,11 +101,11 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 			jacobi.setIdentity();
 			jacobi(States::X, States::V_X) = dt_c_yaw;
-			jacobi(States::X, States::V_Y) = dt_s_yaw;
-			jacobi(States::X, States::YAW) = -dt_s_yaw * state[States::V_X] + dt_c_yaw * state[States::V_Y]
-			 								- dt_dt_s_yaw_05 * state[States::A_X] + dt_dt_c_yaw_05 * state[States::A_Y];
+			jacobi(States::X, States::V_Y) = -dt_s_yaw;
+			jacobi(States::X, States::YAW) = -dt_s_yaw * state[States::V_X] - dt_c_yaw * state[States::V_Y]
+			 								- dt_dt_s_yaw_05 * state[States::A_X] - dt_dt_c_yaw_05 * state[States::A_Y];
 			jacobi(States::X, States::A_X) = dt_dt_c_yaw_05;
-			jacobi(States::X, States::A_Y) = dt_dt_s_yaw_05;
+			jacobi(States::X, States::A_Y) = -dt_dt_s_yaw_05;
 			jacobi(States::V_X, States::A_X) = dt;
 
 			jacobi(States::Y, States::V_X) = dt_s_yaw;
@@ -156,13 +156,13 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			StateMatrix transform_matrix;
 			transform_matrix.setIdentity();
 			transform_matrix(States::X, States::V_X) = dt_c_yaw;
-			transform_matrix(States::X, States::V_Y) = dt_s_yaw;
+			transform_matrix(States::X, States::V_Y) = -dt_s_yaw;
 			transform_matrix(States::X, States::A_X) = dt_2 * dt_c_yaw;
-			transform_matrix(States::X, States::A_Y) = dt_2 * dt_s_yaw;
+			transform_matrix(States::X, States::A_Y) = -dt_2 * dt_s_yaw;
 
 			transform_matrix(States::Y, States::V_X) = dt_s_yaw;
 			transform_matrix(States::Y, States::V_Y) = dt_c_yaw;
-			transform_matrix(States::Y, States::A_X) = transform_matrix(States::X, States::A_Y);
+			transform_matrix(States::Y, States::A_X) = -transform_matrix(States::X, States::A_Y);
 			transform_matrix(States::Y, States::A_Y) = transform_matrix(States::X, States::A_X);
 
 			transform_matrix(States::V_X, States::A_X) = dt;
@@ -228,8 +228,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 			jacobi.setIdentity();
 			jacobi(States::X, States::V_X) = dt_c_yaw;
-			jacobi(States::X, States::V_Y) = dt_s_yaw;
-			jacobi(States::X, States::YAW) = -dt_s_yaw * state[States::V_X] + dt_c_yaw * state[States::V_Y];
+			jacobi(States::X, States::V_Y) = -dt_s_yaw;
+			jacobi(States::X, States::YAW) = -dt_s_yaw * state[States::V_X] - dt_c_yaw * state[States::V_Y];
 			jacobi(States::Y, States::V_X) = dt_s_yaw;
 			jacobi(States::Y, States::V_Y) = dt_c_yaw;
 			jacobi(States::Y, States::YAW) = dt_c_yaw * state[States::V_X] - dt_s_yaw * state[States::V_Y];
@@ -270,7 +270,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			StateMatrix transform_matrix;
 			transform_matrix.setIdentity();
 			transform_matrix(States::X, States::V_X) = dt_c_yaw;
-			transform_matrix(States::X, States::V_Y) = dt_s_yaw;
+			transform_matrix(States::X, States::V_Y) = -dt_s_yaw;
 			transform_matrix(States::Y, States::V_X) = dt_s_yaw;
 			transform_matrix(States::Y, States::V_Y) = dt_c_yaw;
 			transform_matrix(States::YAW, States::V_YAW) = dt;
