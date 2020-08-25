@@ -32,6 +32,8 @@ include(utilities)
 # Import main CMake module
 # include("${CMAKE_CURRENT_LIST_DIR}/.deps/cmake/ModuleCompilation.cmake")
 
+enable_testing(True)
+
 # Add compiler definitions
 add_definitions(-D${NAME_ROOT}_VERSION=${${NAME_ROOT}_VERSION})
 add_definitions(-D${NAME_ROOT}_MAJOR_VERSION=${${NAME_ROOT}_MAJOR_VERSION})
@@ -57,4 +59,3 @@ add_subdirectory(${${NAME_ROOT}_THIRDPARTY_PATH})
 add_subdirectory(${${NAME_ROOT}_SRC_PATH})   
 add_subdirectory(${${NAME_ROOT}_EXAMPLES_PATH})  
 add_subdirectory(${${NAME_ROOT}_TESTS_PATH}) 
-
