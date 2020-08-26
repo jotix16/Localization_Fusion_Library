@@ -63,6 +63,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			static constexpr int V_YAW = 5U;  ///< index of yaw velocity
 			static constexpr int A_X = 6U;  ///< index of x acceleration
 			static constexpr int A_Y = 7U;  ///< index of y acceleration
+			static constexpr std::array<int,1> ANGLEidx = {2U};  ///< index of yaw velocity
 
 		};  // struct States
 
@@ -190,6 +191,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			static constexpr int V_X = 3U;  ///< index of x velocity
 			static constexpr int V_Y = 4U;  ///< index of y velocity
 			static constexpr int V_YAW = 5U;  ///< index of yaw velocity
+			static constexpr std::array<int,1> ANGLEidx = {2U};  ///< index of yaw velocity
 
 		};  // struct States
 
