@@ -34,11 +34,13 @@ template<class MotionModelT, int num_state, typename T = double>
 class FilterBase
 {
 public:
+    using States = typename MotionModelT::States;
     using StateVector = typename MotionModelT::StateVector;
     using StateMatrix = typename MotionModelT::StateMatrix;
     using ObservationVector = typename Eigen::Matrix<T, -1, 1>;
     using ObservationMatrix = typename Eigen::Matrix<T, -1, num_state>;
-    using MeasurementNoisematrix = typename Eigen::Matrix<T, -1, -1>;
+    using Matrix = typename Eigen::Matrix<T, -1, -1>;
+    using Vector = typename Eigen::Matrix<T, -1, 1>;
 
 protected:
     bool m_initialized;
@@ -47,9 +49,13 @@ protected:
     StateMatrix m_covariance;
     StateMatrix m_process_noise;
 
-    /* data */
+    const StateMatrix m_identity ; // needed for a few operations.
+
 public:
-    FilterBase(/* args */):m_initialized(0){};
+    FilterBase(/* args */):m_initialized(0),m_identity(StateMatrix::Identity())
+    {
+        // m_identity = ;
+    };
 
     bool is_initialized()
     {
@@ -68,9 +74,9 @@ public:
     {
         return m_covariance;
     }
-    virtual bool passes_mahalanobis(ObservationVector innovation, MeasurementNoisematrix hph_t_r, T mahalanobis_threshold)=0;
+    virtual bool passes_mahalanobis(ObservationVector innovation, Matrix hph_t_r_inv, T mahalanobis_threshold)=0;
     virtual bool temporal_update(tTime dt)=0;
-    virtual bool observation_update(ObservationVector z, ObservationMatrix H, MeasurementNoisematrix R)=0;
+    virtual bool observation_update(ObservationVector z, ObservationMatrix H, Matrix R, T mahalanobis_threshold)=0;
 };
 } // end namespace filter 
 } // end namespace state_predictor
