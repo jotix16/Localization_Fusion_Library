@@ -56,7 +56,7 @@ TEST(TestCtrv, PredictAndJacobi)
         std::cout << "Ctrv: Testing Predict with dt=" << dt*1000 << "ms.\n";
         model.predict(x,dt);
         CtrvState x1;
-        x1 << vx * dt * cos(yaw) + vy * dt * sin(yaw),
+        x1 << vx * dt * cos(yaw) - vy * dt * sin(yaw),
             vx * dt * sin(yaw) + vy * dt * cos(yaw),
             yaw,
             vx,
@@ -82,8 +82,8 @@ TEST(TestCtrv, PredictAndJacobi)
 
         jacobi1.setIdentity();
         jacobi1(States::X, States::V_X) = dt_c_yaw;
-        jacobi1(States::X, States::V_Y) = dt_s_yaw;
-        jacobi1(States::X, States::YAW) = -dt_s_yaw * vx + dt_c_yaw * vy;
+        jacobi1(States::X, States::V_Y) = -dt_s_yaw;
+        jacobi1(States::X, States::YAW) = -dt_s_yaw * vx - dt_c_yaw * vy;
         jacobi1(States::Y, States::V_X) = dt_s_yaw;
         jacobi1(States::Y, States::V_Y) = dt_c_yaw;
         jacobi1(States::Y, States::YAW) = dt_c_yaw * vx - dt_s_yaw * vy;
