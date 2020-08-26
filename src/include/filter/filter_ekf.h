@@ -53,7 +53,10 @@ public:
     FilterEkf(){};
     bool passes_mahalanobis(ObservationVector innovation, Matrix hph_t_r_inv, T mahalanobis_threshold)
     {
-        return true;
+        T sq_measurement_mahalanobis = innovation.dot(hph_t_r_inv * innovation);
+        T threshold = mahalanobis_threshold * mahalanobis_threshold;
+        if(sq_measurement_mahalanobis >= threshold) return true;
+        return false;
     }
     bool temporal_update(tTime dt)
     {
@@ -123,7 +126,7 @@ public:
 
 using Ctrv_EKF2D = FilterEkf<motion_model::Ctrv2D, 6, double>;
 using Ctra_EKF2D = FilterEkf<motion_model::Ctra2D, 6, double>;
-// using Ctra_EKF3D = FilterEkf<motion_model::Ctrv3D, 6, double>
+using Ctra_EKF3D = FilterEkf<motion_model::Ctra3D, 6, double>;
 
 } // end namespace filter 
 } // end namespace state_predictor
