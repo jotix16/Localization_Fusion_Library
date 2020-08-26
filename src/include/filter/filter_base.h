@@ -52,16 +52,15 @@ protected:
     const StateMatrix m_identity ; // needed for a few operations.
 
 public:
-    FilterBase(/* args */):m_initialized(0),m_identity(StateMatrix::Identity())
+    FilterBase():m_initialized(0),m_identity(StateMatrix::Identity())
     {
-        // m_identity = ;
     };
 
     bool is_initialized()
     {
         return m_initialized
     }
-    void reset(StateVector x0, StateMatrix P0)
+    void reset(const StateVector& x0, const StateMatrix& P0)
     {
         m_state = x0;
         m_covariance = P0;
@@ -74,9 +73,9 @@ public:
     {
         return m_covariance;
     }
-    virtual bool passes_mahalanobis(ObservationVector innovation, Matrix hph_t_r_inv, T mahalanobis_threshold)=0;
-    virtual bool temporal_update(tTime dt)=0;
-    virtual bool observation_update(ObservationVector z, ObservationMatrix H, Matrix R, T mahalanobis_threshold)=0;
+    virtual bool passes_mahalanobis(const ObservationVector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)=0;
+    virtual bool temporal_update(const tTime& dt)=0;
+    virtual bool observation_update(const ObservationVector& z, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)=0;
 };
 } // end namespace filter 
 } // end namespace state_predictor

@@ -43,22 +43,17 @@ public:
     using Matrix = typename FilterBase::Matrix;
     using Vector = typename FilterBase::Vector;
     using KalmanGainMatrix = typename Eigen::Matrix<T, num_state, -1>;
-    
-    // using m_motion_model = FilterBase::MotionModelT::m_motion_model;
-    // using m_state = FilterBase::StateVector::m_state;
-    // using m_covariance = FilterBase::StateMatrix::m_covariance;
-    // using m_process_noise = FilterBase::StateMatrix::m_process_noise;
 
 public:
     FilterEkf(){};
-    bool passes_mahalanobis(ObservationVector innovation, Matrix hph_t_r_inv, T mahalanobis_threshold)
+    bool passes_mahalanobis(const ObservationVector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)
     {
         T sq_measurement_mahalanobis = innovation.dot(hph_t_r_inv * innovation);
         T threshold = mahalanobis_threshold * mahalanobis_threshold;
         if(sq_measurement_mahalanobis >= threshold) return true;
         return false;
     }
-    bool temporal_update(tTime dt)
+    bool temporal_update(const tTime& dt)
     {
         if(!m_initialized) return false;
         StateMatrix jacobian;
@@ -69,14 +64,12 @@ public:
             m_state[i] = utilities::clamp_rotation(m_state[i]);
         }
         
-
-
         // update the covariance: P = J * P * J' + Q
         m_covariance = jacobian * m_covariance * jacobian.transpose();
         m_covariance.noalias() += dt * m_process_noise;
         return true;
     }
-    bool observation_update(ObservationVector z, ObservationMatrix H, Matrix R, T mahalanobis_threshold)
+    bool observation_update(const ObservationVector& z, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)
     {
         // Check if initialized
         if(!m_initialized) return false;
@@ -121,7 +114,6 @@ public:
         m_covariance.noalias() += K * R * K;
         return true;
     }
-
 };
 
 using Ctrv_EKF2D = FilterEkf<motion_model::Ctrv2D, 6, double>;
