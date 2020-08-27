@@ -37,10 +37,12 @@ public:
     using States = typename MotionModelT::States;
     using StateVector = typename MotionModelT::StateVector;
     using StateMatrix = typename MotionModelT::StateMatrix;
-    using ObservationVector = typename Eigen::Matrix<T, -1, 1>;
-    using ObservationMatrix = typename Eigen::Matrix<T, -1, num_state>;
+    // using ObservationVector = typename Eigen::Matrix<T, -1, 1>;
+    // using ObservationMatrix = typename Eigen::Matrix<T, -1, num_state>;
     using Matrix = typename Eigen::Matrix<T, -1, -1>;
     using Vector = typename Eigen::Matrix<T, -1, 1>;
+    using ObservationVector = typename Vector;
+    using ObservationMatrix = typename Matrix;
 
 protected:
     bool m_initialized;
@@ -60,10 +62,12 @@ public:
     {
         return m_initialized
     }
-    void reset(const StateVector& x0, const StateMatrix& P0)
+    void reset(const StateVector& x0, const StateMatrix& P0, const StateMatrix& Q)
     {
         m_state = x0;
         m_covariance = P0;
+        m_process_noise = Q;
+        m_initialized = true;
     }
     StateVector get_state()
     {
