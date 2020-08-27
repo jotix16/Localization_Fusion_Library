@@ -21,6 +21,10 @@ set(${NAME_ROOT}_VERSION "${${NAME_ROOT}_MAJOR_VERSION}.${${NAME_ROOT}_MINOR_VER
 
 project(${NAME_ROOT} VERSION ${${NAME_ROOT}_VERSION})
 
+option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_EXAMPLES "Build examples, will link matplotlib. Therefore you will need a valid Python2 installation." ON)
+
+
 # Add CMake module paths
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/scripts/cmake CACHE PATH "Path for utility functions")
 # Add CMake prefix path
