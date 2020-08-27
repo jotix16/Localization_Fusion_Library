@@ -37,12 +37,10 @@ public:
     using States = typename MotionModelT::States;
     using StateVector = typename MotionModelT::StateVector;
     using StateMatrix = typename MotionModelT::StateMatrix;
-    // using ObservationVector = typename Eigen::Matrix<T, -1, 1>;
-    // using ObservationMatrix = typename Eigen::Matrix<T, -1, num_state>;
     using Matrix = typename Eigen::Matrix<T, -1, -1>;
     using Vector = typename Eigen::Matrix<T, -1, 1>;
     using ObservationVector = typename Vector;
-    using ObservationMatrix = typename Matrix;
+    using ObservationMatrix = typename Eigen::Matrix<T, -1, num_state>;
 
 protected:
     bool m_initialized;

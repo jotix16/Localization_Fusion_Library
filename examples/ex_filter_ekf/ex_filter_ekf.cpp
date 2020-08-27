@@ -100,10 +100,8 @@ struct MotionModel
 
 struct MeasurementModel
 {
-    // using MeasurementVector = typename Matrix<double, 1,1>;
-    // using JacobiMatrix = typename Matrix<double, 1,3>;
+    using JacobiMatrix = typename Matrix<double, -1,3>;
     using MeasurementVector = typename Matrix<double, -1,1>;
-    using JacobiMatrix = typename Matrix<double, -1,-1>;
     using StateVector = typename Matrix<double, 3,1>;
     using tTime = typename iav::state_predictor::tTime;
 
@@ -119,8 +117,8 @@ struct MeasurementModel
     static JacobiMatrix H(const StateVector& state, const tTime& dt)
     {
         // update jacobi
-        JacobiMatrix jacobi(1,3);
-        // jacobi.resize(1,3);
+        JacobiMatrix jacobi;
+        jacobi.resize(1,3);
         jacobi.setZero();
 
         double d = sqrt(state(0,0)*state(0,0)+ state(2,0)*state(2,0));
