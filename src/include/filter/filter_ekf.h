@@ -42,7 +42,6 @@ public:
     using ObservationMatrix = typename FilterBase::ObservationMatrix;
     using Matrix = typename FilterBase::Matrix;
     using Vector = typename FilterBase::Vector;
-    using KalmanGainMatrix = typename Eigen::Matrix<T, num_state, -1>;
 
 public:
     FilterEkf(){};
@@ -50,7 +49,7 @@ public:
     {
         T sq_measurement_mahalanobis = innovation.dot(hph_t_r_inv * innovation);
         T threshold = mahalanobis_threshold * mahalanobis_threshold;
-        if(sq_measurement_mahalanobis >= threshold) return true;
+        if(sq_measurement_mahalanobis <= threshold) return true;
         return false;
     }
     bool temporal_update(const tTime& dt)
@@ -74,7 +73,7 @@ public:
         // Check if initialized
         if(!m_initialized) return false;
         Matrix ph_t = m_covariance * H.transpose();
-        Matrix hph_t_r_inv = (H * m_covariance * H.transpose() + R).inverse();
+        Matrix hph_t_r_inv = (H * ph_t + R).inverse();
         ObservationVector innovation = z - H * m_state;
         // wrap angles of innovation( NOT SURE )
         // We could either allow to take an array with the indexes to the angles as input parameter()
@@ -111,7 +110,7 @@ public:
         StateMatrix I_K_H = m_identity;
         I_K_H.noalias() -= K * H;
         m_covariance = I_K_H * m_covariance * I_K_H.transpose();
-        m_covariance.noalias() += K * R * K;
+        m_covariance.noalias() += K * R * K.transpose();
         return true;
     }
 };
