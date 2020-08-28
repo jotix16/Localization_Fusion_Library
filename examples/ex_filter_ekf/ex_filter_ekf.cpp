@@ -1,5 +1,6 @@
 #include<iostream>
 
+#include<string>
 #include<vector>
 #include<random>
 #include<math.h>
@@ -75,8 +76,16 @@ struct MeasurementModel
     using StateVector = typename Matrix<double, 3,1>;
     using tTime = typename iav::state_predictor::tTime;
 
+    static MeasurementVector get_measurement(const StateVector& state){
+        // add measurement noise
+       MeasurementVector z(1);
+        double err = state(0,0) * 0.05 * normal_dist();
+        double meas = sqrt(state(0,0)*state(0,0)+ state(2,0)*state(2,0));
+        z(0,0) = meas + err;
+        return z;
+    }
 
-    static MeasurementVector h(const StateVector& state, const tTime& dt)
+    static MeasurementVector h(const StateVector& state)
     {
        MeasurementVector z(1);
     //    z.resize(1,1);
@@ -100,21 +109,30 @@ struct MeasurementModel
 
 using Ctra_EKF3D = iav::state_predictor::filter::FilterEkf<MotionModel, 3, double>;
 
-void plot(std::vector<double>x, std::vector<double> y_ground_truth, std::vector<double> y_estimated, bool save, char* title= "My Title")
+void plot(std::vector<double>x, std::vector<double> y_ground_truth, std::vector<double> y_estimated, bool save, char * y_axis, char* title= "My Title")
 {
     // Set the size of output image to 1200x780 pixels
     plt::figure_size(1200, 780);
     // Plot line from given x and y data. Color is selected automatically.
     plt::named_plot("Filter estimation", x, y_estimated);
+
     // Plot a red dashed line from given x and y data.
     plt::named_plot("Ground truth", x, y_ground_truth, "r--");
+    plt::xlabel("timesteps");
+    plt::ylabel(y_axis);
     // Add graph title
     plt::title(title);
     // Enable legend.
     plt::legend();
     // Save the image (file format is determined by the extension)
+    if(save)
+    {
+        std::cout<<"Saving name: ./"+ std::string(y_axis) +".png\n";
+        plt::save("./"+ std::string(y_axis) +".png");
+    }
+    // SHOW
     plt::show();
-    if(save)  plt::save("./basic.png");
+
 
 }
 
@@ -164,7 +182,7 @@ int main()
     std::vector<double> ground_truth_x, ground_truth_vx, ground_truth_y, filter_estimate_x, filter_estimate_vx, filter_estimate_y, times;
     StateVector state_temp;
     std::vector<StateVector> ground_truth, filter_estimate;
-    Measurement z = MeasurementModel::h(state, dt);
+    Measurement z = MeasurementModel::h(state);
     JacobiMatrix H = MeasurementModel::H(state, dt);
 
     int timesteps = 60.0/dt;
@@ -177,7 +195,7 @@ int main()
         ground_truth_vx.push_back(state_temp[1]);
         ground_truth_y.push_back(state_temp[2]);
 
-        z = MeasurementModel::h(state, dt);
+        z = MeasurementModel::get_measurement(state);
         H = MeasurementModel::H(state, dt);
         ekf.observation_update(z, H, R, 1000000);
         filter_estimate.push_back(ekf.get_state());
@@ -190,8 +208,9 @@ int main()
     }
 
     // PLOT
-    plot(times, ground_truth_x, filter_estimate_x, false, "Airplane x");
-    plot(times, ground_truth_y, filter_estimate_y, false, "Airplane y");
+    plot(times, ground_truth_x, filter_estimate_x, true, "x position", "Airplane Simulation: tracking x");
+    plot(times, ground_truth_vx, filter_estimate_vx, true, "x velocity", "Airplane Simulation: tracking vx");
+    plot(times, ground_truth_y, filter_estimate_y, true, "altitude", "Airplane Simulation: tracking altitude");
     
     std::cout<<"Ground truth state is: \n"<< state << "\n";
     std::cout<<"Estimated state is: \n"<< ekf.get_state() << "\n";
