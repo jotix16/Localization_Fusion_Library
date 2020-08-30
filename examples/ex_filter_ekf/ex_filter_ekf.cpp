@@ -25,8 +25,8 @@ double normal_dist()
 
 struct MotionModel
 {
-    using StateMatrix = typename Matrix<double, 3,3>;
-    using StateVector = typename Matrix<double, 3,1>;
+    using StateMatrix = Matrix<double, 3,3>;
+    using StateVector = Matrix<double, 3,1>;
     using tTime = typename iav::state_predictor::tTime;
     struct States
     {
@@ -51,7 +51,7 @@ struct MotionModel
         state(0,0) += dt * state(1,0);
     }
 
-    // The two functions below simulate the radar signal returns from an object flying 
+    // The two functions below simulate the radar signal returns from an object flying
     // at a constant altitude and velocity in 2d.
     static StateVector simulate(StateVector& state, const tTime& dt)
     {
@@ -71,10 +71,10 @@ struct MotionModel
 
 struct MeasurementModel
 {
-    using JacobiMatrix = typename Matrix<double, -1,3>;
-    using MeasurementVector = typename Matrix<double, -1,1>;
-    using StateVector = typename Matrix<double, 3,1>;
-    using tTime = typename iav::state_predictor::tTime;
+    using JacobiMatrix = Matrix<double, -1,3>;
+    using MeasurementVector = Matrix<double, -1,1>;
+    using StateVector = Matrix<double, 3,1>;
+    using tTime = iav::state_predictor::tTime;
 
     static MeasurementVector get_measurement(const StateVector& state){
         // add measurement noise
@@ -89,7 +89,7 @@ struct MeasurementModel
     {
        MeasurementVector z(1);
     //    z.resize(1,1);
-       z(0,0) = sqrt(state(0,0)*state(0,0)+ state(2,0)*state(2,0)); 
+       z(0,0) = sqrt(state(0,0)*state(0,0)+ state(2,0)*state(2,0));
        return z;
     }
 
@@ -109,7 +109,7 @@ struct MeasurementModel
 
 using Ctra_EKF3D = iav::state_predictor::filter::FilterEkf<MotionModel, 3, double>;
 
-void plot(std::vector<double>x, std::vector<double> y_ground_truth, std::vector<double> y_estimated, bool save, char * y_axis, char* title= "My Title")
+void plot(std::vector<double>x, std::vector<double> y_ground_truth, std::vector<double> y_estimated, bool save, const std::string y_axis, const std::string title= "My Title")
 {
     // Set the size of output image to 1200x780 pixels
     plt::figure_size(1200, 780);
@@ -168,7 +168,7 @@ int main()
     Q(1,0) *= 0.5 * std::pow(dt,3) * 0.1;
 
     Q(2,2) *= 0.1;
-    
+
     // Measurement noise covariance
     double range_std = 1;
     MatrixXd R(1,1);
@@ -199,7 +199,7 @@ int main()
         H = MeasurementModel::H(state, dt);
         ekf.observation_update(z, H, R, 1000000);
         filter_estimate.push_back(ekf.get_state());
-        
+
         state_temp = ekf.get_state();
         filter_estimate_x.push_back(state_temp[0]);
         filter_estimate_vx.push_back(state_temp[1]);
@@ -208,10 +208,10 @@ int main()
     }
 
     // PLOT
-    plot(times, ground_truth_x, filter_estimate_x, true, "x position", "Airplane Simulation: tracking x");
-    plot(times, ground_truth_vx, filter_estimate_vx, true, "x velocity", "Airplane Simulation: tracking vx");
-    plot(times, ground_truth_y, filter_estimate_y, true, "altitude", "Airplane Simulation: tracking altitude");
-    
+    plot(times, ground_truth_x, filter_estimate_x, false, "x position", "Airplane Simulation: tracking x");
+    plot(times, ground_truth_vx, filter_estimate_vx, false, "x velocity", "Airplane Simulation: tracking vx");
+    plot(times, ground_truth_y, filter_estimate_y, false, "altitude", "Airplane Simulation: tracking altitude");
+
     std::cout<<"Ground truth state is: \n"<< state << "\n";
     std::cout<<"Estimated state is: \n"<< ekf.get_state() << "\n";
 
@@ -221,11 +221,11 @@ int main()
 
 void check_normal_dist()
 {
-  // check the noise generator 
+  // check the noise generator
   int p[10]={};
   const int nrolls = 1000;
   const int nstars = 100;
-  
+
   for (int i=0; i<nrolls; ++i) {
     double number = sqrt(2.0)*normal_dist() + 5;
     if ((number>=0.0)&&(number<10.0)) ++p[int(number)];
