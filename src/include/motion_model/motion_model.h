@@ -33,7 +33,7 @@
 //TO_DO: No AngleWrapping done yet, with the motivation that 
 // 	 	 it is better done in KalmanWrapper after both observation_step and prediction_step
 namespace iav{ namespace state_predictor { namespace motion_model {
-	
+
 	/**
 	* @brief Type trait base class -> called primary template class
 	*/
@@ -70,9 +70,9 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 		};  // struct States
 
-	public:		
-		using StateVector = typename MotionModel::StateVector;
-		using StateMatrix = typename MotionModel::StateMatrix;
+	public:	
+		using StateVector = typename MotionModel<8, T>::StateVector;
+		using StateMatrix = typename MotionModel<8, T>::StateMatrix;
 		
 		/**
 		 * @brief Ctra2D: Method that computes the Jacobian and performs a predict step
@@ -201,8 +201,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		};  // struct States
 
 	public:
-		using StateVector = typename MotionModel::StateVector;
-		using StateMatrix = typename MotionModel::StateMatrix;
+		using StateVector = typename MotionModel<6, T>::StateVector;
+		using StateMatrix = typename MotionModel<6, T>::StateMatrix;
 
 
 		/**
@@ -313,12 +313,12 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			static constexpr int A_Y = 13U;  ///< index of y acceleration
 			static constexpr int A_Z = 14U;  ///< index of z acceleration
 			static constexpr std::array<int,3> ANGLEidx = {3U, 4U, 5U};  ///< index of angles
-
+			
 		};  // struct States
 
 	public:		
-		using StateVector = typename MotionModel::StateVector;
-		using StateMatrix = typename MotionModel::StateMatrix;
+		using StateVector = typename MotionModel<15, T>::StateVector;
+		using StateMatrix = typename MotionModel<15, T>::StateMatrix;
 		
 		/**
 		 * @brief Ctra3D: Method that computes the Jacobian and performs a predict step

@@ -36,12 +36,14 @@ template<class MotionModelT, int num_state, typename T = double>
 class FilterEkf : public FilterBase<MotionModelT, num_state, T>
 {
 public:
-    using StateVector = typename FilterBase::StateVector;
-    using StateMatrix = typename FilterBase::StateMatrix;
-    using ObservationVector = typename FilterBase::ObservationVector;
-    using ObservationMatrix = typename FilterBase::ObservationMatrix;
-    using Matrix = typename FilterBase::Matrix;
-    using Vector = typename FilterBase::Vector;
+    using FilterBase_ = FilterBase<MotionModelT, num_state, T>;
+    using StateVector = typename FilterBase_::StateVector;
+    using StateMatrix = typename FilterBase_::StateMatrix;
+    using ObservationVector = typename FilterBase_::ObservationVector;
+    using ObservationMatrix = typename FilterBase_::ObservationMatrix;
+    using Matrix = typename FilterBase_::Matrix;
+    using Vector = typename FilterBase_::Vector;
+    using States = typename FilterBase<MotionModelT, num_state, T>::States;
 
 public:
     FilterEkf(){};
@@ -54,27 +56,27 @@ public:
     }
     bool temporal_update(const tTime& dt)
     {
-        if(!m_initialized) return false;
+        if(!this->m_initialized) return false;
         StateMatrix jacobian;
-		m_motion_model.compute_jacobian_and_predict(jacobian, m_state, dt);
+		this->m_motion_model.compute_jacobian_and_predict(jacobian,this->m_state, dt);
         // wrap angles of state
         for (auto i:States::ANGLEidx)
         {
-            m_state[i] = utilities::clamp_rotation(m_state[i]);
+           this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
         }
         
         // update the covariance: P = J * P * J' + Q
-        m_covariance = jacobian * m_covariance * jacobian.transpose();
-        m_covariance.noalias() += dt * m_process_noise;
+       this->m_covariance = jacobian *this->m_covariance * jacobian.transpose();
+       this->m_covariance.noalias() += dt *this->m_process_noise;
         return true;
     }
     bool observation_update(const ObservationVector& z, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)
     {
         // Check if initialized
-        if(!m_initialized) return false;
-        Matrix ph_t = m_covariance * H.transpose();
+        if(!this->m_initialized) return false;
+        Matrix ph_t =this->m_covariance * H.transpose();
         Matrix hph_t_r_inv = (H * ph_t + R).inverse();
-        ObservationVector innovation = z - H * m_state;
+        ObservationVector innovation = z - H *this->m_state;
         // wrap angles of innovation( NOT SURE )
         // We could either allow to take an array with the indexes to the angles as input parameter()
         // or do the one below where I search for 1.0 in matrix H which come only in the columns that correspond to state angle indexes.
@@ -96,21 +98,21 @@ public:
         Matrix K(num_state, z.rows());
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
-        m_state.noalias() += K * innovation;
+        this->m_state.noalias() += K * innovation;
         // wrap angles of state
         for (auto i:States::ANGLEidx)
         {
-            m_state[i] = utilities::clamp_rotation(m_state[i]);
+           this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
         }
 
         // Correct the covariance using Joseph form for stability. This is the
         // same as P = P - K * H * P, but presents less of a problem in the
         // presense of floating point roundoff.
         // The Joseph Update has the form: P = (I - KH)P(I - KH)' + KRK'
-        StateMatrix I_K_H = m_identity;
+        StateMatrix I_K_H =this->m_identity;
         I_K_H.noalias() -= K * H;
-        m_covariance = I_K_H * m_covariance * I_K_H.transpose();
-        m_covariance.noalias() += K * R * K.transpose();
+       this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
+       this->m_covariance.noalias() += K * R * K.transpose();
         return true;
     }
 };

@@ -39,7 +39,7 @@ public:
     using StateMatrix = typename MotionModelT::StateMatrix;
     using Matrix = typename Eigen::Matrix<T, -1, -1>;
     using Vector = typename Eigen::Matrix<T, -1, 1>;
-    using ObservationVector = typename Vector;
+    using ObservationVector = Vector;
     using ObservationMatrix = typename Eigen::Matrix<T, -1, num_state>;
 
 protected:
@@ -54,11 +54,11 @@ protected:
 public:
     FilterBase():m_initialized(0),m_identity(StateMatrix::Identity())
     {
-    };
+    }
 
     bool is_initialized()
     {
-        return m_initialized
+        return m_initialized;
     }
     void reset(const StateVector& x0, const StateMatrix& P0, const StateMatrix& Q)
     {
