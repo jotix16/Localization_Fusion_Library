@@ -131,6 +131,11 @@ struct FilterConfig{
     double m_process_noise[num_state*num_state];
     std::map<std::string, struct SensorConfig> m_sensor_configs;
 
+
+    /**
+     * @brief Default Constructor
+     */
+    FilterConfig() = default;
     /**
      * @brief Constructor that parses the filter parameters and all of its sensors.
      * @param[in] path - Path to the .json file normally in the folder config/.
