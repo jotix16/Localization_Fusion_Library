@@ -27,9 +27,10 @@
 #include<vector>
 #include<eigen/Eigen>
 
-#include<filter/filter_config.h>
 #include<utilities/filter_utilities.h>
+#include<filter/filter_config.h>
 #include<filter/filter_ekf.h>
+#include<measurement/measurement_time_keeper.hpp>
 
 namespace iav{ namespace state_predictor { namespace filter {
 
@@ -37,6 +38,7 @@ template<class FilterT, int num_state, typename T = double>
 class FilterWrapper
 {
 public:
+    using MeasurementTimeKeeper = typename measurement::MeasurementTimeKeeper;
     using FilterConfig_ = FilterConfig<num_state>;
     using StateVector = typename FilterT::StateVector;
     using StateMatrix = typename FilterT::StateMatrix;
@@ -46,7 +48,7 @@ public:
 
 private:
     FilterT m_filter;
-    double m_time_keeper;
+    MeasurementTimeKeeper m_time_keeper;
     FilterConfig_ m_config;
 
 public:

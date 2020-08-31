@@ -1,5 +1,5 @@
 #include<iostream>
-#include<filter/filter_wrapper.hpp>
+#include<filter/filter_wrapper.h>
 
 int main(){
     const char * path = "config/filter_config.json";
