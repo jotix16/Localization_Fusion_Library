@@ -41,6 +41,7 @@ public:
 
 public:
     tTime m_time_stamp;
+    // SensorConfig* m_sensor_config; // pointer to sensor config to get update_vector and mahalanobi distances
     Vector m_measurement_vector;
     Matrix m_measurement_covariance;
     Matrix m_measurement_to_state_mapping;
@@ -49,6 +50,13 @@ public:
     Measurement(tTime time_stamp, std::string sensor_id): m_time_stamp(time_stamp)
     {
     }
+
+    bool operator<(Measurement m2)
+    {
+        return m_time_stamp < m2.m_time_stamp;
+    }
+
+
 
 };
 
