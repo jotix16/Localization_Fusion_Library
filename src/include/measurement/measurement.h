@@ -32,10 +32,9 @@
 
 namespace iav{ namespace state_predictor { namespace measurement{
 
-template<typename T = double, uint... measurement_modalities>
+template<uint EntriesCount, typename T = double>
 class Measurement
 {
-    static constexpr std::int32_t EntriesCount = sizeof...(measurement_modalities);
     using ModalityArray = std::array<uint, static_cast<std::size_t>(EntriesCount)>;
     using MeasurementVector = Eigen::Matrix<T, EntriesCount, 1>;
     using CovarianceMatrix = Eigen::Matrix<T, EntriesCount, EntriesCount>;
@@ -45,7 +44,6 @@ class Measurement
 public:
     tTime m_time_stamp;
     std::string m_sensor_id;
-    static constexpr ModalityArray m_modality{measurement_modalities ...};
     MeasurementVector m_measurement_vector;
     CovarianceMatrix m_measurement_covariance;
 
@@ -60,16 +58,19 @@ public:
     inline const CovarianceMatrix get_mapping() 
     { 
         using MappingMatrix = MapMatrix<num_state>;
-        return m_measurement_to_state_mapping; 
+        return m_measurement_covariance; 
     }
-
-    bool operator<(Measurement m2) { return m_time_stamp < m2.m_time_stamp; }
+  
+    template<uint EntriesCount, typename T = double>
+    friend bool operator<(Measurement<EntriesCount, T> m1, Measurement<EntriesCount, T> m2);
 
 };
 
-template<typename T = double, uint... measurement_modalities>
-constexpr typename Measurement<T, measurement_modalities...>::ModalityArray
-Measurement<T, measurement_modalities...>::m_modality;
+template<uint EntriesCount, typename T = double>
+bool operator<(Measurement<EntriesCount, T> m1, Measurement<EntriesCount, T> m2)
+{
+    return m1.m_time_stamp < m2.m_time_stamp;
+}
 
 }  // namespace measurement
 }  // namespace state_predictor
