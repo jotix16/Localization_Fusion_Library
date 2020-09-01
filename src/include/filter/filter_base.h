@@ -56,7 +56,7 @@ public:
     {
     }
 
-    bool is_initialized()
+    inline bool is_initialized()
     {
         return m_initialized;
     }
@@ -67,11 +67,11 @@ public:
         m_process_noise = Q;
         m_initialized = true;
     }
-    StateVector get_state()
+    inline StateVector get_state()
     {
         return m_state;
     }
-    StateMatrix get_covariance()
+    inline StateMatrix get_covariance()
     {
         return m_covariance;
     }
