@@ -31,6 +31,7 @@
 #include<filter/filter_config.h>
 #include<filter/filter_ekf.h>
 #include<measurement/measurement_time_keeper.hpp>
+#include<measurement/measurement.hpp>
 
 namespace iav{ namespace state_predictor { namespace filter {
 
@@ -38,6 +39,7 @@ template<class FilterT, int num_state, typename T = double>
 class FilterWrapper
 {
 public:
+    using Measurement= typename measurement::Measurement<T>;
     using MeasurementTimeKeeper = typename measurement::MeasurementTimeKeeper;
     using FilterConfig_ = FilterConfig<num_state>;
     using StateVector = typename FilterT::StateVector;
@@ -57,7 +59,14 @@ public:
         configure(config_path);
     }
 
-    bool process_measurement(const char* MeasurementId,  MeasurementVector measurement_vector, MeasurementCovarianceMatrix measurement_coviariance_matrix, tTime time_stamp, MeasurementMatrix transformation_matrix)
+
+    bool handle_measurement(Measurement measurement)
+    {
+        // TO_DO: this function differentiates the data_triggered and time_triggered option
+        // it calls process_measurement imidiately if data triggered and otherwise puts the measurement in the buffer.
+    }
+
+    bool process_measurement(Measurement measurement)
     {
         if (!is_initialized()) {
             // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
@@ -78,36 +87,45 @@ public:
         return true;
     }
 
-    bool temporial_update(tTime delta_t)
+    bool temporal_update(const tTime& delta_t)
     {
         if (!is_initialized()) { return false};
-
+        m_filter.tempoal_update(delta_t);
+        m_time_keeper.update_after_temporal_update(delta_t);
         return true;
     }
 
-    bool observation_update(MeasurementVector measurement_vector)
+    bool observation_update(MeasurementVector z, MeasurementMatrix H, MeasurementMatrix R, T mahalanobis_threshold)
     {
-        return bool;
+        if (!is_initialized())
+        {
+            tTime time_now = 12.0;
+            reset(z, H, time_now);
+            return true
+        };
+        m_filter.observation_update(z, H, R, mahalanobis_threshold);
+        return true;
     }
 
-    StateVector get_state()
+    inline StateVector get_state() const
     {
         return m_filter.get_state();
     }
 
-    StateMatrix get_covariance()
+    inline StateMatrix get_covariance() const
     {
         return m_filter.get_covariance();
     }
 
-    bool is_initialized()
+    bool is_initialized() const
     {
-        return m_filter.is_initialized();
+        return (m_filter.is_initialized() && m_time_keeper.is_initialized());
     }
 
     bool reset(MeasurementVector measurement_vector, MeasurementMatrix mapping_matrix, tTime init_time)
     {
         //TO_DO: check if the measurement is stateful
+        // Maybe need to template it according to the motionmodel used
         return true;
     }
 
