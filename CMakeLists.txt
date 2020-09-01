@@ -10,6 +10,9 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # Setup root lib-name
 set(NAME_ROOT "LocalizationFusionLibrary")
 
@@ -20,6 +23,10 @@ set(${NAME_ROOT}_PATCH_VERSION 0)
 set(${NAME_ROOT}_VERSION "${${NAME_ROOT}_MAJOR_VERSION}.${${NAME_ROOT}_MINOR_VERSION}.${${NAME_ROOT}_PATCH_VERSION}")
 
 project(${NAME_ROOT} VERSION ${${NAME_ROOT}_VERSION})
+
+option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_EXAMPLES "Build examples, will link matplotlib. Therefore you will need a valid Python2 installation." ON)
+
 
 # Add CMake module paths
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/scripts/cmake CACHE PATH "Path for utility functions")
