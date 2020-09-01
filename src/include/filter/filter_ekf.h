@@ -43,7 +43,7 @@ public:
     using ObservationMatrix = typename FilterBase_::ObservationMatrix;
     using Matrix = typename FilterBase_::Matrix;
     using Vector = typename FilterBase_::Vector;
-    using States = typename FilterBase<MotionModelT, num_state, T>::States;
+    using States = typename FilterBase_::States;
 
 public:
     FilterEkf(){};
@@ -60,7 +60,7 @@ public:
         StateMatrix jacobian;
 		this->m_motion_model.compute_jacobian_and_predict(jacobian,this->m_state, dt);
         // wrap angles of state
-        for (auto i:States::ANGLEidx)
+        for (uint i = States::ORIENTATION_OFFSET; i < States::POSITION_V_OFFSET; i++)
         {
            this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
         }
@@ -81,7 +81,7 @@ public:
         // We could either allow to take an array with the indexes to the angles as input parameter()
         // or do the one below where I search for 1.0 in matrix H which come only in the columns that correspond to state angle indexes.
         // The corresponding rows' indexes should then be measurement/innovaion angles' indexes
-        for (auto j:States::ANGLEidx)
+        for (uint j = States::ORIENTATION_OFFSET; j < States::POSITION_V_OFFSET; j++)
         {
             for (uint i = 0; i < H.rows(); i++)
             {
@@ -100,7 +100,7 @@ public:
         K.noalias() = ph_t * hph_t_r_inv;
         this->m_state.noalias() += K * innovation;
         // wrap angles of state
-        for (auto i:States::ANGLEidx)
+        for (uint i = States::ORIENTATION_OFFSET; i < States::POSITION_V_OFFSET; i++)
         {
            this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
         }
