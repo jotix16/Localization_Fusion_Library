@@ -21,7 +21,6 @@
 * interest of IAV GmbH.
 */
 
-#pragma once
 
 #include <gtest/gtest.h>
 

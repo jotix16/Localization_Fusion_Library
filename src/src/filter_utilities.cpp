@@ -24,7 +24,7 @@
 #include <utilities/filter_utilities.h>
 
 
-namespace iav{ namespace state_predictor { namespace motion_model {
+namespace iav{ namespace state_predictor { namespace utilities {
      
     double clamp_rotation(tTime rotation)
     {

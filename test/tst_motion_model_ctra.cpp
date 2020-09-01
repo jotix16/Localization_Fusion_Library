@@ -20,7 +20,6 @@
 * only be used within projects with controlling
 * interest of IAV GmbH.
 */
-#pragma once
 
 #include <gtest/gtest.h>
 #include "TestHelper.h"

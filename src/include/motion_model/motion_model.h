@@ -33,7 +33,7 @@
 //TO_DO: No AngleWrapping done yet, with the motivation that 
 // 	 	 it is better done in KalmanWrapper after both observation_step and prediction_step
 namespace iav{ namespace state_predictor { namespace motion_model {
-	
+
 	/**
 	* @brief Type trait base class -> called primary template class
 	*/
@@ -58,20 +58,27 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		*/
 		struct States
 		{
-			static constexpr int X = 0U;  ///< index of x position
-			static constexpr int Y = 1U;  ///< index of y position
-			static constexpr int YAW= 2U;  ///< index of yaw position
-			static constexpr int V_X = 3U;  ///< index of x velocity
-			static constexpr int V_Y = 4U;  ///< index of y velocity
-			static constexpr int V_YAW = 5U;  ///< index of yaw velocity
-			static constexpr int A_X = 6U;  ///< index of x acceleration
-			static constexpr int A_Y = 7U;  ///< index of y acceleration
+			static constexpr uint X = 0U;  ///< index of x position
+			static constexpr uint Y = 1U;  ///< index of y position
+			static constexpr uint YAW= 2U;  ///< index of yaw position
+			static constexpr uint V_X = 3U;  ///< index of x velocity
+			static constexpr uint V_Y = 4U;  ///< index of y velocity
+			static constexpr uint V_YAW = 5U;  ///< index of yaw velocity
+			static constexpr uint A_X = 6U;  ///< index of x acceleration
+			static constexpr uint A_Y = 7U;  ///< index of y acceleration
+
+			static constexpr uint STATE_SIZE = 8U;
+			static constexpr uint POSITION_OFFSET = 0U;
+			static constexpr uint ORIENTATION_OFFSET = 2U;
+			static constexpr uint POSITION_V_OFFSET = 3U;
+			static constexpr uint ORIENTATION_V_OFFSET = 5U;
+			static constexpr uint POSITION_A_OFFSET = 6U;
 
 		};  // struct States
 
-	public:		
-		using StateVector = typename MotionModel::StateVector;
-		using StateMatrix = typename MotionModel::StateMatrix;
+	public:	
+		using StateVector = typename MotionModel<8, T>::StateVector;
+		using StateMatrix = typename MotionModel<8, T>::StateMatrix;
 		
 		/**
 		 * @brief Ctra2D: Method that computes the Jacobian and performs a predict step
@@ -189,18 +196,24 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		*/
 		struct States
 		{
-			static constexpr int X = 0U;  ///< index of x position
-			static constexpr int Y = 1U;  ///< index of y position
-			static constexpr int YAW= 2U;  ///< index of yaw position
-			static constexpr int V_X = 3U;  ///< index of x velocity
-			static constexpr int V_Y = 4U;  ///< index of y velocity
-			static constexpr int V_YAW = 5U;  ///< index of yaw velocity
+			static constexpr uint X = 0U;  ///< index of x position
+			static constexpr uint Y = 1U;  ///< index of y position
+			static constexpr uint YAW= 2U;  ///< index of yaw position
+			static constexpr uint V_X = 3U;  ///< index of x velocity
+			static constexpr uint V_Y = 4U;  ///< index of y velocity
+			static constexpr uint V_YAW = 5U;  ///< index of yaw velocity
 
+			static constexpr uint STATE_SIZE = 6U;
+			static constexpr uint POSITION_OFFSET = 0U;
+			static constexpr uint ORIENTATION_OFFSET = 2U;
+			static constexpr uint POSITION_V_OFFSET = 3U;
+			static constexpr uint ORIENTATION_V_OFFSET = 5U;
+			static constexpr uint POSITION_A_OFFSET = 6U;
 		};  // struct States
 
 	public:
-		using StateVector = typename MotionModel::StateVector;
-		using StateMatrix = typename MotionModel::StateMatrix;
+		using StateVector = typename MotionModel<6, T>::StateVector;
+		using StateMatrix = typename MotionModel<6, T>::StateMatrix;
 
 
 		/**
@@ -295,27 +308,34 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		*/
 		struct States
 		{
-			static constexpr int X = 0U;  ///< index of x position
-			static constexpr int Y = 1U;  ///< index of y position
-			static constexpr int Z = 2U;  ///< index of z position
-			static constexpr int ROLL= 3U;  ///< index of roll position
-			static constexpr int PITCH= 4U;  ///< index of pitch position
-			static constexpr int YAW= 5U;  ///< index of yaw position
-			static constexpr int V_X = 6U;  ///< index of x velocity
-			static constexpr int V_Y = 7U;  ///< index of y velocity
-			static constexpr int V_Z = 8U;  ///< index of z velocity
-			static constexpr int V_ROLL = 9U;  ///< index of roll velocity
-			static constexpr int V_PITCH= 10U;  ///< index of pitch velocity
-			static constexpr int V_YAW= 11U;  ///< index of yaw velocity
-			static constexpr int A_X = 12U;  ///< index of x acceleration
-			static constexpr int A_Y = 13U;  ///< index of y acceleration
-			static constexpr int A_Z = 14U;  ///< index of z acceleration
+			static constexpr uint X = 0U;  ///< index of x position
+			static constexpr uint Y = 1U;  ///< index of y position
+			static constexpr uint Z = 2U;  ///< index of z position
+			static constexpr uint ROLL= 3U;  ///< index of roll position
+			static constexpr uint PITCH= 4U;  ///< index of pitch position
+			static constexpr uint YAW= 5U;  ///< index of yaw position
+			static constexpr uint V_X = 6U;  ///< index of x velocity
+			static constexpr uint V_Y = 7U;  ///< index of y velocity
+			static constexpr uint V_Z = 8U;  ///< index of z velocity
+			static constexpr uint V_ROLL = 9U;  ///< index of roll velocity
+			static constexpr uint V_PITCH= 10U;  ///< index of pitch velocity
+			static constexpr uint V_YAW= 11U;  ///< index of yaw velocity
+			static constexpr uint A_X = 12U;  ///< index of x acceleration
+			static constexpr uint A_Y = 13U;  ///< index of y acceleration
+			static constexpr uint A_Z = 14U;  ///< index of z acceleration
 
+			static constexpr uint STATE_SIZE = 15U;
+			static constexpr uint POSITION_OFFSET = 0U;
+			static constexpr uint ORIENTATION_OFFSET = 3U;
+			static constexpr uint POSITION_V_OFFSET = 6U;
+			static constexpr uint ORIENTATION_V_OFFSET = 9U;
+			static constexpr uint POSITION_A_OFFSET = 12U;
+			
 		};  // struct States
 
 	public:		
-		using StateVector = typename MotionModel::StateVector;
-		using StateMatrix = typename MotionModel::StateMatrix;
+		using StateVector = typename MotionModel<15, T>::StateVector;
+		using StateMatrix = typename MotionModel<15, T>::StateMatrix;
 		
 		/**
 		 * @brief Ctra3D: Method that computes the Jacobian and performs a predict step
@@ -584,9 +604,11 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			state = transform_matrix * state;
 		}
 	};
+
 	using Ctrv2D = MotionModelCtrv2D<double>;
 	using Ctra2D = MotionModelCtra2D<double>;
 	using Ctra3D = MotionModelCtra3D<double>;
+
 } // end namespace motion_model 
 } // end namespace state_predictor
 } // end namespace iav 
