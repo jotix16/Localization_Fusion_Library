@@ -22,6 +22,9 @@
 */
 
 #pragma once
+
+#include<cstdint>
+
 namespace iav{ namespace state_predictor {
 
   /**
@@ -34,6 +37,7 @@ namespace iav{ namespace state_predictor {
    * These are types definitions that can be used everywhere under state_predictor namespace
    */
   using tTime = double;
+  using uint = std::uint32_t;
 
 }  // namespace state_predictor
 }  // namespace iav
