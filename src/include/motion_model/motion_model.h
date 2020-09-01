@@ -58,16 +58,21 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		*/
 		struct States
 		{
-			using Array = std::array<int, static_cast<std::size_t>(1)>;
-			static constexpr int X = 0U;  ///< index of x position
-			static constexpr int Y = 1U;  ///< index of y position
-			static constexpr int YAW= 2U;  ///< index of yaw position
-			static constexpr int V_X = 3U;  ///< index of x velocity
-			static constexpr int V_Y = 4U;  ///< index of y velocity
-			static constexpr int V_YAW = 5U;  ///< index of yaw velocity
-			static constexpr int A_X = 6U;  ///< index of x acceleration
-			static constexpr int A_Y = 7U;  ///< index of y acceleration
-			static constexpr Array ANGLEidx{2U};  ///< index of angles
+			static constexpr uint X = 0U;  ///< index of x position
+			static constexpr uint Y = 1U;  ///< index of y position
+			static constexpr uint YAW= 2U;  ///< index of yaw position
+			static constexpr uint V_X = 3U;  ///< index of x velocity
+			static constexpr uint V_Y = 4U;  ///< index of y velocity
+			static constexpr uint V_YAW = 5U;  ///< index of yaw velocity
+			static constexpr uint A_X = 6U;  ///< index of x acceleration
+			static constexpr uint A_Y = 7U;  ///< index of y acceleration
+
+			static constexpr uint STATE_SIZE = 8U;
+			static constexpr uint POSITION_OFFSET = 0U;
+			static constexpr uint ORIENTATION_OFFSET = 2U;
+			static constexpr uint POSITION_V_OFFSET = 3U;
+			static constexpr uint ORIENTATION_V_OFFSET = 5U;
+			static constexpr uint POSITION_A_OFFSET = 6U;
 
 		};  // struct States
 
@@ -191,15 +196,19 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		*/
 		struct States
 		{
-			using Array = std::array<int, static_cast<std::size_t>(1)>;
-			static constexpr int X = 0U;  ///< index of x position
-			static constexpr int Y = 1U;  ///< index of y position
-			static constexpr int YAW= 2U;  ///< index of yaw position
-			static constexpr int V_X = 3U;  ///< index of x velocity
-			static constexpr int V_Y = 4U;  ///< index of y velocity
-			static constexpr int V_YAW = 5U;  ///< index of yaw velocity
-			static constexpr Array ANGLEidx{2U};  ///< indexes of angles
+			static constexpr uint X = 0U;  ///< index of x position
+			static constexpr uint Y = 1U;  ///< index of y position
+			static constexpr uint YAW= 2U;  ///< index of yaw position
+			static constexpr uint V_X = 3U;  ///< index of x velocity
+			static constexpr uint V_Y = 4U;  ///< index of y velocity
+			static constexpr uint V_YAW = 5U;  ///< index of yaw velocity
 
+			static constexpr uint STATE_SIZE = 6U;
+			static constexpr uint POSITION_OFFSET = 0U;
+			static constexpr uint ORIENTATION_OFFSET = 2U;
+			static constexpr uint POSITION_V_OFFSET = 3U;
+			static constexpr uint ORIENTATION_V_OFFSET = 5U;
+			static constexpr uint POSITION_A_OFFSET = 6U;
 		};  // struct States
 
 	public:
@@ -299,23 +308,28 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		*/
 		struct States
 		{
-			using Array = std::array<int, static_cast<std::size_t>(3)>;
-			static constexpr int X = 0U;  ///< index of x position
-			static constexpr int Y = 1U;  ///< index of y position
-			static constexpr int Z = 2U;  ///< index of z position
-			static constexpr int ROLL= 3U;  ///< index of roll position
-			static constexpr int PITCH= 4U;  ///< index of pitch position
-			static constexpr int YAW= 5U;  ///< index of yaw position
-			static constexpr int V_X = 6U;  ///< index of x velocity
-			static constexpr int V_Y = 7U;  ///< index of y velocity
-			static constexpr int V_Z = 8U;  ///< index of z velocity
-			static constexpr int V_ROLL = 9U;  ///< index of roll velocity
-			static constexpr int V_PITCH= 10U;  ///< index of pitch velocity
-			static constexpr int V_YAW= 11U;  ///< index of yaw velocity
-			static constexpr int A_X = 12U;  ///< index of x acceleration
-			static constexpr int A_Y = 13U;  ///< index of y acceleration
-			static constexpr int A_Z = 14U;  ///< index of z acceleration
-			static constexpr Array ANGLEidx{3U, 4U, 5U};  ///< index of angles
+			static constexpr uint X = 0U;  ///< index of x position
+			static constexpr uint Y = 1U;  ///< index of y position
+			static constexpr uint Z = 2U;  ///< index of z position
+			static constexpr uint ROLL= 3U;  ///< index of roll position
+			static constexpr uint PITCH= 4U;  ///< index of pitch position
+			static constexpr uint YAW= 5U;  ///< index of yaw position
+			static constexpr uint V_X = 6U;  ///< index of x velocity
+			static constexpr uint V_Y = 7U;  ///< index of y velocity
+			static constexpr uint V_Z = 8U;  ///< index of z velocity
+			static constexpr uint V_ROLL = 9U;  ///< index of roll velocity
+			static constexpr uint V_PITCH= 10U;  ///< index of pitch velocity
+			static constexpr uint V_YAW= 11U;  ///< index of yaw velocity
+			static constexpr uint A_X = 12U;  ///< index of x acceleration
+			static constexpr uint A_Y = 13U;  ///< index of y acceleration
+			static constexpr uint A_Z = 14U;  ///< index of z acceleration
+
+			static constexpr uint STATE_SIZE = 15U;
+			static constexpr uint POSITION_OFFSET = 0U;
+			static constexpr uint ORIENTATION_OFFSET = 3U;
+			static constexpr uint POSITION_V_OFFSET = 6U;
+			static constexpr uint ORIENTATION_V_OFFSET = 9U;
+			static constexpr uint POSITION_A_OFFSET = 12U;
 			
 		};  // struct States
 
@@ -591,20 +605,10 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		}
 	};
 
-	template<typename T> constexpr typename MotionModelCtra3D<T>::States::Array
-	MotionModelCtrv2D<T>::States::ANGLEidx;
-	
-	template<typename T> constexpr typename MotionModelCtra3D<T>::States::Array
-	MotionModelCtra2D<T>::States::ANGLEidx;
-
-	template<typename T> constexpr typename MotionModelCtra3D<T>::States::Array
-	MotionModelCtra3D<T>::States::ANGLEidx;
-
-
-
 	using Ctrv2D = MotionModelCtrv2D<double>;
 	using Ctra2D = MotionModelCtra2D<double>;
 	using Ctra3D = MotionModelCtra3D<double>;
+
 } // end namespace motion_model 
 } // end namespace state_predictor
 } // end namespace iav 
