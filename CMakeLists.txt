@@ -42,12 +42,13 @@ include(utilities)
 include("${CMAKE_CURRENT_LIST_DIR}/.deps/cmake/GenerateIDLs.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/.deps/cmake/PythonInterpreter.cmake")
 set(PYTHON_VENV_PATH ${CMAKE_CURRENT_LIST_DIR}/.deps/python_virtualenv)
+set(USE_PLATFORM "WINDOWS")
 py_ensure_python_environment()
 py_install_all_python_deps()
 IDL_InitExecutionVariables()
 include("${CMAKE_CURRENT_LIST_DIR}/.deps/cmake/AutogenConfig.cmake")
 # Need for the find package of boost
-set(USE_PLATFORM ON CACHE BOOL "Build with platform support.")
+
 set(INTERFACES_PATH ${CMAKE_CURRENT_LIST_DIR}/.deps)
 enable_testing(True)
 
