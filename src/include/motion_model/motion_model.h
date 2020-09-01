@@ -58,6 +58,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		*/
 		struct States
 		{
+			using Array = std::array<int, static_cast<std::size_t>(1)>;
 			static constexpr int X = 0U;  ///< index of x position
 			static constexpr int Y = 1U;  ///< index of y position
 			static constexpr int YAW= 2U;  ///< index of yaw position
@@ -66,7 +67,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			static constexpr int V_YAW = 5U;  ///< index of yaw velocity
 			static constexpr int A_X = 6U;  ///< index of x acceleration
 			static constexpr int A_Y = 7U;  ///< index of y acceleration
-			static constexpr std::array<int,1> ANGLEidx{2U};  ///< index of angles
+			static constexpr Array ANGLEidx{2U};  ///< index of angles
 
 		};  // struct States
 
@@ -190,13 +191,14 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		*/
 		struct States
 		{
+			using Array = std::array<int, static_cast<std::size_t>(1)>;
 			static constexpr int X = 0U;  ///< index of x position
 			static constexpr int Y = 1U;  ///< index of y position
 			static constexpr int YAW= 2U;  ///< index of yaw position
 			static constexpr int V_X = 3U;  ///< index of x velocity
 			static constexpr int V_Y = 4U;  ///< index of y velocity
 			static constexpr int V_YAW = 5U;  ///< index of yaw velocity
-			static constexpr std::array<int,1> ANGLEidx{2U};  ///< indexes of angles
+			static constexpr Array ANGLEidx{2U};  ///< indexes of angles
 
 		};  // struct States
 
@@ -297,6 +299,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		*/
 		struct States
 		{
+			using Array = std::array<int, static_cast<std::size_t>(3)>;
 			static constexpr int X = 0U;  ///< index of x position
 			static constexpr int Y = 1U;  ///< index of y position
 			static constexpr int Z = 2U;  ///< index of z position
@@ -312,7 +315,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			static constexpr int A_X = 12U;  ///< index of x acceleration
 			static constexpr int A_Y = 13U;  ///< index of y acceleration
 			static constexpr int A_Z = 14U;  ///< index of z acceleration
-			static constexpr std::array<int,3> ANGLEidx{3U, 4U, 5U};  ///< index of angles
+			static constexpr Array ANGLEidx{3U, 4U, 5U};  ///< index of angles
 			
 		};  // struct States
 
@@ -587,6 +590,18 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			state = transform_matrix * state;
 		}
 	};
+
+	template<typename T> constexpr typename MotionModelCtra3D<T>::States::Array
+	MotionModelCtrv2D<T>::States::ANGLEidx;
+	
+	template<typename T> constexpr typename MotionModelCtra3D<T>::States::Array
+	MotionModelCtra2D<T>::States::ANGLEidx;
+
+	template<typename T> constexpr typename MotionModelCtra3D<T>::States::Array
+	MotionModelCtra3D<T>::States::ANGLEidx;
+
+
+
 	using Ctrv2D = MotionModelCtrv2D<double>;
 	using Ctra2D = MotionModelCtra2D<double>;
 	using Ctra3D = MotionModelCtra3D<double>;
