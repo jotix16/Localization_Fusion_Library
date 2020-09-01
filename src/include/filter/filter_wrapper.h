@@ -30,8 +30,8 @@
 #include<utilities/filter_utilities.h>
 #include<filter/filter_config.h>
 #include<filter/filter_ekf.h>
-#include<measurement/measurement_time_keeper.hpp>
-#include<measurement/measurement.hpp>
+#include<measurement/measurement_time_keeper.h>
+#include<measurement/measurement.h>
 
 namespace iav{ namespace state_predictor { namespace filter {
 

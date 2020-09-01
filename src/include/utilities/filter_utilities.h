@@ -22,6 +22,7 @@
 */
 
 #pragma once
+
 namespace iav{ namespace state_predictor {
 
   /**
