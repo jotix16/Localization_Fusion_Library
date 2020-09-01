@@ -1,0 +1,11 @@
+# This is a requirements file for the pip command.
+# It lists all needed python packages for this project:
+
+wheel==0.33.6
+lxml==4.4.2
+PyQt5>=5.12.0,<5.13
+bonnie==3.2.0
+CodeWriter==1.1
+idlcodegenpy==1.11.1
+descriptiongenerator==1.5
+
