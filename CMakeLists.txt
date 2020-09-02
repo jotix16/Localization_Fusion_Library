@@ -55,6 +55,7 @@ set(${NAME_ROOT}_SRC_PATH            ${CMAKE_CURRENT_LIST_DIR}/src)
 set(${NAME_ROOT}_TESTS_PATH          ${CMAKE_CURRENT_LIST_DIR}/test)
 set(${NAME_ROOT}_TOOLS_PATH          ${CMAKE_CURRENT_LIST_DIR}/tools)
 set(${NAME_ROOT}_THIRDPARTY_PATH     ${CMAKE_CURRENT_LIST_DIR}/3rdParty)
+set(${NAME_ROOT}_INTERFACES          ${CMAKE_CURRENT_LIST_DIR}/interfaces)
 
 # Set the default install prefix if it's not set by the user
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -63,6 +64,7 @@ endif()
 
 include (GenerateExportHeader)
 add_subdirectory(${${NAME_ROOT}_THIRDPARTY_PATH})
-add_subdirectory(${${NAME_ROOT}_SRC_PATH})   
-add_subdirectory(${${NAME_ROOT}_EXAMPLES_PATH})  
-add_subdirectory(${${NAME_ROOT}_TESTS_PATH}) 
+add_subdirectory(${${NAME_ROOT}_SRC_PATH})
+add_subdirectory(${${NAME_ROOT}_EXAMPLES_PATH})
+add_subdirectory(${${NAME_ROOT}_TESTS_PATH})
+add_subdirectory(${${NAME_ROOT}_INTERFACES})
