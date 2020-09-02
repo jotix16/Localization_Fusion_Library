@@ -6,6 +6,7 @@
 #include<math.h>
 #include<Eigen/Dense>
 
+#include<utilities/filter_utilities.h>
 #include<motion_model/motion_model.h>
 #include<filter/filter_ekf.h>
 #include"matplotlibcpp.h"
@@ -30,10 +31,16 @@ struct MotionModel
     using tTime = typename iav::state_predictor::tTime;
     struct States
     {
-        constexpr static int X = 0U;
-        constexpr static int V_X = 1U;
-        constexpr static int V = 0U;
-        static constexpr std::array<int,0> ANGLEidx = {};  ///< indexes of angles
+        using uint = typename iav::state_predictor::uint;
+        constexpr static uint X = 0U;
+        constexpr static uint Y = 1U;
+        constexpr static uint V_X = 2U;
+        static constexpr uint STATE_SIZE = 3U;
+        static constexpr uint POSITION_OFFSET = X;
+        static constexpr uint ORIENTATION_OFFSET = V_X;
+        static constexpr uint POSITION_V_OFFSET = V_X;
+        static constexpr uint ORIENTATION_V_OFFSET = STATE_SIZE;
+        static constexpr uint POSITION_A_OFFSET = STATE_SIZE;
     };
 
     static void compute_jacobian_and_predict(StateMatrix& jacobi, StateVector& state, const tTime& dt)
@@ -48,7 +55,7 @@ struct MotionModel
     }
     static void predict(StateVector& state, const tTime& dt)
     {
-        state(0,0) += dt * state(1,0);
+        state(States::X,States::X) += dt * state(States::V_X, States::X);
     }
 
     // The two functions below simulate the radar signal returns from an object flying
@@ -56,21 +63,23 @@ struct MotionModel
     static StateVector simulate(StateVector& state, const tTime& dt)
     {
         // update state after adding process noise
-        state(1,0) += 0.1 * normal_dist();
-        state(2,0) += 0.1 * normal_dist();
-        state(0,0) += dt * state(1,0);
+        state(States::V_X) += 0.1 * normal_dist();
+        state(States::Y) += 0.1 * normal_dist();
+        state(States::X) += dt * state(States::V_X);
         return state;
     }
     static double get_measurement(const StateVector& state){
         // add measurement noise
-        double err = state(0,0) * 0.05 * normal_dist();
-        double meas = sqrt(state(0,0)*state(0,0)+ state(1,0)*state(1,0));
+        double err = state(States::X) * 0.05 * normal_dist();
+        double meas = sqrt(state(States::X)*state(States::X)
+        + state(States::Y)*state(States::Y));
         return meas + err ;
     }
 };
 
 struct MeasurementModel
 {
+    using States = MotionModel::States;
     using JacobiMatrix = Matrix<double, -1,3>;
     using MeasurementVector = Matrix<double, -1,1>;
     using StateVector = Matrix<double, 3,1>;
@@ -79,8 +88,8 @@ struct MeasurementModel
     static MeasurementVector get_measurement(const StateVector& state){
         // add measurement noise
        MeasurementVector z(1);
-        double err = state(0,0) * 0.05 * normal_dist();
-        double meas = sqrt(state(0,0)*state(0,0)+ state(2,0)*state(2,0));
+        double err = state(States::X) * 0.05 * normal_dist();
+        double meas = sqrt(state(States::X)*state(States::X)+ state(States::Y)*state(States::Y));
         z(0,0) = meas + err;
         return z;
     }
@@ -89,7 +98,7 @@ struct MeasurementModel
     {
        MeasurementVector z(1);
     //    z.resize(1,1);
-       z(0,0) = sqrt(state(0,0)*state(0,0)+ state(2,0)*state(2,0));
+       z(0,0) = sqrt(state(States::X)*state(States::X)+ state(States::Y)*state(States::Y));
        return z;
     }
 
@@ -100,9 +109,9 @@ struct MeasurementModel
         jacobi.resize(1,3);
         jacobi.setZero();
 
-        double d = sqrt(state(0,0)*state(0,0)+ state(2,0)*state(2,0));
-        jacobi(0,0) = state(0,0)/d;
-        jacobi(0,2) = state(2,0)/d;
+        double d = sqrt(state(States::X)*state(States::X)+ state(States::Y)*state(States::Y));
+        jacobi(States::X, States::X) = state(States::X)/d;
+        jacobi(States::X, States::Y) = state(States::Y)/d;
         return jacobi;
     }
 };
@@ -139,6 +148,7 @@ void plot(std::vector<double>x, std::vector<double> y_ground_truth, std::vector<
 
 int main()
 {
+    using States = MotionModel::States;
     using StateVector = MotionModel::StateVector;
     using StateMatrix = MotionModel::StateMatrix;
     using Measurement = MeasurementModel::MeasurementVector;
@@ -162,12 +172,12 @@ int main()
     StateMatrix Q;
     Q.setIdentity();
     // Q *= 0.1;
-    Q(0,0) *= 0.25 * std::pow(dt,4) * 0.1;
-    Q(1,1) *= 0.5 * std::pow(dt,2) * 0.1;
-    Q(0,1) *= std::pow(dt,3) * 0.1;
-    Q(1,0) *= 0.5 * std::pow(dt,3) * 0.1;
+    Q(States::X, States::X) *= 0.25 * std::pow(dt,4) * 0.1;
+    Q(States::V_X, States::V_X) *= 0.5 * std::pow(dt,2) * 0.1;
+    Q(States::X, States::V_X) *= std::pow(dt,3) * 0.1;
+    Q(States::V_X, States::X) *= 0.5 * std::pow(dt,3) * 0.1;
 
-    Q(2,2) *= 0.1;
+    Q(States::Y, States::Y) *= 0.1;
 
     // Measurement noise covariance
     double range_std = 1;
@@ -185,15 +195,15 @@ int main()
     Measurement z = MeasurementModel::h(state);
     JacobiMatrix H = MeasurementModel::H(state, dt);
 
-    int timesteps = 60.0/dt;
-    for (int i = 0; i < timesteps; i++)
+    double timesteps = 60.0/dt;
+    for (int i = 0; i < (int)timesteps; i++)
     {
         times.push_back(i);
         state_temp = MotionModel::simulate(state, dt);
         ground_truth.push_back(state_temp);
         ground_truth_x.push_back(state_temp[0]);
-        ground_truth_vx.push_back(state_temp[1]);
-        ground_truth_y.push_back(state_temp[2]);
+        ground_truth_vx.push_back(state_temp[2]);
+        ground_truth_y.push_back(state_temp[1]);
 
         z = MeasurementModel::get_measurement(state);
         H = MeasurementModel::H(state, dt);
@@ -202,8 +212,8 @@ int main()
 
         state_temp = ekf.get_state();
         filter_estimate_x.push_back(state_temp[0]);
-        filter_estimate_vx.push_back(state_temp[1]);
-        filter_estimate_y.push_back(state_temp[2]);
+        filter_estimate_vx.push_back(state_temp[2]);
+        filter_estimate_y.push_back(state_temp[1]);
         ekf.temporal_update(dt);
     }
 
