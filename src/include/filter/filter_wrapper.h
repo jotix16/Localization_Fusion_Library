@@ -33,20 +33,27 @@
 #include<measurement/measurement_time_keeper.h>
 #include<measurement/measurement.h>
 
+#include<geometry_msgs/msg/PoseWithCovariance.h>
+#include<geometry_msgs/msg/TwistWithCovariance.h>
+#include<nav_msgs/msg/Odometry.h>
+#include<sensor_msgs/msg/Imu.h>
+
+
 namespace iav{ namespace state_predictor { namespace filter {
 
 template<class FilterT, int num_state, typename T = double>
 class FilterWrapper
 {
 public:
-    using Measurement= typename measurement::Measurement<T>;
+    using Measurement= typename measurement::Measurement<3,T>;
     using MeasurementTimeKeeper = typename measurement::MeasurementTimeKeeper;
     using FilterConfig_ = FilterConfig<num_state>;
     using StateVector = typename FilterT::StateVector;
     using StateMatrix = typename FilterT::StateMatrix;
-    using MeasurementVector = typename FilterT::Vector;
-    using MeasurementCovarianceMatrix = typename FilterT::Matrix;
+    using Vector = typename FilterT::Vector;
+    using Matrix = typename FilterT::Matrix;
     using MeasurementMatrix = typename Eigen::Matrix<T, num_state, -1>;
+    using TransformationMatrix = typename Eigen::Matrix<T, 4, 4>;
 
 private:
     FilterT m_filter;
@@ -59,23 +66,21 @@ public:
         configure(config_path);
     }
 
+    
+    void pose_callback(geometry_msgs::msg::PoseWithCovariance msg, Eigen::Isometry<T> transform)
+    {
+        Vector pose(POSITION_SIZE);
+        pose << msg.pose.position.x, msg.pose.position.y
+                msg.pose.position.z, msg.pose.orientation.x;
+        Vector orientation_quaternion(4) << 
+                msg.pose.orientation.x,
+                msg.pose.orientation.y,
+                msg.pose.orientation.z,
+                msg.pose.orientation.w;
+    }
 
     bool handle_measurement(Measurement measurement)
     {
-        // TO_DO: this function differentiates the data_triggered and time_triggered option
-        // it calls process_measurement imidiately if data triggered and otherwise puts the measurement in the buffer.
-    }
-
-    bool process_measurement(Measurement measurement)
-    {
-        if (!is_initialized()) {
-            // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
-            // and the filter is not set to any state, we reset it. In this case we assume that this
-            // measurement actually is statefull (not purely differential) and we ignore the variance of
-            // this measurement. 
-            // tTime global_time_of_message_received = 1; // TO_DO: get global time
-            // return reset(measurement, global_time_of_message_received);
-        }
         // 1.
         // Get update_vector and mahalanobis_threshold and noise convariance from m_config
 
@@ -84,6 +89,24 @@ public:
 
         //3.
         // call temporial & observation update
+        
+        
+        // TO_DO: this function differentiates the data_triggered and time_triggered option
+        // it calls process_measurement imidiately if data triggered and otherwise puts the measurement in the buffer.
+
+    }
+
+    bool process_measurement(Measurement measurement)
+    {
+        if (!is_initialized()) {
+            // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
+            // and the filter is not set to any state, we reset it.
+            // We only consider the parts that are allowed by update_vector
+
+            // tTime global_time_of_message_received = 1; // TO_DO: get global time
+            // return reset(measurement, global_time_of_message_received);
+        }
+
         return true;
     }
 
@@ -95,7 +118,7 @@ public:
         return true;
     }
 
-    bool observation_update(MeasurementVector z, MeasurementMatrix H, MeasurementMatrix R, T mahalanobis_threshold)
+    bool observation_update(Vector z, MeasurementMatrix H, MeasurementMatrix R, T mahalanobis_threshold)
     {
         if (!is_initialized())
         {
@@ -122,9 +145,10 @@ public:
         return (m_filter.is_initialized() && m_time_keeper.is_initialized());
     }
 
-    bool reset(MeasurementVector measurement_vector, MeasurementMatrix mapping_matrix, tTime init_time)
+    bool reset(Vector measurement_vector, MeasurementMatrix mapping_matrix, tTime init_time)
     {
         //TO_DO: check if the measurement is stateful
+        // either odometry or pose
         // Maybe need to template it according to the motionmodel used
         return true;
     }

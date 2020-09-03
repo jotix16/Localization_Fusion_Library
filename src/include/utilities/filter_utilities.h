@@ -31,6 +31,16 @@ namespace iav{ namespace state_predictor {
   static constexpr double PI = 3.141592653589793;
   static  constexpr double TAU = 6.283185307179587;
 
+  /** 
+   * Pose and twist messages' parameters
+  */
+  const int POSE_SIZE = 6;
+  const int TWIST_SIZE = 6;
+  const int POSITION_SIZE = 3;
+  const int ORIENTATION_SIZE = 3;
+  const int LINEAR_VELOCITY_SIZE = 3;
+  const int ACCELERATION_SIZE = 3;
+
   /**
    * These are types definitions that can be used everywhere under state_predictor namespace
    */
