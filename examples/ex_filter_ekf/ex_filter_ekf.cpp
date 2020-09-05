@@ -32,16 +32,19 @@ struct MotionModel
     struct States
     {
         using uint = typename iav::state_predictor::uint;
+        using Array = std::array<std::uint32_t, static_cast<std::size_t>(iav::state_predictor::STATE_SIZE)>;
+        static constexpr Array full_state_to_estimated_state = {0,1,15,3,15,15,15,15,15,15,15,15,15,15,15};
         constexpr static uint X = 0U;
         constexpr static uint Y = 1U;
         constexpr static uint V_X = 2U;
-        static constexpr uint STATE_SIZE = 3U;
-        static constexpr uint POSITION_OFFSET = X;
-        static constexpr uint ORIENTATION_OFFSET = V_X;
-        static constexpr uint POSITION_V_OFFSET = V_X;
-        static constexpr uint ORIENTATION_V_OFFSET = STATE_SIZE;
-        static constexpr uint POSITION_A_OFFSET = STATE_SIZE;
+        static constexpr uint STATE_SIZE_M = 3U;
+        static constexpr uint POSITION_OFFSET_M = X;
+        static constexpr uint ORIENTATION_OFFSET_M = V_X;
+        static constexpr uint POSITION_V_OFFSET_M = V_X;
+        static constexpr uint ORIENTATION_V_OFFSET_M = STATE_SIZE_M;
+        static constexpr uint POSITION_A_OFFSET_M = STATE_SIZE_M;
     };
+
 
     static void compute_jacobian_and_predict(StateMatrix& jacobi, StateVector& state, const tTime& dt)
     {
@@ -76,6 +79,9 @@ struct MotionModel
         return meas + err ;
     }
 };
+	
+constexpr typename MotionModel::States::Array
+MotionModel::States::full_state_to_estimated_state;
 
 struct MeasurementModel
 {

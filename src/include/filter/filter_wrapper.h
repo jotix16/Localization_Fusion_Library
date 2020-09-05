@@ -48,12 +48,19 @@ public:
     using Measurement= typename measurement::Measurement<3,T>;
     using MeasurementTimeKeeper = typename measurement::MeasurementTimeKeeper;
     using FilterConfig_ = FilterConfig<num_state>;
+
+    using States = typename FilterT::States;
     using StateVector = typename FilterT::StateVector;
     using StateMatrix = typename FilterT::StateMatrix;
     using Vector = typename FilterT::Vector;
     using Matrix = typename FilterT::Matrix;
+
+    using Matrix4T = typename Eigen::Matrix<T, 4, 4>;
+    using Matrix3T = typename Eigen::Matrix<T, 3, 3>;
+    using Quaternion = typename Eigen::Quaternion<T>;
     using MeasurementMatrix = typename Eigen::Matrix<T, num_state, -1>;
-    using TransformationMatrix = typename Eigen::Matrix<T, 4, 4>;
+    using TransformationMatrix = typename Eigen::Transform<T, 3, Eigen::TransformTraits::Isometry>;
+
 
 private:
     FilterT m_filter;
@@ -66,17 +73,112 @@ public:
         configure(config_path);
     }
 
-    
-    void pose_callback(geometry_msgs::msg::PoseWithCovariance msg, Eigen::Isometry<T> transform)
+    // from array to Matrix, used when reading from msg
+    void copy_covariance(Matrix& destination, T* source, uint dimension)
     {
-        Vector pose(POSITION_SIZE);
-        pose << msg.pose.position.x, msg.pose.position.y
-                msg.pose.position.z, msg.pose.orientation.x;
-        Vector orientation_quaternion(4) << 
-                msg.pose.orientation.x,
-                msg.pose.orientation.y,
-                msg.pose.orientation.z,
-                msg.pose.orientation.w;
+        for (uint i = 0; i < dimension; i++)
+        {
+            for (uint j = 0; j < dimension; j++)
+            {
+                destination(i,j) = source[i*dimension + j];
+            }
+        }
+    }
+    
+    // from Matrix to array, used to create msg
+    void copy_covariance(T* destination, const Matrix& source, uint dimension)
+    {
+        for (uint i = 0; i < dimension; i++)
+        {
+            for (uint j = 0; j < dimension; j++)
+            {
+                destination[i*dimension + j](i,j) = source(i,j);
+            }
+        }
+    }
+
+    void pose_callback(nav_msgs::msg::Odometry* msg, TransformationMatrix transform)
+    {
+        int* update_vector = m_config.m_sensor_configs[msg->header.frame_id];
+
+        // consider the update_vector
+        std::vector<size_t> updateIndices_t;
+        for (size_t i = 0; i < STATE_SIZE; ++i)
+        {
+            if (update_vector[i])
+            {
+                updateIndices_t.push_back(i);
+            }
+        }
+        size_t updateSize_t = updateIndices_t.size();
+
+        // consider only parts of measurement that are present on our state
+        size_t updateSize = 0U;
+        for (uint i = 0; i < updateSize_t; i++)
+        {
+            if(States::full_state_to_estimated_state[updateIndices_t[i]] < STATE_SIZE) 
+                updateIndices.push_back(updateIndices_t[i]);
+        }
+        size_t updateSize = updateIndices.size();
+
+
+        // transform orientation in a usefull form
+        Quaternion orientation;
+        // Handle bad (empty) quaternions and normalize
+        if (msg->pose.pose.orientation.x == 0 && msg->pose.pose.orientation.y == 0 &&
+            msg->pose.pose.orientation.z == 0 && msg->pose.pose.orientation.w == 0)
+        {
+            orientation = {1.0, 0.0, 0.0, 0.0};
+        }
+        else
+        {
+            orientation = {msg->pose.pose.orientation.w,
+                           msg->pose.pose.orientation.x,
+                           msg->pose.pose.orientation.y,
+                           msg->pose.pose.orientation.z};
+
+            if (orientation.norm()-1.0 > 0.01)
+            {
+                orientation.normalize();
+            }
+        }
+
+        // 1. Rotate Pose
+        // create pose transformation matrix which saves  |R R R T|
+        // the orientation in form of a (R)otation-matrix |R R R T|
+        // and position as (T)ranslation-vector.          |R R R T|
+        //                                                |0 0 0 1|
+        // consider update_vector
+        Matrix4T pose_transf;
+        pose_transf.block<3,3>(0,0) = 
+        orientation.toRotationMatrix().array().rowwise() * Vector3d(
+            {update_vector[STATE_ROLL]
+             update_vector[STATE_PITCH]
+             update_vector[STATE_YAW]}).transpose().array(); // consider update_vec for the orientation
+
+        pose_transf.block<3,1>(0,3) = Eigen::Vector3d{
+            msg->pose.pose.position.x * update_vector[STATE_X],
+            msg->pose.pose.position.y * update_vector[STATE_Y],
+            msg->pose.pose.position.z * update_vector[STATE_Z]};
+
+        pose_transf = transform * pose_transf;
+
+        Vector measurement(6);
+        measurement.block<3>(0) = pose_transf.block<3,1>(0,3);
+        measurement.block<3>(3) = pose_transf.block<3,3>(0,0).eulerAngles(0,1,2);
+
+        // 2. Rotate Covariance
+        Matrix rot6d(6,6);
+        rot6d.setIdentity();
+        rot6d.block<3,3>(0,0) = transform.rotation();
+        rot6d.block<3,3>(3,3) = transform.rotation();
+
+        Matrix covariance(6,6);
+        covariance.setZero();
+        covariance = rot6d * covariance * rot6d.transpose();
+
+        // 3. Rotate update_vector --> like in robot localization
+        
     }
 
     bool handle_measurement(Measurement measurement)
@@ -94,6 +196,9 @@ public:
         // TO_DO: this function differentiates the data_triggered and time_triggered option
         // it calls process_measurement imidiately if data triggered and otherwise puts the measurement in the buffer.
 
+
+
+        Vector sub_measurement(updateSize);
     }
 
     bool process_measurement(Measurement measurement)

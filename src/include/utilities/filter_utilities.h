@@ -31,21 +31,39 @@ namespace iav{ namespace state_predictor {
   static constexpr double PI = 3.141592653589793;
   static  constexpr double TAU = 6.283185307179587;
 
-  /** 
-   * Pose and twist messages' parameters
-  */
-  const int POSE_SIZE = 6;
-  const int TWIST_SIZE = 6;
-  const int POSITION_SIZE = 3;
-  const int ORIENTATION_SIZE = 3;
-  const int LINEAR_VELOCITY_SIZE = 3;
-  const int ACCELERATION_SIZE = 3;
-
   /**
    * These are types definitions that can be used everywhere under state_predictor namespace
    */
   using tTime = double;
   using uint = unsigned short int;
+
+  /** 
+   * Pose and twist messages' parameters
+  */
+  constexpr uint STATE_SIZE = 15;
+  constexpr uint POSE_SIZE = 6;
+  constexpr uint TWIST_SIZE = 6;
+  constexpr uint POSITION_SIZE = 3;
+  constexpr uint ORIENTATION_SIZE = 3;
+  constexpr uint LINEAR_VELOCITY_SIZE = 3;
+  constexpr uint ACCELERATION_SIZE = 3;
+
+  constexpr uint STATE_X = 0U;  ///< index of x position
+  constexpr uint STATE_Y = 1U;  ///< index of y position
+  constexpr uint STATE_Z = 2U;  ///< index of z position
+  constexpr uint STATE_ROLL= 3U;  ///< index of roll position
+  constexpr uint STATE_PITCH= 4U;  ///< index of pitch position
+  constexpr uint STATE_YAW= 5U;  ///< index of yaw position
+  constexpr uint STATE_V_X = 6U;  ///< index of x velocity
+  constexpr uint STATE_V_Y = 7U;  ///< index of y velocity
+  constexpr uint STATE_V_Z = 8U;  ///< index of z velocity
+  constexpr uint STATE_V_ROLL = 9U;  ///< index of roll velocity
+  constexpr uint STATE_V_PITCH= 10U;  ///< index of pitch velocity
+  constexpr uint STATE_V_YAW= 11U;  ///< index of yaw velocity
+  constexpr uint STATE_A_X = 12U;  ///< index of x acceleration
+  constexpr uint STATE_A_Y = 13U;  ///< index of y acceleration
+  constexpr uint STATE_A_Z = 14U;  ///< index of z acceleratio
+
 
 }  // namespace state_predictor
 }  // namespace iav

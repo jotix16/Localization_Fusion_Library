@@ -60,7 +60,7 @@ public:
         StateMatrix jacobian;
 		this->m_motion_model.compute_jacobian_and_predict(jacobian,this->m_state, dt);
         // wrap angles of state
-        for (uint i = States::ORIENTATION_OFFSET; i < States::POSITION_V_OFFSET; i++)
+        for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
         {
            this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
         }
@@ -81,7 +81,7 @@ public:
         // We could either allow to take an array with the indexes to the angles as input parameter()
         // or do the one below where I search for 1.0 in matrix H which come only in the columns that correspond to state angle indexes.
         // The corresponding rows' indexes should then be measurement/innovaion angles' indexes
-        for (uint j = States::ORIENTATION_OFFSET; j < States::POSITION_V_OFFSET; j++)
+        for (uint j = States::ORIENTATION_OFFSET_M; j < States::POSITION_V_OFFSET_M; j++)
         {
             for (uint i = 0; i < H.rows(); i++)
             {
@@ -100,7 +100,7 @@ public:
         K.noalias() = ph_t * hph_t_r_inv;
         this->m_state.noalias() += K * innovation;
         // wrap angles of state
-        for (uint i = States::ORIENTATION_OFFSET; i < States::POSITION_V_OFFSET; i++)
+        for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
         {
            this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
         }
@@ -109,6 +109,7 @@ public:
         // same as P = P - K * H * P, but presents less of a problem in the
         // presense of floating point roundoff.
         // The Joseph Update has the form: P = (I - KH)P(I - KH)' + KRK'
+        // TO_DO: if covariance diagonal elements are near 0 give them a small value 
         StateMatrix I_K_H =this->m_identity;
         I_K_H.noalias() -= K * H;
        this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();

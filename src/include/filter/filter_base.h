@@ -56,7 +56,7 @@ public:
     {
     }
 
-    inline bool is_initialized()
+    inline bool is_initialized() const
     {
         return m_initialized;
     }
@@ -67,11 +67,11 @@ public:
         m_process_noise = Q;
         m_initialized = true;
     }
-    inline StateVector get_state()
+    inline StateVector get_state() const
     {
         return m_state;
     }
-    inline StateMatrix get_covariance()
+    inline StateMatrix get_covariance() const
     {
         return m_covariance;
     }

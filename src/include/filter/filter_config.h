@@ -74,9 +74,39 @@ struct SensorConfig{
      */
     SensorConfig(const Document& doc, const char* sensor_name, const int type)
     {
-        for (int i = 0; i < 15; i++)
+        // make sure that components that are not part of each type of measurements
+        // are 0s.
+        for (int i = 0; i < STATE_SIZE; i++)
         {
-            m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+            if(type == 1)
+            {
+                if(i < POSE_SIZE + TWIST_SIZE)
+                {
+                    m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+                }
+            }
+            else if(type == 2)
+            {
+                if(i < POSE_SIZE)
+                {
+                    m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+                }
+            }
+            else if(type == 3)
+            {
+                if(i >= POSE_SIZE && i < POSE_SIZE + TWIST_SIZE)
+                {
+                    m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+                }
+            }
+            else if(type == 4)
+            {
+                if(i >= POSITION_SIZE && i < POSITION_SIZE + TWIST_SIZE || i >= POSITION_SIZE + POSE_SIZE)
+                {
+                    m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+                }
+            }
+            m_update_vector[i] = 0;
         }
 
         if(type <= 1) // only for odom and pose
