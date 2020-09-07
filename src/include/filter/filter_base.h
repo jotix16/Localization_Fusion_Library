@@ -75,9 +75,13 @@ public:
     {
         return m_covariance;
     }
+    inline T at(int index) const
+    {
+        return m_state(index);
+    }
     virtual bool passes_mahalanobis(const ObservationVector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)=0;
     virtual bool temporal_update(const tTime& dt)=0;
-    virtual bool observation_update(const ObservationVector& z, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)=0;
+    virtual bool observation_update(const ObservationVector& z, ObservationVector& innovation, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)=0;
 };
 } // end namespace filter 
 } // end namespace state_predictor

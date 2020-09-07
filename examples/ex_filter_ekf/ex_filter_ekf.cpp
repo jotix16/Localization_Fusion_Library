@@ -200,7 +200,7 @@ int main()
     std::vector<StateVector> ground_truth, filter_estimate;
     Measurement z = MeasurementModel::h(state);
     JacobiMatrix H = MeasurementModel::H(state, dt);
-
+    Measurement z_innovation;
     double timesteps = 60.0/dt;
     for (int i = 0; i < (int)timesteps; i++)
     {
@@ -213,7 +213,8 @@ int main()
 
         z = MeasurementModel::get_measurement(state);
         H = MeasurementModel::H(state, dt);
-        ekf.observation_update(z, H, R, 1000000);
+        z_innovation = z- ekf.get_state();
+        ekf.observation_update(z, z_innovation, H, R, 1000000);
         filter_estimate.push_back(ekf.get_state());
 
         state_temp = ekf.get_state();
