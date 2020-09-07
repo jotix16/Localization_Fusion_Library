@@ -70,13 +70,13 @@ public:
        this->m_covariance.noalias() += dt *this->m_process_noise;
         return true;
     }
-    bool observation_update(const ObservationVector& z, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)
+    bool observation_update(const ObservationVector& z, ObservationVector& innovation, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)
     {
         // Check if initialized
         if(!this->m_initialized) return false;
         Matrix ph_t =this->m_covariance * H.transpose();
         Matrix hph_t_r_inv = (H * ph_t + R).inverse();
-        ObservationVector innovation = z - H *this->m_state;
+        // ObservationVector innovation = z - H *this->m_state;
         // wrap angles of innovation( NOT SURE )
         // We could either allow to take an array with the indexes to the angles as input parameter()
         // or do the one below where I search for 1.0 in matrix H which come only in the columns that correspond to state angle indexes.
