@@ -27,6 +27,8 @@
 #include <string>
 #include <sstream>
 
+#include<eigen/Eigen>
+
 #include "rapidjson/document.h"
 #include "rapidjson/istreamwrapper.h"
 #include "rapidjson/writer.h"
@@ -153,10 +155,14 @@ struct SensorConfig{
 /**
 * @brief A class that holds information about a filter instance and all sensors it uses.
 */
-template<int num_state>
+template<int num_state, typename T = double>
 struct FilterConfig{
+    using StateMatrix = Eigen::Matrix<T, num_state, num_state>;
     using Document = rapidjson::Document;
     using IStreamWrapper = rapidjson::IStreamWrapper;
+    
+    StateMatrix init_estimation_covariance;
+    StateMatrix process_noise;
     double m_init_estimate_covariance[num_state*num_state];
     double m_process_noise[num_state*num_state];
     std::map<std::string, struct SensorConfig> m_sensor_configs;
@@ -191,7 +197,9 @@ struct FilterConfig{
         {
             for (int j = 0; j < num_state; j++)
             {
+                init_estimation_covariance(i,j) = doc["init_estimate_covariance"][i*num_state+j].GetDouble();
                 m_init_estimate_covariance[i*num_state+j] = doc["init_estimate_covariance"][i*num_state+j].GetDouble();
+                process_noise(i,j) = doc["process_noise"][i*num_state+j].GetDouble();
                 m_process_noise[i*num_state+j] = doc["process_noise"][i*num_state+j].GetDouble();
             }
         }
@@ -215,10 +223,12 @@ struct FilterConfig{
     void print()
     {
         std::cout<<"\nInit_estimate_covariance\n";
-        printt(m_init_estimate_covariance, num_state, num_state);
+        std::cout<<"\n"<< init_estimation_covariance <<"\n";
+        // printt(m_init_estimate_covariance, num_state, num_state);
 
         std::cout<<"\nInit_process_noise\n";
-        printt(m_process_noise, num_state, num_state);
+        std::cout<<"\n"<< process_noise <<"\n";
+        // printt(m_process_noise, num_state, num_state);
 
         std::cout<<"\nSENSOR CONFIGS\n";
         for (auto x: m_sensor_configs)

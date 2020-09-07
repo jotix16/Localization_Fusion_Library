@@ -32,42 +32,43 @@
 
 namespace iav{ namespace state_predictor { namespace measurement{
 
-template<uint EntriesCount, typename T = double>
+template<uint num_state, typename T = double>
 class Measurement
 {
-    using ModalityArray = std::array<uint, static_cast<std::size_t>(EntriesCount)>;
-    using MeasurementVector = Eigen::Matrix<T, EntriesCount, 1>;
-    using CovarianceMatrix = Eigen::Matrix<T, EntriesCount, EntriesCount>;
-    template<uint kNumOfCols>
-    using MapMatrix = Eigen::Matrix<T, EntriesCount, kNumOfCols>;
+    using MappingMatrix = Eigen::Matrix<T, num_state, -1>;
+    using MeasurementVector = Eigen::Matrix<T, -1, 1>;
+    using CovarianceMatrix = Eigen::Matrix<T, -1, -1>;
 
 public:
     tTime m_time_stamp;
     std::string m_sensor_id;
+    T m_mahalanobis_thresh;
     MeasurementVector m_measurement_vector;
+    MeasurementVector m_innovation;
     CovarianceMatrix m_measurement_covariance;
+    MappingMatrix m_state_to_measurement_mapping;
 
 public:
-    Measurement(tTime time_stamp, std::string sensor_id): m_time_stamp(time_stamp), m_sensor_id(sensor_id)
-    {
-    }
+    Measurement(const tTime& time_stamp, const MeasurementVector& measurement,
+                const CovarianceMatrix& covariance, const MeasurementVector& innovation, 
+                const MappingMatrix mapp_mat, const std::string& sensor_id, const T& mahalanobis_thresh):
+                m_time_stamp{time_stamp}, m_sensor_id{sensor_id}, m_measurement_vector{measurement},
+                m_measurement_covariance{covariance}, m_state_to_measurement_mapping{mapp_mat},
+                m_innovation{innovation}, m_mahalanobis_thresh{mahalanobis_thresh}
+
+    { }
 
     inline const MeasurementVector get_measurement() { return m_measurement_vector; }
     inline const CovarianceMatrix get_covariance() { return m_measurement_covariance; }
-    template<uint num_state>
-    inline const CovarianceMatrix get_mapping() 
-    { 
-        using MappingMatrix = MapMatrix<num_state>;
-        return m_measurement_covariance; 
-    }
+    inline const MappingMatrix get_mapping() { return m_state_to_measurement_mapping; }
   
-    template<uint EntriesCount, typename T = double>
-    friend bool operator<(Measurement<EntriesCount, T> m1, Measurement<EntriesCount, T> m2);
+    template<uint num_state, typename T = double>
+    friend bool operator<(Measurement<num_state, T> m1, Measurement<num_state, T> m2);
 
 };
 
-template<uint EntriesCount, typename T = double>
-bool operator<(Measurement<EntriesCount, T> m1, Measurement<EntriesCount, T> m2)
+template<uint num_state, typename T = double>
+bool operator<(Measurement<num_state, T> m1, Measurement<num_state, T> m2)
 {
     return m1.m_time_stamp < m2.m_time_stamp;
 }
