@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include<chrono>
+
 namespace iav{ namespace state_predictor {
 
   /**
@@ -35,6 +37,23 @@ namespace iav{ namespace state_predictor {
    * These are types definitions that can be used everywhere under state_predictor namespace
    */
   using tTime = double;
+  // using tTime = float32_t;
+  struct Clock{
+    using clock_t = std::chrono::high_resolution_clock;
+    // using namespace std::chrono;
+
+    clock_t::time_point init_time;
+
+    Clock(): init_time(clock_t::now()) {};
+
+    inline tTime now() const
+    {
+      // const float32_t dt_s = static_cast<tTime>(clock_t.now().time_since_epoch().count()) / 1000000000LL;
+      // returns time in seconds
+      return std::chrono::duration<tTime>(clock_t::now() - init_time).count();
+    }
+  };
+
   using uint = unsigned short int;
 
   /** 
