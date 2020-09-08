@@ -35,7 +35,7 @@ namespace iav{ namespace state_predictor { namespace measurement{
 template<uint num_state, typename T = double>
 class Measurement
 {
-    using MappingMatrix = Eigen::Matrix<T, num_state, -1>;
+    using MappingMatrix = Eigen::Matrix<T, -1, num_state>;
     using MeasurementVector = Eigen::Matrix<T, -1, 1>;
     using CovarianceMatrix = Eigen::Matrix<T, -1, -1>;
 
@@ -49,7 +49,7 @@ public:
     MappingMatrix m_state_to_measurement_mapping;
 
 public:
-    Measurement(const tTime& time_stamp, const MeasurementVector& measurement,
+    Measurement(const tTime time_stamp, const MeasurementVector& measurement,
                 const CovarianceMatrix& covariance, const MeasurementVector& innovation, 
                 const MappingMatrix mapp_mat, const std::string& sensor_id, const T& mahalanobis_thresh):
                 m_time_stamp{time_stamp}, m_sensor_id{sensor_id}, m_measurement_vector{measurement},
@@ -62,7 +62,7 @@ public:
     inline const CovarianceMatrix get_covariance() { return m_measurement_covariance; }
     inline const MappingMatrix get_mapping() { return m_state_to_measurement_mapping; }
   
-    template<uint num_state, typename T = double>
+    template<uint num_state, typename T> // for the case we keep members private and use getters
     friend bool operator<(Measurement<num_state, T> m1, Measurement<num_state, T> m2);
 
 };
