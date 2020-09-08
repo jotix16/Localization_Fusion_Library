@@ -67,11 +67,12 @@ struct SensorConfig{
     double m_acc_mahalanobis_thresh[3];
     double m_speed_mahalanobis_thresh[6];
 
+    SensorConfig() {};
     /**
      * @brief Constructor that parses the sensor parameters.
      * @param[in] doc - Document that holds the informations to be parsed
      * @param[in] sensor_name - The name of the sensor, e.g. odom_1, imu_0 or ..
-     * @param[in] type - One of the four types{1:"odom_", 2:"pose_", 3:"twist_", 4:"imu_"}
+     * @param[in] type - One of the four types{0:"odom_", 1:"pose_", 2:"twist_", 3:"imu_"}
      * @return SensorConfig object
      */
     SensorConfig(const Document& doc, const char* sensor_name, const int type)
@@ -80,32 +81,36 @@ struct SensorConfig{
         // are 0s.
         for (int i = 0; i < STATE_SIZE; i++)
         {
-            if(type == 1)
+            if(type == 0)
             {
                 if(i < POSE_SIZE + TWIST_SIZE)
                 {
                     m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+                    continue;
                 }
             }
-            else if(type == 2)
+            else if(type == 1)
             {
                 if(i < POSE_SIZE)
                 {
                     m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+                    continue;
                 }
             }
-            else if(type == 3)
+            else if(type == 2)
             {
                 if(i >= POSE_SIZE && i < POSE_SIZE + TWIST_SIZE)
                 {
                     m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+                    continue;
                 }
             }
-            else if(type == 4)
+            else if(type == 3)
             {
                 if(i >= POSITION_SIZE && i < POSITION_SIZE + TWIST_SIZE || i >= POSITION_SIZE + POSE_SIZE)
                 {
                     m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+                    continue;
                 }
             }
             m_update_vector[i] = 0;
