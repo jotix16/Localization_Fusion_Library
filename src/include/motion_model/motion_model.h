@@ -612,15 +612,15 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		}
 	};
 
-	template<typename T = double>
+	template<typename T>
 	constexpr typename MotionModelCtra2D<T>::States::Array
 	MotionModelCtra2D<T>::States::full_state_to_estimated_state;
 
-	template<typename T = double>
+	template<typename T>
 	constexpr typename MotionModelCtrv2D<T>::States::Array
 	MotionModelCtrv2D<T>::States::full_state_to_estimated_state;
 
-	template<typename T = double>
+	template<typename T>
 	constexpr typename MotionModelCtra3D<T>::States::Array
 	MotionModelCtra3D<T>::States::full_state_to_estimated_state;
 
