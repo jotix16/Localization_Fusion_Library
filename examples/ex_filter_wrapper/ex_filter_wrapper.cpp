@@ -63,12 +63,12 @@ int main(){
     msg.twist.twist.linear.z = 12;
 
 
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     msg.header.stamp.sec = 1201;
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     std::cout<< "State: " <<my_filter_wrapper.get_state().transpose()<<"\n";
     std::cout<< "Covariance: \n" <<my_filter_wrapper.get_covariance().transpose()<<"\n";
     // geometry_msgs::msg::TwistWithCovariance twist;

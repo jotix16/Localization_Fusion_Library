@@ -111,7 +111,10 @@ public:
         }
     }
 
-    void odom_callback(nav_msgs::msg::Odometry* msg, const TransformationMatrix& transform)
+    void odom_callback(
+        nav_msgs::msg::Odometry* msg,
+        const TransformationMatrix& transform_to_world,
+        const TransformationMatrix& transform_to_base_link)
     {
         bool* update_vector = m_config.m_sensor_configs[msg->header.frame_id].m_update_vector;
         // 1. Create vector the same size as the submeasurement that will be used
@@ -143,9 +146,15 @@ public:
         state_to_measurement_mapping.setZero();
         
         // 3. Fill the submeasurement matrixes
-        prepare_pose(&msg->pose, transform, update_vector, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,updateIndices_pose,0,updateSize_pose);
+        prepare_pose(&msg->pose, transform_to_world, update_vector, sub_measurement,
+                     sub_covariance, sub_innovation, state_to_measurement_mapping,
+                     updateIndices_pose, 0, updateSize_pose);
+
         std::cout<<"Submeasurement with pose      : " << sub_measurement.transpose() << "\n";
-        prepare_twist(&msg->twist, transform, update_vector, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,updateIndices_pose,updateSize_pose,updateSize_twist);
+        prepare_twist(&msg->twist, transform_to_base_link, update_vector, sub_measurement,
+                      sub_covariance, sub_innovation, state_to_measurement_mapping,
+                      updateIndices_pose, updateSize_pose, updateSize_twist);
+
         std::cout<<"Submeasurement with pose&twist: " << sub_measurement.transpose() << "\n";
 
         // 4. Send measurement to be handled
