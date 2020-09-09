@@ -56,8 +56,11 @@ public:
     using Matrix = typename FilterT::Matrix;
     using MeasurementMatrix = typename FilterT::ObservationMatrix;
 
+    using Matrix6T = typename Eigen::Matrix<T, 6, 6>;
     using Matrix4T = typename Eigen::Matrix<T, 4, 4>;
     using Matrix3T = typename Eigen::Matrix<T, 3, 3>;
+    using Vector6T = typename Eigen::Matrix<T, 6, 1>;
+    using Vector3T = typename Eigen::Matrix<T, 3, 1>;
     using Quaternion = typename Eigen::Quaternion<T>;
     using TransformationMatrix = typename Eigen::Transform<T, 3, Eigen::TransformTraits::Isometry>;
 
@@ -76,7 +79,7 @@ public:
     }
 
     // from array to Matrix, used when reading from msg
-    void copy_covariance(Matrix& destination, T* source, uint dimension)
+    void copy_covariance(Matrix6T& destination, T* source, uint dimension)
     {
         for (uint i = 0; i < dimension; i++)
         {
@@ -88,7 +91,7 @@ public:
     }
 
     // from array to Matrix, used when reading from msg
-    void copy_covariance(Matrix& destination, const std::array<double, 36>& source, uint dimension)
+    void copy_covariance(Matrix6T& destination, const std::array<double, 36>& source, uint dimension)
     {
         for (uint i = 0; i < dimension; i++)
         {
@@ -100,7 +103,7 @@ public:
     }
 
     // from Matrix to array, used to create msg
-    void copy_covariance(T* destination, const Matrix& source, uint dimension)
+    void copy_covariance(T* destination, const Matrix6T& source, uint dimension)
     {
         for (uint i = 0; i < dimension; i++)
         {
@@ -117,6 +120,7 @@ public:
         const TransformationMatrix& transform_to_base_link)
     {
         bool* update_vector = m_config.m_sensor_configs[msg->header.frame_id].m_update_vector;
+        
         // 1. Create vector the same size as the submeasurement that will be used
         // - its elements are the corresponding parts of the state
         // - the size of this index-vector enables initializing of the submeasurement matrixes
@@ -177,22 +181,23 @@ public:
         size_t ix1, size_t updateSize_t)
     {
 
-        // 2. Extract linear and angular velocities
+        // 1. Extract linear and angular velocities
         // - consider update_vector
-        Vector linear_vel(3); 
+        Vector3T linear_vel; 
         linear_vel <<
             msg->twist.linear.x * (int)update_vector[STATE_V_X],
             msg->twist.linear.y * (int)update_vector[STATE_V_Y],
             msg->twist.linear.z * (int)update_vector[STATE_V_Z];
 
-        Vector angular_vel(3);
+        Vector3T angular_vel;
         angular_vel <<
             msg->twist.angular.x * (int)update_vector[STATE_V_ROLL],
             msg->twist.angular.y * (int)update_vector[STATE_V_PITCH],
             msg->twist.angular.z * (int)update_vector[STATE_V_YAW];
 
-        // 3. Transform pose to fusion frame
-        Vector angular_vel_state(3);
+        // 2. Extract angular velocities from the estimated state
+        // - needed to add the effect of angular velocities to the linear ones(look below).
+        Vector3T angular_vel_state;
         uint vroll_ix = States::full_state_to_estimated_state[STATE_V_ROLL];
         uint vpitch_ix = States::full_state_to_estimated_state[STATE_V_PITCH];
         uint vyaw_ix = States::full_state_to_estimated_state[STATE_V_YAW];
@@ -201,28 +206,31 @@ public:
         angular_vel_state(1) = vpitch_ix < STATE_SIZE ? m_filter.at(vpitch_ix) : 0;
         angular_vel_state(2) = vyaw_ix < STATE_SIZE ? m_filter.at(vyaw_ix) : 0;
 
+        // 3. Transform measurement to fusion frame
         auto rot = transform.rotation();
-        linear_vel = rot * linear_vel + rot * angular_vel_state;
+        auto origin = transform.translation();
+        linear_vel = rot * linear_vel + origin.cross(angular_vel_state); // add effects of angular velocitioes
+                                                                         // v = rot*v + origin(x)w
         angular_vel = rot * angular_vel;
 
         // 4. Compute measurement vector
-        Vector measurement(6);
+        Vector6T measurement;
         measurement.head<3>() = linear_vel;
         measurement.tail<3>() = angular_vel;
 
-        // 5. Rotate Covariance to fusion frame
-        Matrix rot6d(6,6);
-        rot6d.setIdentity();
-        rot6d.block<3,3>(0,0) = transform.rotation();
-        rot6d.block<3,3>(3,3) = transform.rotation();
-
-        // 6. Compute measurement covariance
-        Matrix covariance(6,6);
+        // 5. Compute measurement covariance
+        Matrix6T covariance;
         covariance.setIdentity();
-        copy_covariance(covariance, msg->covariance, 6);
+        copy_covariance(covariance, msg->covariance, TWIST_SIZE);
+
+        // 6. Rotate Covariance to fusion frame
+        Matrix6T rot6d;
+        rot6d.setIdentity();
+        rot6d.block<3,3>(0,0) = rot;
+        rot6d.block<3,3>(3,3) = rot;
         covariance = rot6d * covariance * rot6d.transpose();
 
-        // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        // 7. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
         for ( uint i = 0; i < updateSize_t; i++)
         {
             sub_measurement(i + ix1) = measurement(updateIndices_t[i]);
@@ -233,10 +241,10 @@ public:
             }
         }
 
-        // 5. Fill state to measurement mapping and inovation
+        // 7. Fill state to measurement mapping and inovation
         for (uint i = 0; i < updateSize_t; i++)
         {
-            if (States::full_state_to_estimated_state[updateIndices_t[i]]<15)
+            if (States::full_state_to_estimated_state[updateIndices_t[i]] < STATE_SIZE)
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[updateIndices_t[i]]) = 1.0;
         }
     }
@@ -293,23 +301,21 @@ public:
         pose_transf = transform * pose_transf;
 
         // 4. Compute measurement vector
-        Vector measurement(6);
+        Vector6T measurement;
         measurement.head<3>() = pose_transf.block<3,1>(0,3);
         measurement.tail<3>() = pose_transf.block<3,3>(0,0).eulerAngles(0,1,2);
 
         // 5. Rotate Covariance to fusion frame
-        Matrix rot6d(6,6);
+        Matrix6T rot6d;
         rot6d.setIdentity();
         auto rot = transform.rotation();
         rot6d.block<3,3>(0,0) = rot;
         rot6d.block<3,3>(3,3) = rot;
-        // rot6d.block<3,3>(0,0) = transform.rotation();
-        // rot6d.block<3,3>(3,3) = transform.rotation();
 
         // 6. Compute measurement covariance
-        Matrix covariance(6,6);
+        Matrix6T covariance;
         covariance.setIdentity();
-        copy_covariance(covariance, msg->covariance, 6);
+        copy_covariance(covariance, msg->covariance, POSE_SIZE);
         covariance = rot6d * covariance * rot6d.transpose();
 
         // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
