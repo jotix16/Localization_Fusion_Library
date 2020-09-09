@@ -111,26 +111,76 @@ public:
         }
     }
 
-    void pose_callback(nav_msgs::msg::Odometry* msg, TransformationMatrix transform)
+    void pose_callback(nav_msgs::msg::Odometry* msg, const TransformationMatrix& transform)
     {
         bool* update_vector = m_config.m_sensor_configs[msg->header.frame_id].m_update_vector;
+        // 1. Create vector the same size as the submeasurement that will be used
+        // - its elements are the corresponding parts of the state
+        // - the size of this index-vector enables initializing of the submeasurement matrixes
+        std::vector<uint> updateIndices_pose;
+        for (uint i = 0; i < POSE_SIZE; ++i)
+        {
+            if(States::full_state_to_estimated_state[i] < STATE_SIZE)
+                updateIndices_pose.push_back(i);
+        }
+        size_t updateSize_pose = updateIndices_pose.size();
 
+        std::vector<uint> updateIndices_twist;
+        for (uint i = 0; i < TWIST_SIZE; ++i)
+        {
+            if(States::full_state_to_estimated_state[i] < STATE_SIZE)
+                updateIndices_twist.push_back(i);
+        }
+        size_t updateSize_twist = updateIndices_twist.size();
+
+        // 2. Initialize submeasurement matrixes
+        size_t updateSize = updateSize_pose + updateSize_twist; 
+        Vector sub_measurement(updateSize); // z
+        Vector sub_innovation(updateSize);  // z'-z
+        Matrix sub_covariance(updateSize, updateSize);
+        MeasurementMatrix state_to_measurement_mapping;
+        state_to_measurement_mapping.resize(updateSize, States::STATE_SIZE_M);
+        state_to_measurement_mapping.setZero();
         
-         // transform orientation in a usefull form
+        // 3. Fill the submeasurement matrixes
+        prepare_pose(&msg->pose, transform, update_vector, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,updateIndices_pose,0,updateSize_pose);
+        std::cout<<"Submeasurement: " << sub_measurement.transpose() << "\n";
+
+        // 4. Send measurement to be handled
+        T mahalanobis_thresh = 0.4;
+        tTime stamp = static_cast<tTime>(msg->header.stamp.nanosec/1000000000LL);
+        Measurement meas(stamp, sub_measurement, sub_covariance, sub_innovation, 
+                         state_to_measurement_mapping, msg->header.frame_id, mahalanobis_thresh);
+        handle_measurement(meas);
+    }
+
+    void prepare_pose(
+        geometry_msgs::msg::PoseWithCovariance* msg, 
+        const TransformationMatrix& transform,
+        bool* update_vector,
+        Vector& sub_measurement,
+        Matrix& sub_covariance, 
+        Vector& sub_innovation, 
+        MeasurementMatrix& state_to_measurement_mapping,
+        std::vector<uint>& updateIndices_t,
+        uint ix1, size_t updateSize_t)
+    {
+
+        // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
+        // - Handle bad (empty) quaternions and normalize
         Quaternion orientation;
-        // Handle bad (empty) quaternions and normalize
-        if (msg->pose.pose.orientation.x == 0 && msg->pose.pose.orientation.y == 0 &&
-            msg->pose.pose.orientation.z == 0 && msg->pose.pose.orientation.w == 0)
+        if (msg->pose.orientation.x == 0 && msg->pose.orientation.y == 0 &&
+            msg->pose.orientation.z == 0 && msg->pose.orientation.w == 0)
         {
             orientation = {1.0, 0.0, 0.0, 0.0};
         }
         else
         {
             // we dont ignore roll pitch yaw but rotations in certain directions in sensor frame
-            orientation = {msg->pose.pose.orientation.w,
-                           msg->pose.pose.orientation.x * (int)update_vector[STATE_ROLL],
-                           msg->pose.pose.orientation.y * (int)update_vector[STATE_PITCH],
-                           msg->pose.pose.orientation.z * (int)update_vector[STATE_YAW]  };
+            orientation = {msg->pose.orientation.w,
+                           msg->pose.orientation.x * (int)update_vector[STATE_ROLL],
+                           msg->pose.orientation.y * (int)update_vector[STATE_PITCH],
+                           msg->pose.orientation.z * (int)update_vector[STATE_YAW]  };
 
             if (orientation.norm()-1.0 > 0.01)
             {
@@ -138,89 +188,57 @@ public:
             }
         }
 
-        // 1. Rotate Pose
-        // create pose transformation matrix which saves  |R R R T|
-        // the orientation in form of a (R)otation-matrix |R R R T|
-        // and position as (T)ranslation-vector.          |R R R T|
-        //                                                |0 0 0 1|
+        // 2. Write Pose as Transformation Matrix for easy transformations
+        // - create pose transformation matrix which saves  |R R R T|
+        // - the orientation in form of a (R)otation-matrix |R R R T|
+        // - and position as (T)ranslation-vector.          |R R R T|
+        //                                                  |0 0 0 1|
         // consider update_vector
         Matrix4T pose_transf;
         pose_transf.setIdentity();
-        pose_transf.block<3,3>(0,0) = 
-        orientation.toRotationMatrix();
-        // 
-        // 
-        // 
+        pose_transf.block<3,3>(0,0) = orientation.toRotationMatrix();
         pose_transf.block<3,1>(0,3) = Eigen::Vector3d{
-            msg->pose.pose.position.x * (int)update_vector[STATE_X],
-            msg->pose.pose.position.y * (int)update_vector[STATE_Y],
-            msg->pose.pose.position.z * (int)update_vector[STATE_Z]};
+            msg->pose.position.x * (int)update_vector[STATE_X],
+            msg->pose.position.y * (int)update_vector[STATE_Y],
+            msg->pose.position.z * (int)update_vector[STATE_Z]};
 
-       
-        std::cout << "Not transformed pose: \n" << pose_transf.matrix()<<"\n";
+        // 3. Transform pose to fusion frame
         pose_transf = transform * pose_transf;
-        std::cout << "Transformed pose: \n" << pose_transf.matrix()<<"\n";
-        
 
-
+        // 4. Compute measurement vector
         Vector measurement(6);
         measurement.head<3>() = pose_transf.block<3,1>(0,3);
         measurement.tail<3>() = pose_transf.block<3,3>(0,0).eulerAngles(0,1,2);
 
-        // 2. Rotate Covariance
+        // 5. Rotate Covariance to fusion frame
         Matrix rot6d(6,6);
         rot6d.setIdentity();
         rot6d.block<3,3>(0,0) = transform.rotation();
         rot6d.block<3,3>(3,3) = transform.rotation();
 
+        // 6. Compute measurement covariance
         Matrix covariance(6,6);
-        covariance.setZero();
-        //TO_DO: covariance
-        // copy_covariance(covariance, msg->pose.covariance, 6);
+        covariance.setIdentity();
+        copy_covariance(covariance, msg->covariance, 6);
         covariance = rot6d * covariance * rot6d.transpose();
 
-        // 3. Create a vector with same size as the measurement with 0 at components that are not in the state
-        std::vector<size_t> updateIndices_t;
-        for (size_t i = 0; i < POSE_SIZE; ++i)
-        {
-            if(States::full_state_to_estimated_state[i] < STATE_SIZE)
-                updateIndices_t.push_back(i);
-        }
-        auto updateSize_t = updateIndices_t.size();
-        
-        // 4. fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
-        Vector sub_measurement(updateSize_t); // z
-        Vector sub_innovation(updateSize_t);  // z'-z
-        Matrix sub_covariance(updateSize_t, updateSize_t);
+        // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
         for ( uint i = 0; i < updateSize_t; i++)
         {
-            sub_measurement(i) = measurement(updateIndices_t[i]);
-            sub_innovation(i) = m_filter.at(States::full_state_to_estimated_state[updateIndices_t[i]]) - measurement(updateIndices_t[i]);
+            sub_measurement(i + ix1) = measurement(updateIndices_t[i]);
+            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[updateIndices_t[i]]) - measurement(updateIndices_t[i]);
             for (uint j = 0; j < updateSize_t; j++)
             {
-                sub_covariance(i,j) = covariance(updateIndices_t[i], updateIndices_t[j]);
+                sub_covariance(i + ix1, j + ix1) = covariance(updateIndices_t[i], updateIndices_t[j]);
             }
         }
 
-        // 5. Create state to measurement mapping and inovation
-        // Matrix state_to_measurement_mapping(States::STATE_SIZE_M, updateSize_t);
-        MeasurementMatrix state_to_measurement_mapping;
-        state_to_measurement_mapping.resize(updateSize_t, States::STATE_SIZE_M);
-        // MeasurementMatrix state_to_measurement_mapping(updateSize_t);
-        state_to_measurement_mapping.setZero();
+        // 5. Fill state to measurement mapping and inovation
         for (uint i = 0; i < updateSize_t; i++)
         {
             if (States::full_state_to_estimated_state[updateIndices_t[i]]<15)
-            state_to_measurement_mapping(i, States::full_state_to_estimated_state[updateIndices_t[i]]) = 1.0;
+            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[updateIndices_t[i]]) = 1.0;
         }
-
-        // // 6. Send measurement to be handled
-        T mahalanobis_thresh = 0.4;
-        std::cout<<static_cast<tTime>(msg->header.stamp.nanosec) << "\n";
-        tTime stamp = static_cast<tTime>(msg->header.stamp.nanosec/1000000000LL);
-        Measurement meas(stamp, sub_measurement, sub_covariance, sub_innovation, 
-                         state_to_measurement_mapping, msg->header.frame_id, mahalanobis_thresh);
-        handle_measurement(meas);
     }
 
     bool handle_measurement(Measurement& measurement)
@@ -245,7 +263,7 @@ public:
 
             // tTime global_time_of_message_received = 1; // TO_DO: get global time
             // return reset(measurement, global_time_of_message_received);
-            std::cout<<"Filter or timeMeasurement are not initialized. We are initializing!\n";
+            // std::cout<<"Filter or timeMeasurement are not initialized. We are initializing!\n";
             reset(measurement.m_measurement_vector, measurement.m_state_to_measurement_mapping, time_now, measurement.m_time_stamp);
             return false;
         }
@@ -262,28 +280,6 @@ public:
                                //z, H, R, mahalanobis_threshold);
             m_time_keeper.update_with_measurement(measurement.m_time_stamp, time_now);
         }
-        return true;
-    }
-
-    bool temporal_update(const tTime& delta_t)
-    {
-        if (!is_initialized()) { return false};
-        m_filter.tempoal_update(delta_t);
-        m_time_keeper.update_after_temporal_update(delta_t);
-        return true;
-    }
-
-    bool observation_update(Vector z, Vector z_innovation, MeasurementMatrix H, Matrix R, T mahalanobis_threshold)
-    {
-        if (!is_initialized())
-        {
-            tTime time_now = 12.0;
-            reset(z, H, time_now);
-            return true
-        };
-        m_filter.observation_update(z, H, R, mahalanobis_threshold);
-        tTime time_stamp = 0.1, global_time = 0.1;
-    	m_time_keeper.update_with_measurement(time_stamp,  global_time)
         return true;
     }
 
@@ -312,7 +308,7 @@ public:
         StateVector x0;
         x0.setZero();
         x0 = mapping_matrix.transpose()*measurement_vector;
-        std::cout << "Initializing with:" << x0.transpose()<<"\n" << mapping_matrix <<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n";
+        // std::cout << "Initializing with:" << x0.transpose()<<"\n" << mapping_matrix <<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n";
         m_filter.reset(x0, m_config.init_estimation_covariance, m_config.process_noise);
 
         // 2. reset timekeeper
