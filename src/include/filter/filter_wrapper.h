@@ -76,6 +76,7 @@ public:
     {
         configure(config_path);
         m_wall_time = Clock();
+        m_time_keeper = MeasurementTimeKeeper();
     }
 
     // from array to Matrix, used when reading from msg
@@ -162,9 +163,10 @@ public:
         std::cout<<"Submeasurement with pose&twist: " << sub_measurement.transpose() << "\n";
 
         // 4. Send measurement to be handled
+        // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
         T mahalanobis_thresh = 0.4;
-        tTime stamp = static_cast<tTime>(msg->header.stamp.nanosec/1000000000LL);
-        Measurement meas(stamp, sub_measurement, sub_covariance, sub_innovation, 
+        tTime stamp_sec = static_cast<tTime>(msg->header.stamp.nanosec/1000000000LL);
+        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, 
                          state_to_measurement_mapping, msg->header.frame_id, mahalanobis_thresh);
         handle_measurement(meas);
     }
@@ -351,23 +353,24 @@ public:
 
     bool process_measurement(Measurement& measurement)
     {
-        tTime time_now = 12.0;
+        // Get global time
+        tTime time_now = m_wall_time.now();
+
         if (!is_initialized()) {
             // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
             // and the filter is not set to any state, we reset it.
             // We only consider the parts that are allowed by update_vector
 
-            // tTime global_time_of_message_received = 1; // TO_DO: get global time
-            // return reset(measurement, global_time_of_message_received);
             // std::cout<<"Filter or timeMeasurement are not initialized. We are initializing!\n";
             reset(measurement.m_measurement_vector, measurement.m_state_to_measurement_mapping, time_now, measurement.m_time_stamp);
             return false;
         }
-        else{
-            
+        else
+        {
             // 1. temporal update
-            m_filter.temporal_update(0.1);
-            m_time_keeper.update_after_temporal_update(0.1);
+            auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
+            if (m_filter.temporal_update(dt))
+                m_time_keeper.update_after_temporal_update(dt);
 
             // 2. observation update
             m_filter.observation_update(measurement.m_measurement_vector,measurement.m_innovation,
@@ -402,13 +405,12 @@ public:
 
         // 1. reset filter
         StateVector x0;
-        x0.setZero();
         x0 = mapping_matrix.transpose()*measurement_vector;
         // std::cout << "Initializing with:" << x0.transpose()<<"\n" << mapping_matrix <<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n";
         m_filter.reset(x0, m_config.init_estimation_covariance, m_config.process_noise);
 
         // 2. reset timekeeper
-        m_time_keeper = MeasurementTimeKeeper(time_now, time_stamp);
+        m_time_keeper.reset(time_now, time_stamp);
         return true;
     }
 

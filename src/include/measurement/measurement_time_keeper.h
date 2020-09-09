@@ -42,7 +42,7 @@ public:
     {}
 
     // last_temp_update and last_obs_update are now sinced to the time_stamp of first measurement
-    MeasurementTimeKeeper(tTime global_time_now, tTime measurement_time_stamp)
+    void reset(tTime global_time_now, tTime measurement_time_stamp)
     {
         m_dt_to_global = global_time_now - measurement_time_stamp;
         m_t_last_temporal_update = measurement_time_stamp;
@@ -50,7 +50,7 @@ public:
         m_inizialized = true;
     }
 
-    bool is_initialized() const
+    inline bool is_initialized() const
     {
        return m_inizialized; 
     }
@@ -67,16 +67,15 @@ public:
     }
 
     // dt = m_t_last_temp_update -(global_time_now - m_dt_to_global) 
-    tTime time_since_last_temporal_update(tTime global_time_now) const
+    inline tTime time_since_last_temporal_update(tTime global_time_now) const
     {
         return m_t_last_temporal_update + m_dt_to_global - global_time_now;
     }
 
-    tTime latest_timestamp() const
+    inline tTime latest_timestamp() const
     {
         return m_t_last_observation_update < m_t_last_temporal_update ? m_t_last_temporal_update : m_t_last_observation_update;
     }
-
 };
 
 }  // namespace measurement
