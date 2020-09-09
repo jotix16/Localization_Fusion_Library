@@ -58,17 +58,20 @@ int main(){
     msg.header.frame_id = "odom_0";
     msg.header.stamp.sec = 1200;
     msg.pose = pose;
+    msg.twist.twist.linear.x = 10;
+    msg.twist.twist.linear.y = 11;
+    msg.twist.twist.linear.z = 12;
 
 
-    my_filter_wrapper.pose_callback(&msg, Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
     msg.header.stamp.sec = 1201;
-    my_filter_wrapper.pose_callback(&msg, Eigen::Isometry3d::Identity());
-    std::cout<< my_filter_wrapper.get_state()<<"\n";
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity());
+    std::cout<< "State: " <<my_filter_wrapper.get_state().transpose()<<"\n";
+    std::cout<< "Covariance: \n" <<my_filter_wrapper.get_covariance().transpose()<<"\n";
     // geometry_msgs::msg::TwistWithCovariance twist;
-
-
-
-
 
     return 1;
 }

@@ -111,7 +111,7 @@ public:
         }
     }
 
-    void pose_callback(nav_msgs::msg::Odometry* msg, const TransformationMatrix& transform)
+    void odom_callback(nav_msgs::msg::Odometry* msg, const TransformationMatrix& transform)
     {
         bool* update_vector = m_config.m_sensor_configs[msg->header.frame_id].m_update_vector;
         // 1. Create vector the same size as the submeasurement that will be used
@@ -135,8 +135,8 @@ public:
 
         // 2. Initialize submeasurement matrixes
         size_t updateSize = updateSize_pose + updateSize_twist; 
-        Vector sub_measurement(updateSize); // z
-        Vector sub_innovation(updateSize);  // z'-z
+        Vector sub_measurement(updateSize); sub_measurement.setZero(); // z
+        Vector sub_innovation(updateSize); sub_innovation.setZero(); // z'-z 
         Matrix sub_covariance(updateSize, updateSize);
         MeasurementMatrix state_to_measurement_mapping;
         state_to_measurement_mapping.resize(updateSize, States::STATE_SIZE_M);
@@ -144,7 +144,9 @@ public:
         
         // 3. Fill the submeasurement matrixes
         prepare_pose(&msg->pose, transform, update_vector, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,updateIndices_pose,0,updateSize_pose);
-        std::cout<<"Submeasurement: " << sub_measurement.transpose() << "\n";
+        std::cout<<"Submeasurement with pose      : " << sub_measurement.transpose() << "\n";
+        prepare_twist(&msg->twist, transform, update_vector, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,updateIndices_pose,updateSize_pose,updateSize_twist);
+        std::cout<<"Submeasurement with pose&twist: " << sub_measurement.transpose() << "\n";
 
         // 4. Send measurement to be handled
         T mahalanobis_thresh = 0.4;
@@ -152,6 +154,82 @@ public:
         Measurement meas(stamp, sub_measurement, sub_covariance, sub_innovation, 
                          state_to_measurement_mapping, msg->header.frame_id, mahalanobis_thresh);
         handle_measurement(meas);
+    }
+
+    void prepare_twist(
+        geometry_msgs::msg::TwistWithCovariance* msg, 
+        const TransformationMatrix& transform,
+        bool* update_vector,
+        Vector& sub_measurement,
+        Matrix& sub_covariance, 
+        Vector& sub_innovation, 
+        MeasurementMatrix& state_to_measurement_mapping,
+        std::vector<uint>& updateIndices_t,
+        size_t ix1, size_t updateSize_t)
+    {
+
+        // 2. Extract linear and angular velocities
+        // - consider update_vector
+        Vector linear_vel(3); 
+        linear_vel <<
+            msg->twist.linear.x * (int)update_vector[STATE_V_X],
+            msg->twist.linear.y * (int)update_vector[STATE_V_Y],
+            msg->twist.linear.z * (int)update_vector[STATE_V_Z];
+
+        Vector angular_vel(3);
+        angular_vel <<
+            msg->twist.angular.x * (int)update_vector[STATE_V_ROLL],
+            msg->twist.angular.y * (int)update_vector[STATE_V_PITCH],
+            msg->twist.angular.z * (int)update_vector[STATE_V_YAW];
+
+        // 3. Transform pose to fusion frame
+        Vector angular_vel_state(3);
+        uint vroll_ix = States::full_state_to_estimated_state[STATE_V_ROLL];
+        uint vpitch_ix = States::full_state_to_estimated_state[STATE_V_PITCH];
+        uint vyaw_ix = States::full_state_to_estimated_state[STATE_V_YAW];
+
+        angular_vel_state(0) = vroll_ix < STATE_SIZE ? m_filter.at(vroll_ix) : 0;
+        angular_vel_state(1) = vpitch_ix < STATE_SIZE ? m_filter.at(vpitch_ix) : 0;
+        angular_vel_state(2) = vyaw_ix < STATE_SIZE ? m_filter.at(vyaw_ix) : 0;
+
+        auto rot = transform.rotation();
+        linear_vel = rot * linear_vel + rot * angular_vel_state;
+        angular_vel = rot * angular_vel;
+
+        // 4. Compute measurement vector
+        Vector measurement(6);
+        measurement.head<3>() = linear_vel;
+        measurement.tail<3>() = angular_vel;
+
+        // 5. Rotate Covariance to fusion frame
+        Matrix rot6d(6,6);
+        rot6d.setIdentity();
+        rot6d.block<3,3>(0,0) = transform.rotation();
+        rot6d.block<3,3>(3,3) = transform.rotation();
+
+        // 6. Compute measurement covariance
+        Matrix covariance(6,6);
+        covariance.setIdentity();
+        copy_covariance(covariance, msg->covariance, 6);
+        covariance = rot6d * covariance * rot6d.transpose();
+
+        // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        for ( uint i = 0; i < updateSize_t; i++)
+        {
+            sub_measurement(i + ix1) = measurement(updateIndices_t[i]);
+            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[updateIndices_t[i]]) - measurement(updateIndices_t[i]);
+            for (uint j = 0; j < updateSize_t; j++)
+            {
+                sub_covariance(i + ix1, j + ix1) = covariance(updateIndices_t[i], updateIndices_t[j]);
+            }
+        }
+
+        // 5. Fill state to measurement mapping and inovation
+        for (uint i = 0; i < updateSize_t; i++)
+        {
+            if (States::full_state_to_estimated_state[updateIndices_t[i]]<15)
+            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[updateIndices_t[i]]) = 1.0;
+        }
     }
 
     void prepare_pose(
@@ -213,8 +291,11 @@ public:
         // 5. Rotate Covariance to fusion frame
         Matrix rot6d(6,6);
         rot6d.setIdentity();
-        rot6d.block<3,3>(0,0) = transform.rotation();
-        rot6d.block<3,3>(3,3) = transform.rotation();
+        auto rot = transform.rotation();
+        rot6d.block<3,3>(0,0) = rot;
+        rot6d.block<3,3>(3,3) = rot;
+        // rot6d.block<3,3>(0,0) = transform.rotation();
+        // rot6d.block<3,3>(3,3) = transform.rotation();
 
         // 6. Compute measurement covariance
         Matrix covariance(6,6);
