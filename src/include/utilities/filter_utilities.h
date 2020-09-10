@@ -25,8 +25,10 @@
 
 #include<chrono>
 
-namespace iav{ namespace state_predictor {
+#define DEBUG_W(msg) if (m_debug) { m_debug_stream << msg; } //used in FilterWrapper
+#define DEBUG(msg) if (m_debug) { *m_debug_stream << msg; } // used everywhere else
 
+namespace iav{ namespace state_predictor {
   /**
    * These are constants that can be used everywhere under state_predictor namespace
    */
@@ -36,11 +38,11 @@ namespace iav{ namespace state_predictor {
   /**
    * These are types definitions that can be used everywhere under state_predictor namespace
    */
+  using uint = unsigned short int;
   using tTime = double;
   // using tTime = float32_t;
   struct Clock{
     using clock_t = std::chrono::high_resolution_clock;
-    // using namespace std::chrono;
 
     clock_t::time_point init_time;
 
@@ -48,13 +50,9 @@ namespace iav{ namespace state_predictor {
 
     inline tTime now() const
     {
-      // const float32_t dt_s = static_cast<tTime>(clock_t.now().time_since_epoch().count()) / 1000000000LL;
-      // returns time in seconds
-      return std::chrono::duration<tTime>(clock_t::now() - init_time).count();
+        return std::chrono::duration<tTime>(clock_t::now() - init_time).count(); // returns time in seconds
     }
   };
-
-  using uint = unsigned short int;
 
   /** 
    * Pose and twist messages' parameters
@@ -82,7 +80,6 @@ namespace iav{ namespace state_predictor {
   constexpr uint STATE_A_X = 12U;  ///< index of x acceleration
   constexpr uint STATE_A_Y = 13U;  ///< index of y acceleration
   constexpr uint STATE_A_Z = 14U;  ///< index of z acceleratio
-
 
 }  // namespace state_predictor
 }  // namespace iav
