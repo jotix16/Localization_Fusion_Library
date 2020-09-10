@@ -160,18 +160,15 @@ struct SensorConfig{
 /**
 * @brief A class that holds information about a filter instance and all sensors it uses.
 */
-template<int num_state, typename T = double>
+template<typename T = double>
 struct FilterConfig{
-    using StateMatrix = Eigen::Matrix<T, num_state, num_state>;
+    using StateMatrix = Eigen::Matrix<T, STATE_SIZE, STATE_SIZE>;
     using Document = rapidjson::Document;
     using IStreamWrapper = rapidjson::IStreamWrapper;
     
-    StateMatrix init_estimation_covariance;
-    StateMatrix process_noise;
-    double m_init_estimate_covariance[num_state*num_state];
-    double m_process_noise[num_state*num_state];
+    StateMatrix m_init_estimation_covariance;
+    StateMatrix m_process_noise;
     std::map<std::string, struct SensorConfig> m_sensor_configs;
-
 
     /**
      * @brief Default Constructor
@@ -198,14 +195,12 @@ struct FilterConfig{
 
         // Filter parameters
         // Init Estimate Covariance & Process Noise
-        for (int i = 0; i < num_state; i++)
+        for (int i = 0; i < STATE_SIZE; i++)
         {
-            for (int j = 0; j < num_state; j++)
+            for (int j = 0; j < STATE_SIZE; j++)
             {
-                init_estimation_covariance(i,j) = doc["init_estimate_covariance"][i*num_state+j].GetDouble();
-                m_init_estimate_covariance[i*num_state+j] = doc["init_estimate_covariance"][i*num_state+j].GetDouble();
-                process_noise(i,j) = doc["process_noise"][i*num_state+j].GetDouble();
-                m_process_noise[i*num_state+j] = doc["process_noise"][i*num_state+j].GetDouble();
+                m_init_estimation_covariance(i,j) = doc["init_estimate_covariance"][i*STATE_SIZE+j].GetDouble();
+                m_process_noise(i,j) = doc["process_noise"][i*STATE_SIZE+j].GetDouble();
             }
         }
 
@@ -229,11 +224,9 @@ struct FilterConfig{
     {
         std::cout<<"\nInit_estimate_covariance\n";
         std::cout<<"\n"<< init_estimation_covariance <<"\n";
-        // printt(m_init_estimate_covariance, num_state, num_state);
 
         std::cout<<"\nInit_process_noise\n";
         std::cout<<"\n"<< process_noise <<"\n";
-        // printt(m_process_noise, num_state, num_state);
 
         std::cout<<"\nSENSOR CONFIGS\n";
         for (auto x: m_sensor_configs)
@@ -245,7 +238,7 @@ struct FilterConfig{
 };
 
 
-using FilterConfig2D = FilterConfig<8>;
+using FilterConfig2D = FilterConfig<double>;
 
 } // end namespace motion_model 
 } // end namespace state_predictor
