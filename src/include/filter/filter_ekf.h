@@ -85,7 +85,7 @@ public:
         {
             for (uint i = 0; i < H.rows(); i++)
             {
-                if(H(i,j)==1.0)
+                if(H(i,j)>0.5)
                 {
                     innovation[i] = utilities::clamp_rotation(innovation[i]);
                     break;
