@@ -47,7 +47,7 @@ class FilterWrapper
 public:
     using Measurement= typename measurement::Measurement<num_state,T>;
     using MeasurementTimeKeeper = typename measurement::MeasurementTimeKeeper;
-    using FilterConfig_ = FilterConfig<num_state>;
+    using FilterConfig_ = FilterConfig<T>;
 
     using States = typename FilterT::States;
     using StateVector = typename FilterT::StateVector;
@@ -74,6 +74,7 @@ private:
 public:
     FilterWrapper(const char* config_path)
     {
+        // filteconfig reads the wrong covariance and 
         configure(config_path);
         m_wall_time = Clock();
         m_time_keeper = MeasurementTimeKeeper();
@@ -134,7 +135,7 @@ public:
         size_t updateSize_pose = updateIndices_pose.size();
 
         std::vector<uint> updateIndices_twist;
-        for (uint i = 0; i < TWIST_SIZE; ++i)
+        for (uint i = POSE_SIZE; i < TWIST_SIZE + POSE_SIZE; ++i)
         {
             if(States::full_state_to_estimated_state[i] < STATE_SIZE)
                 updateIndices_twist.push_back(i);
@@ -155,12 +156,9 @@ public:
                      sub_covariance, sub_innovation, state_to_measurement_mapping,
                      updateIndices_pose, 0, updateSize_pose);
 
-        std::cout<<"Submeasurement with pose      : " << sub_measurement.transpose() << "\n";
         prepare_twist(&msg->twist, transform_to_base_link, update_vector, sub_measurement,
                       sub_covariance, sub_innovation, state_to_measurement_mapping,
-                      updateIndices_pose, updateSize_pose, updateSize_twist);
-
-        std::cout<<"Submeasurement with pose&twist: " << sub_measurement.transpose() << "\n";
+                      updateIndices_twist, updateSize_pose, updateSize_twist);
 
         // 4. Send measurement to be handled
         // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
@@ -182,7 +180,6 @@ public:
         std::vector<uint>& updateIndices_t,
         size_t ix1, size_t updateSize_t)
     {
-
         // 1. Extract linear and angular velocities
         // - consider update_vector
         Vector3T linear_vel; 
@@ -233,13 +230,15 @@ public:
         covariance = rot6d * covariance * rot6d.transpose();
 
         // 7. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        uint meas_index = 0U;
         for ( uint i = 0; i < updateSize_t; i++)
         {
-            sub_measurement(i + ix1) = measurement(updateIndices_t[i]);
-            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[updateIndices_t[i]]) - measurement(updateIndices_t[i]);
+            meas_index = updateIndices_t[i] - POSE_SIZE;
+            sub_measurement(i + ix1) = measurement(meas_index);
+            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[updateIndices_t[i]]) - measurement(meas_index);
             for (uint j = 0; j < updateSize_t; j++)
             {
-                sub_covariance(i + ix1, j + ix1) = covariance(updateIndices_t[i], updateIndices_t[j]);
+                sub_covariance(i + ix1, j + ix1) = covariance(meas_index, meas_index);
             }
         }
 
@@ -406,8 +405,35 @@ public:
         // 1. reset filter
         StateVector x0;
         x0 = mapping_matrix.transpose()*measurement_vector;
-        // std::cout << "Initializing with:" << x0.transpose()<<"\n" << mapping_matrix <<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n";
-        m_filter.reset(x0, m_config.init_estimation_covariance, m_config.process_noise);
+        std::cout << "Initializing with:" << x0.transpose()<<"\n" << mapping_matrix <<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n";
+        // std::cout << "Init cov:\n" << m_config.m_init_estimation_covariance<<"\n";
+        // TO_DO: extract the part of init_estimation and process_noise covariances you need
+ 
+        StateMatrix init_cov;
+        init_cov.setIdentity();
+        StateMatrix process_noise;
+        process_noise.setIdentity();
+        uint ind_temp1;
+        uint ind_temp2;
+        for (uint i = 0; i < STATE_SIZE; ++i)
+        {
+            ind_temp1 = States::full_state_to_estimated_state[i];
+            if( ind_temp1 < STATE_SIZE)
+            {
+                for (uint j = 0; j < STATE_SIZE; j++)
+                {
+                    ind_temp2 = States::full_state_to_estimated_state[j];
+                    if( ind_temp2< STATE_SIZE)
+                    {
+                        init_cov(ind_temp1, ind_temp2) = m_config.m_init_estimation_covariance(i,j);
+                        process_noise(ind_temp1, ind_temp2) = m_config.m_process_noise(i,j);
+                    }
+                }
+            }
+        }
+        
+        m_filter.reset(x0, init_cov, process_noise);
+
 
         // 2. reset timekeeper
         m_time_keeper.reset(time_now, time_stamp);
