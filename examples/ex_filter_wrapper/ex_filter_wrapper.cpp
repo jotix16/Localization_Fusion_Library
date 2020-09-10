@@ -41,30 +41,31 @@ int main(){
     // const char * path = "../../config/filter_config.json";
     iav::state_predictor::filter::FilterCtrvEKF2D my_filter_wrapper(path);
 
-    // create ross mssg: 
-    geometry_msgs::msg::Point point;
-    point.x = 1; point.y = 2; point.z = 3;
-    std::cout<< point.y <<"\n";
-    
-    geometry_msgs::msg::Quaternion orientation;
-    orientation.x = 1; orientation.y = 0; orientation.z = 0; orientation.w = 1;
-    std::cout<< orientation.y <<"\n";
-
-    geometry_msgs::msg::PoseWithCovariance pose;
-    pose.pose.position = point;
-    pose.pose.orientation = orientation;
-
     nav_msgs::msg::Odometry msg;
     msg.header.frame_id = "odom_0";
     msg.header.stamp.sec = 1200;
-    msg.pose = pose;
-    msg.twist.twist.linear.x = 10;
-    msg.twist.twist.linear.y = 11;
-    msg.twist.twist.linear.z = 12;
+    msg.pose.pose.position.x = 1.0;
+    msg.pose.pose.position.y = 2.0;
+    msg.pose.pose.position.z = 3.0;
+    for (int i = 0; i < 6; i++)
+    {
+       msg.pose.covariance[i+i*6] = 1e-9; 
+       msg.twist.covariance[i+i*6]= 1e-9; 
+    }
+    msg.pose.pose.orientation.x = 1.0;
+    msg.pose.pose.orientation.y = 1.0;
+    msg.pose.pose.orientation.z = 1.0;
+    msg.pose.pose.orientation.w = 1.0;
+    msg.twist.twist.linear.x = 10.0;
+    msg.twist.twist.linear.y = 11.0;
+    msg.twist.twist.linear.z = 12.0;
+    msg.twist.twist.angular.x = 0.0;
+    msg.twist.twist.angular.y = 0.0;
+    msg.twist.twist.angular.z = 12.0;
 
 
     my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    msg.header.stamp.sec = 1201;
+    msg.header.stamp.sec = 3331;
     my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
