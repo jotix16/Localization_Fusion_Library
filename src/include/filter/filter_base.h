@@ -48,6 +48,8 @@ protected:
     StateVector m_state;
     StateMatrix m_covariance;
     StateMatrix m_process_noise;
+    bool m_debug;
+    std::ostream* m_debug_stream;
 
     const StateMatrix m_identity ; // needed for a few operations.
 
@@ -56,6 +58,14 @@ public:
     {
     }
 
+    void setDebug(std::ostream* out_stream)
+    {
+            m_debug_stream = out_stream;
+            m_debug = true;
+            DEBUG("-----------------------------------------\n");
+            DEBUG("----- /FilterBase::Debug is on!" << " ------\n");
+            DEBUG("-----------------------------------------\n");
+    }
     inline bool is_initialized() const
     {
         return m_initialized;
