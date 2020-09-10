@@ -223,10 +223,10 @@ struct FilterConfig{
     void print()
     {
         std::cout<<"\nInit_estimate_covariance\n";
-        std::cout<<"\n"<< init_estimation_covariance <<"\n";
+        std::cout<<"\n"<< m_init_estimation_covariance <<"\n";
 
         std::cout<<"\nInit_process_noise\n";
-        std::cout<<"\n"<< process_noise <<"\n";
+        std::cout<<"\n"<< m_process_noise <<"\n";
 
         std::cout<<"\nSENSOR CONFIGS\n";
         for (auto x: m_sensor_configs)
