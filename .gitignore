@@ -18,5 +18,7 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
+# ignore debug files
+DEBUG*
 
 
