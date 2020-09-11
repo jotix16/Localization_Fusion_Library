@@ -32,6 +32,10 @@
 
 namespace iav{ namespace state_predictor { namespace measurement{
 
+/**
+ * @brief Measurement class that aims to unify all times of measurements
+ *        in order for them to be treated equally afterwards.
+ */
 template<uint num_state, typename T = double>
 class Measurement
 {
@@ -40,33 +44,75 @@ class Measurement
     using CovarianceMatrix = Eigen::Matrix<T, -1, -1>;
 
 public:
+    // Time stamp of the measurement
     tTime m_time_stamp;
+    // Sensor id from where the measurement came.
     std::string m_sensor_id;
+    // Mahalanobis threshold for the measurement.
     T m_mahalanobis_thresh;
+    // Measurement vector to be considered 
     MeasurementVector m_measurement_vector;
+    // The precalculated innovation(spares computations, instead of H*x)
     MeasurementVector m_innovation;
+    // Measurement covariance matrix
     CovarianceMatrix m_measurement_covariance;
+    // Maps the state to the measurement, in literature known as matrix H
     MappingMatrix m_state_to_measurement_mapping;
 
 public:
+/**
+ * @brief Measurement: Constructor tha creates the measurement.
+ * @param[in] time_stamp - Time stamp of the measurement
+ * @param[in] measurement - Measurement vector to be considered 
+ * @param[in] covariance - Measurement covariance matrix
+ * @param[in] innovation - The precalculated innovation(spares computations, instead of H*x)
+ * @param[in] map_matrix - Maps the state to the measurement, in literature known as matrix H
+ * @param[in] sensor_id - Sensor id from where the measurement came.
+ * @param[in] mahalanobis_thresh - Mahalanobis threshold for the measurement.
+ */
     Measurement(const tTime time_stamp, const MeasurementVector& measurement,
                 const CovarianceMatrix& covariance, const MeasurementVector& innovation, 
-                const MappingMatrix mapp_mat, const std::string& sensor_id, const T& mahalanobis_thresh):
+                const MappingMatrix map_matrix, const std::string& sensor_id, const T& mahalanobis_thresh):
                 m_time_stamp{time_stamp}, m_sensor_id{sensor_id}, m_measurement_vector{measurement},
-                m_measurement_covariance{covariance}, m_state_to_measurement_mapping{mapp_mat},
+                m_measurement_covariance{covariance}, m_state_to_measurement_mapping{map_matrix},
                 m_innovation{innovation}, m_mahalanobis_thresh{mahalanobis_thresh}
 
     { }
 
+/**
+ * @brief Measurement: Getter function for the measurement vector.
+ * @return Measurement vector.
+ */
     inline const MeasurementVector get_measurement() { return m_measurement_vector; }
+
+/**
+ * @brief Measurement: Getter function for the measurement covariance matrix.
+ * @return Measurement covariance matrix.
+ */
     inline const CovarianceMatrix get_covariance() { return m_measurement_covariance; }
+
+/**
+ * @brief Measurement: Getter function for the mapping matrix.
+ * @return State to measurement mapping matrix.
+ */
     inline const MappingMatrix get_mapping() { return m_state_to_measurement_mapping; }
   
+/**
+ * @brief Measurement: Defines the operator < as friend of the class. In order to be able to compare measurements.
+ * @param[in] m1 - First measurement
+ * @param[in] m2 - Second measurement
+ * @return returns true if m1 id older than m2.
+ */
     template<uint num_state, typename T> // for the case we keep members private and use getters
     friend bool operator<(Measurement<num_state, T> m1, Measurement<num_state, T> m2);
-
 };
 
+/**
+ * @brief Measurement: Overrides the operator "<" in order to be able to compare measurements.
+ * @param[in] m1 - First measurement
+ * @param[in] m2 - Second measurement
+ * @return returns true if m1 id older than m2.
+ */
 template<uint num_state, typename T = double>
 bool operator<(Measurement<num_state, T> m1, Measurement<num_state, T> m2)
 {

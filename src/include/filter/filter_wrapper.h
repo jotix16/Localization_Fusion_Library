@@ -41,6 +41,12 @@
 
 namespace iav{ namespace state_predictor { namespace filter {
 
+/**
+ * @brief Class that wrapps the filter and takes care of timekeeping and measurement processing
+ * @param<template> FilterT - The filter algorithm that we are usign for fusion
+ * @param<template> num_state - Size of the state
+ * @param<template> T - Type that should be used for calculations(default is double, but float can be used too)
+ */
 template<class FilterT, int num_state, typename T = double>
 class FilterWrapper
 {
@@ -72,50 +78,58 @@ private:
     Clock m_wall_time;
 
 public:
+    /**
+     * @brief Constructor that inizializes configuration related parameters and time-keeping
+     * @param[out] config_path - path to .json configuration file
+     */
     FilterWrapper(const char* config_path)
     {
-        // filteconfig reads the wrong covariance and 
         configure(config_path);
         m_wall_time = Clock();
         m_time_keeper = MeasurementTimeKeeper();
     }
 
+    /**
+     * @brief FilterWrapper: Helper function that copies a squared matrix from array to eigen matrix
+     * @param[out] destination - Eigen 6x6 matrix that has to be filled
+     * @param[in] source - source array
+     */
     // from array to Matrix, used when reading from msg
-    void copy_covariance(Matrix6T& destination, T* source, uint dimension)
+    template<uint dim = 6>
+    void copy_covariance(Matrix6T& destination, const std::array<double, dim*dim>& source)
     {
-        for (uint i = 0; i < dimension; i++)
+        for (uint i = 0; i < dim; i++)
         {
-            for (uint j = 0; j < dimension; j++)
+            for (uint j = 0; j < dim; j++)
             {
-                destination(i,j) = source[i*dimension + j];
+                destination(i,j) = source[i*dim + j];
             }
         }
     }
 
-    // from array to Matrix, used when reading from msg
-    void copy_covariance(Matrix6T& destination, const std::array<double, 36>& source, uint dimension)
+    /**
+     * @brief FilterWrapper: Helper function that copies a squared from matrix to array used for the msgs.
+     * @param[in] destination - destination array which should be filled
+     * @param[in] index - source matrix 
+     */
+    template<uint dim = 6>
+    void copy_covariance(std::array<double, dim*dim>& destination, const Matrix6T& source)
     {
-        for (uint i = 0; i < dimension; i++)
+        for (uint i = 0; i < dim; i++)
         {
-            for (uint j = 0; j < dimension; j++)
+            for (uint j = 0; j < dim; j++)
             {
-                destination(i,j) = source[i*dimension + j];
+                destination[i*dim+ j](i,j) = source(i,j);
             }
         }
     }
 
-    // from Matrix to array, used to create msg
-    void copy_covariance(T* destination, const Matrix6T& source, uint dimension)
-    {
-        for (uint i = 0; i < dimension; i++)
-        {
-            for (uint j = 0; j < dimension; j++)
-            {
-                destination[i*dimension + j](i,j) = source(i,j);
-            }
-        }
-    }
-
+    /**
+     * @brief FilterWrapper: Callback for receiving all odom msgs
+     * @param[in] msg - pointer to the msg of the measurement
+     * @param[in] transform_to_world - transf from sensor frame of msg to the world frame where the pose part is fused
+     * @param[in] transform_to_base_link - transf from sensor frame of msg to the base_link frame where the twist part is fused
+     */
     void odom_callback(
         nav_msgs::msg::Odometry* msg,
         const TransformationMatrix& transform_to_world,
@@ -126,49 +140,63 @@ public:
         // 1. Create vector the same size as the submeasurement that will be used
         // - its elements are the corresponding parts of the state
         // - the size of this index-vector enables initializing of the submeasurement matrixes
-        std::vector<uint> updateIndices_pose;
+        std::vector<uint> update_indices_pose;
         for (uint i = 0; i < POSE_SIZE; ++i)
         {
             if(States::full_state_to_estimated_state[i] < STATE_SIZE)
-                updateIndices_pose.push_back(i);
+                update_indices_pose.push_back(i);
         }
-        size_t updateSize_pose = updateIndices_pose.size();
+        size_t update_size_pose = update_indices_pose.size();
 
-        std::vector<uint> updateIndices_twist;
+        std::vector<uint> update_indices_twist;
         for (uint i = POSE_SIZE; i < TWIST_SIZE + POSE_SIZE; ++i)
         {
             if(States::full_state_to_estimated_state[i] < STATE_SIZE)
-                updateIndices_twist.push_back(i);
+                update_indices_twist.push_back(i);
         }
-        size_t updateSize_twist = updateIndices_twist.size();
+        size_t update_size_twist = update_indices_twist.size();
 
         // 2. Initialize submeasurement matrixes
-        size_t updateSize = updateSize_pose + updateSize_twist; 
-        Vector sub_measurement(updateSize); sub_measurement.setZero(); // z
-        Vector sub_innovation(updateSize); sub_innovation.setZero(); // z'-z 
-        Matrix sub_covariance(updateSize, updateSize);
+        size_t update_size = update_size_pose + update_size_twist; 
+        Vector sub_measurement(update_size); sub_measurement.setZero(); // z
+        Vector sub_innovation(update_size); sub_innovation.setZero(); // z'-z 
+        Matrix sub_covariance(update_size, update_size);
         MeasurementMatrix state_to_measurement_mapping;
-        state_to_measurement_mapping.resize(updateSize, States::STATE_SIZE_M);
+        state_to_measurement_mapping.resize(update_size, States::STATE_SIZE_M);
         state_to_measurement_mapping.setZero();
         
         // 3. Fill the submeasurement matrixes
         prepare_pose(&msg->pose, transform_to_world, update_vector, sub_measurement,
                      sub_covariance, sub_innovation, state_to_measurement_mapping,
-                     updateIndices_pose, 0, updateSize_pose);
+                     update_indices_pose, 0, update_size_pose);
 
         prepare_twist(&msg->twist, transform_to_base_link, update_vector, sub_measurement,
                       sub_covariance, sub_innovation, state_to_measurement_mapping,
-                      updateIndices_twist, updateSize_pose, updateSize_twist);
+                      update_indices_twist, update_size_pose, update_size_twist);
 
         // 4. Send measurement to be handled
         // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
         T mahalanobis_thresh = 0.4;
+        // TO_DO: not sure about the time, should try out.
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.nanosec/1000000000LL);
         Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, 
                          state_to_measurement_mapping, msg->header.frame_id, mahalanobis_thresh);
         handle_measurement(meas);
     }
 
+    /**
+     * @brief FilterWrapper: Prepares a Twist msg and fills the corresponding part of the measurement
+     * @param[in] msg - pointer to msg to be prepared
+     * @param[in] transform - transformation matrix to the frame of fusion(base_link frame)
+     * @param[in] update_vector - vector that specifies which parts of the measurement should be considered
+     * @param[inout] sub_measurement - measurement vector to be filled
+     * @param[inout] sub_covariance - covariance matrix to be filled
+     * @param[inout] sub_innovation - innovation vector to be filled
+     * @param[inout] state_measurement_mapping - state to measurement mapping matrix to be filled
+     * @param[inout] update_indices - holds the respective indexes of the measurement's component to the full state's components
+     * @param[in] ix1 - starting index from which the sub_measurement should be filled 
+     * @param[in] update_size - size of the measurement to be filled
+     */
     void prepare_twist(
         geometry_msgs::msg::TwistWithCovariance* msg, 
         const TransformationMatrix& transform,
@@ -177,8 +205,8 @@ public:
         Matrix& sub_covariance, 
         Vector& sub_innovation, 
         MeasurementMatrix& state_to_measurement_mapping,
-        std::vector<uint>& updateIndices_t,
-        size_t ix1, size_t updateSize_t)
+        std::vector<uint>& update_indices,
+        size_t ix1, size_t update_size)
     {
         // 1. Extract linear and angular velocities
         // - consider update_vector
@@ -220,7 +248,7 @@ public:
         // 5. Compute measurement covariance
         Matrix6T covariance;
         covariance.setIdentity();
-        copy_covariance(covariance, msg->covariance, TWIST_SIZE);
+        copy_covariance<TWIST_SIZE>(covariance, msg->covariance);
 
         // 6. Rotate Covariance to fusion frame
         Matrix6T rot6d;
@@ -231,25 +259,38 @@ public:
 
         // 7. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
         uint meas_index = 0U;
-        for ( uint i = 0; i < updateSize_t; i++)
+        for ( uint i = 0; i < update_size; i++)
         {
-            meas_index = updateIndices_t[i] - POSE_SIZE;
+            meas_index = update_indices[i] - POSE_SIZE;
             sub_measurement(i + ix1) = measurement(meas_index);
-            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[updateIndices_t[i]]) - measurement(meas_index);
-            for (uint j = 0; j < updateSize_t; j++)
+            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[update_indices[i]]) - measurement(meas_index);
+            for (uint j = 0; j < update_size; j++)
             {
                 sub_covariance(i + ix1, j + ix1) = covariance(meas_index, meas_index);
             }
         }
 
         // 7. Fill state to measurement mapping and inovation
-        for (uint i = 0; i < updateSize_t; i++)
+        for (uint i = 0; i < update_size; i++)
         {
-            if (States::full_state_to_estimated_state[updateIndices_t[i]] < STATE_SIZE)
-            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[updateIndices_t[i]]) = 1.0;
+            if (States::full_state_to_estimated_state[update_indices[i]] < STATE_SIZE)
+            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
     }
 
+    /**
+     * @brief FilterWrapper: Prepares a Pose msg and fills the corresponding part of the measurement
+     * @param[in] msg - pointer to msg to be prepared
+     * @param[in] transform - transformation matrix to the frame of fusion(world frame)
+     * @param[in] update_vector - vector that specifies which parts of the measurement should be considered
+     * @param[inout] sub_measurement - measurement vector to be filled
+     * @param[inout] sub_covariance - covariance matrix to be filled
+     * @param[inout] sub_innovation - innovation vector to be filled
+     * @param[inout] state_measurement_mapping - state to measurement mapping matrix to be filled
+     * @param[inout] update_indices - holds the respective indexes of the measurement's component to the full state's components
+     * @param[in] ix1 - starting index from which the sub_measurement should be filled 
+     * @param[in] update_size - size of the measurement to be filled
+     */
     void prepare_pose(
         geometry_msgs::msg::PoseWithCovariance* msg, 
         const TransformationMatrix& transform,
@@ -258,10 +299,9 @@ public:
         Matrix& sub_covariance, 
         Vector& sub_innovation, 
         MeasurementMatrix& state_to_measurement_mapping,
-        std::vector<uint>& updateIndices_t,
-        uint ix1, size_t updateSize_t)
+        std::vector<uint>& update_indices,
+        uint ix1, size_t update_size)
     {
-
         // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
         // - Handle bad (empty) quaternions and normalize
         Quaternion orientation;
@@ -316,28 +356,34 @@ public:
         // 6. Compute measurement covariance
         Matrix6T covariance;
         covariance.setIdentity();
-        copy_covariance(covariance, msg->covariance, POSE_SIZE);
+        copy_covariance<POSE_SIZE>(covariance, msg->covariance);
         covariance = rot6d * covariance * rot6d.transpose();
 
         // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
-        for ( uint i = 0; i < updateSize_t; i++)
+        for ( uint i = 0; i < update_size; i++)
         {
-            sub_measurement(i + ix1) = measurement(updateIndices_t[i]);
-            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[updateIndices_t[i]]) - measurement(updateIndices_t[i]);
-            for (uint j = 0; j < updateSize_t; j++)
+            sub_measurement(i + ix1) = measurement(update_indices[i]);
+            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[update_indices[i]]) - measurement(update_indices[i]);
+            for (uint j = 0; j < update_size; j++)
             {
-                sub_covariance(i + ix1, j + ix1) = covariance(updateIndices_t[i], updateIndices_t[j]);
+                sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i], update_indices[j]);
             }
         }
 
         // 5. Fill state to measurement mapping and inovation
-        for (uint i = 0; i < updateSize_t; i++)
+        for (uint i = 0; i < update_size; i++)
         {
-            if (States::full_state_to_estimated_state[updateIndices_t[i]]<15)
-            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[updateIndices_t[i]]) = 1.0;
+            if (States::full_state_to_estimated_state[update_indices[i]]<15)
+            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
     }
 
+    /**
+     * @brief FilterWrapper: this function differentiates the data_triggered and time_triggered option.
+     *        it calls process_measurement immediately if data triggered and puts the measurement in the buffer otherwise .
+     * @param[in] measurement - measurement to be handled
+     * @return true if handling was sucessful
+     */
     bool handle_measurement(Measurement& measurement)
     {
         // TO_DO: this function differentiates the data_triggered and time_triggered option
@@ -350,6 +396,12 @@ public:
         return true;
     }
 
+    /**
+     * @brief FilterWrapper: Processes a measurement by feeding it to the filter's temporal & observation update.
+     *        It initializes the time keeper and filter with the first measurement if they are not initialized.
+     * @param[in] measurement - measurement to be processed
+     * @return true if processing was sucessful
+     */
     bool process_measurement(Measurement& measurement)
     {
         // Get global time
@@ -359,7 +411,9 @@ public:
             // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
             // and the filter is not set to any state, we reset it.
             // We only consider the parts that are allowed by update_vector
+            // TO_DO: any other way?
 
+            // Initialize the filter with the first measurement
             // std::cout<<"Filter or timeMeasurement are not initialized. We are initializing!\n";
             reset(measurement.m_measurement_vector, measurement.m_state_to_measurement_mapping, time_now, measurement.m_time_stamp);
             return false;
@@ -372,33 +426,52 @@ public:
                 m_time_keeper.update_after_temporal_update(dt);
 
             // 2. observation update
-            m_filter.observation_update(measurement.m_measurement_vector,measurement.m_innovation,
+            if (m_filter.observation_update(measurement.m_measurement_vector,measurement.m_innovation,
                     measurement.m_state_to_measurement_mapping, measurement.m_measurement_covariance,
-                    measurement.m_mahalanobis_thresh);
-                               //z, H, R, mahalanobis_threshold);
-            m_time_keeper.update_with_measurement(measurement.m_time_stamp, time_now);
+                    measurement.m_mahalanobis_thresh))
+                m_time_keeper.update_with_measurement(measurement.m_time_stamp, time_now);
         }
         return true;
     }
 
+    /**
+     * @brief FilterWrapper: Getter function for the state estimation
+     * @return the state estimation vector
+     */
     inline StateVector get_state() const
     {
         return m_filter.get_state();
     }
 
+    /**
+     * @brief FilterWrapper: Getter function for the covariance estimation
+     * @return the covariance estimation matrix
+     */
     inline StateMatrix get_covariance() const
     {
         return m_filter.get_covariance();
     }
 
+    /**
+     * @brief FilterWrapper: Checker function to see if everything is initialized.
+     * @return true if everything is initialized properly
+     */
     inline bool is_initialized() const
     {
         return (m_filter.is_initialized() && m_time_keeper.is_initialized());
     }
 
+    /**
+     * @brief FilterWrapper: Resets the time keeper and the filter
+     * @param[in] measurement_vector - measurement vector to be used for initializing the filter's state
+     * @param[in] mapping_matrix - state to measurement mapping
+     * @param[in] time_now - global time of the measurement(from wall clock)
+     * @param[in] time_stamp - time stamp of the measurement
+     * @return true if reseting was successful
+     */
     bool reset(Vector measurement_vector, MeasurementMatrix mapping_matrix, tTime time_now, tTime time_stamp)
     {
-        //TO_DO: check if the measurement is stateful
+        //TO_DO: check if the measurement is stateful?
         // either odometry or pose
         // Maybe need to template it according to the motionmodel used
 
@@ -407,8 +480,10 @@ public:
         x0 = mapping_matrix.transpose()*measurement_vector;
         std::cout << "Initializing with:" << x0.transpose()<<"\n" << mapping_matrix <<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n";
         // std::cout << "Init cov:\n" << m_config.m_init_estimation_covariance<<"\n";
-        // TO_DO: extract the part of init_estimation and process_noise covariances you need
- 
+
+        // extract the part of init_estimation and process_noise covariances you need
+        // TO_DO: maybe better send some indices_vector and have only one loop? 
+        //        But should be fine as it is called only once in the beginning.
         StateMatrix init_cov;
         init_cov.setIdentity();
         StateMatrix process_noise;
@@ -434,19 +509,22 @@ public:
         
         m_filter.reset(x0, init_cov, process_noise);
 
-
         // 2. reset timekeeper
         m_time_keeper.reset(time_now, time_stamp);
         return true;
     }
 
+    /**
+     * @brief FilterWrapper: Function that inizializes configuration related parameters of the class.
+     * @param[out] config_path - path to .json configuration file
+     */
     void configure(const char* config_path)
     {
         m_config = FilterConfig_(config_path);
     }
-
 };
 
+// explicit template initialization
 using FilterCtrvEKF2D = FilterWrapper<Ctrv_EKF2D, 6, double>;
 
 } // end namespace filter 

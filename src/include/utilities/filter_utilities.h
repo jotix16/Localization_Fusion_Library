@@ -36,25 +36,32 @@ namespace iav{ namespace state_predictor {
   /**
    * These are types definitions that can be used everywhere under state_predictor namespace
    */
+  using uint = unsigned short int;
   using tTime = double;
   // using tTime = float32_t;
+
+		/**
+		 * @brief Struct that defines the WallTime. It starts a timer when FilterWrapper is initialized. 
+     * All global times are then returned relative to this time. 
+		 */
   struct Clock{
     using clock_t = std::chrono::high_resolution_clock;
-    // using namespace std::chrono;
-
     clock_t::time_point init_time;
 
+		/**
+		 * @brief Initializes Wall Time(i.e startes the timer)
+		 */
     Clock(): init_time(clock_t::now()) {};
 
+		/**
+		 * @brief Used to return actual time.
+		 * @return time in seconds passed from init_time.
+		 */
     inline tTime now() const
     {
-      // const float32_t dt_s = static_cast<tTime>(clock_t.now().time_since_epoch().count()) / 1000000000LL;
-      // returns time in seconds
       return std::chrono::duration<tTime>(clock_t::now() - init_time).count();
     }
   };
-
-  using uint = unsigned short int;
 
   /** 
    * Pose and twist messages' parameters
@@ -67,27 +74,26 @@ namespace iav{ namespace state_predictor {
   constexpr uint LINEAR_VELOCITY_SIZE = 3;
   constexpr uint ACCELERATION_SIZE = 3;
 
-  constexpr uint STATE_X = 0U;  ///< index of x position
-  constexpr uint STATE_Y = 1U;  ///< index of y position
-  constexpr uint STATE_Z = 2U;  ///< index of z position
-  constexpr uint STATE_ROLL= 3U;  ///< index of roll position
-  constexpr uint STATE_PITCH= 4U;  ///< index of pitch position
-  constexpr uint STATE_YAW= 5U;  ///< index of yaw position
-  constexpr uint STATE_V_X = 6U;  ///< index of x velocity
-  constexpr uint STATE_V_Y = 7U;  ///< index of y velocity
-  constexpr uint STATE_V_Z = 8U;  ///< index of z velocity
+  constexpr uint STATE_X = 0U;       ///< index of x position
+  constexpr uint STATE_Y = 1U;       ///< index of y position
+  constexpr uint STATE_Z = 2U;       ///< index of z position
+  constexpr uint STATE_ROLL= 3U;     ///< index of roll position
+  constexpr uint STATE_PITCH= 4U;    ///< index of pitch position
+  constexpr uint STATE_YAW= 5U;      ///< index of yaw position
+  constexpr uint STATE_V_X = 6U;     ///< index of x velocity
+  constexpr uint STATE_V_Y = 7U;     ///< index of y velocity
+  constexpr uint STATE_V_Z = 8U;     ///< index of z velocity
   constexpr uint STATE_V_ROLL = 9U;  ///< index of roll velocity
-  constexpr uint STATE_V_PITCH= 10U;  ///< index of pitch velocity
-  constexpr uint STATE_V_YAW= 11U;  ///< index of yaw velocity
-  constexpr uint STATE_A_X = 12U;  ///< index of x acceleration
-  constexpr uint STATE_A_Y = 13U;  ///< index of y acceleration
-  constexpr uint STATE_A_Z = 14U;  ///< index of z acceleratio
-
+  constexpr uint STATE_V_PITCH= 10U; ///< index of pitch velocity
+  constexpr uint STATE_V_YAW= 11U;   ///< index of yaw velocity
+  constexpr uint STATE_A_X = 12U;    ///< index of x acceleration
+  constexpr uint STATE_A_Y = 13U;    ///< index of y acceleration
+  constexpr uint STATE_A_Z = 14U;    ///< index of z acceleratio
 
 }  // namespace state_predictor
 }  // namespace iav
 
-namespace iav{ namespace state_predictor { namespace utilities {
+namespace iav{ namespace state_predictor{ namespace utilities{
 
   /**
   * @brief Utility method keeping RPY angles in the range [-pi, pi].

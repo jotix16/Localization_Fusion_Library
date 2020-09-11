@@ -38,12 +38,12 @@
 
 namespace iav{ namespace state_predictor { namespace filter {
 
-  /**
-  * @brief Templated function to print out arrays of different types T
-  * @param[in] arr - array to be printed
-  * @param[in] a - nr of rows
-  * @param[in] b - nr of columns
-  */
+/**
+ * @brief Templated function to print out arrays of different types T
+ * @param[in] arr - array to be printed
+ * @param[in] a - nr of rows
+ * @param[in] b - nr of columns
+ */
 template<typename T>
 void printt(T* arr, int a, int b){
     for (int i = 0; i < a; i++)
@@ -67,7 +67,11 @@ struct SensorConfig{
     double m_acc_mahalanobis_thresh[3];
     double m_speed_mahalanobis_thresh[6];
 
+    /**
+     * @brief Default constructor
+     */
     SensorConfig() {};
+
     /**
      * @brief Constructor that parses the sensor parameters.
      * @param[in] doc - Document that holds the informations to be parsed
@@ -141,9 +145,9 @@ struct SensorConfig{
         }
     }
 
-  /**
-  * @brief Prints out SensorConfig information
-  */
+    /**
+     * @brief Prints out SensorConfig information
+     */
     void print()
     {
         std::cout<<"\n Update_vector \n";
@@ -174,6 +178,7 @@ struct FilterConfig{
      * @brief Default Constructor
      */
     FilterConfig() = default;
+
     /**
      * @brief Constructor that parses the filter parameters and all of its sensors.
      * @param[in] path - Path to the .json file normally in the folder config/.
@@ -217,9 +222,9 @@ struct FilterConfig{
         }
     }
 
-  /**
-  * @brief Prints out SensorConfig information
-  */
+    /**
+     * @brief Prints out SensorConfig information
+     */
     void print()
     {
         std::cout<<"\nInit_estimate_covariance\n";

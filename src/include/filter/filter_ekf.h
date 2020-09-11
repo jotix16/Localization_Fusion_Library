@@ -32,6 +32,15 @@ namespace iav{ namespace state_predictor { namespace filter {
 
 //TO_DO: we can use dynamic process noise covariance. Especially for cases when
 // we don't want to increase the covariance estimation of the state when the vehicle is not moving
+
+/**
+ * @brief Filter class that inherits from FilterBase class
+ * @param<template> MotionModelT - The motion model used. This defines the state to be estimated too.
+ * @param<template> num_state - Size of the state
+ * @param<template> T - Type that should be used for calculations(default is double, but float can be used too)
+ */
+//TO_DO: we can use dynamic process noise covariance. Especially for cases when
+// we don't want to increase the covariance estimation of the state when the vehicle is not moving
 template<class MotionModelT, int num_state, typename T = double>
 class FilterEkf : public FilterBase<MotionModelT, num_state, T>
 {
@@ -46,7 +55,11 @@ public:
     using States = typename FilterBase_::States;
 
 public:
+    /**
+     * @brief FilterBase: Default constructor
+     */
     FilterEkf(){};
+
     bool passes_mahalanobis(const ObservationVector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)
     {
         T sq_measurement_mahalanobis = innovation.dot(hph_t_r_inv * innovation);
@@ -54,11 +67,15 @@ public:
         if(sq_measurement_mahalanobis <= threshold) return true;
         return false;
     }
+
     bool temporal_update(const tTime& dt)
     {
         if(!this->m_initialized) return false;
+
+        // get jacobian matrix
         StateMatrix jacobian;
 		this->m_motion_model.compute_jacobian_and_predict(jacobian,this->m_state, dt);
+
         // wrap angles of state
         for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
         {
@@ -66,21 +83,19 @@ public:
         }
         
         // update the covariance: P = J * P * J' + Q
-       this->m_covariance = jacobian *this->m_covariance * jacobian.transpose();
-       this->m_covariance.noalias() += dt *this->m_process_noise;
+        this->m_covariance = jacobian *this->m_covariance * jacobian.transpose();
+        this->m_covariance.noalias() += dt *this->m_process_noise;
         return true;
     }
+
     bool observation_update(const ObservationVector& z, ObservationVector& innovation, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)
     {
         // Check if initialized
         if(!this->m_initialized) return false;
         Matrix ph_t =this->m_covariance * H.transpose();
         Matrix hph_t_r_inv = (H * ph_t + R).inverse();
-        // ObservationVector innovation = z - H *this->m_state;
-        // wrap angles of innovation( NOT SURE )
-        // We could either allow to take an array with the indexes to the angles as input parameter()
-        // or do the one below where I search for 1.0 in matrix H which come only in the columns that correspond to state angle indexes.
-        // The corresponding rows' indexes should then be measurement/innovaion angles' indexes
+
+        // wrap angles of innovation
         for (uint j = States::ORIENTATION_OFFSET_M; j < States::POSITION_V_OFFSET_M; j++)
         {
             for (uint i = 0; i < H.rows(); i++)
@@ -99,6 +114,7 @@ public:
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
         this->m_state.noalias() += K * innovation;
+
         // wrap angles of state
         for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
         {
@@ -112,12 +128,13 @@ public:
         // TO_DO: if covariance diagonal elements are near 0 give them a small value 
         StateMatrix I_K_H =this->m_identity;
         I_K_H.noalias() -= K * H;
-       this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
-       this->m_covariance.noalias() += K * R * K.transpose();
+        this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
+        this->m_covariance.noalias() += K * R * K.transpose();
         return true;
     }
 };
 
+// explicit template initialization
 using Ctrv_EKF2D = FilterEkf<motion_model::Ctrv2D, 6, double>;
 using Ctra_EKF2D = FilterEkf<motion_model::Ctra2D, 6, double>;
 using Ctra_EKF3D = FilterEkf<motion_model::Ctra3D, 6, double>;
