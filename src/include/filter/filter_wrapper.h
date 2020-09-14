@@ -52,7 +52,7 @@ class FilterWrapper
 {
 public:
     using Measurement= typename measurement::Measurement<num_state,T>;
-    using MeasurementTimeKeeper = typename measurement::MeasurementTimeKeeper;
+    using MeasurementTimeKeeper = measurement::MeasurementTimeKeeper;
     using FilterConfig_ = FilterConfig<T>;
 
     using States = typename FilterT::States;
@@ -242,8 +242,8 @@ public:
 
         // 4. Compute measurement vector
         Vector6T measurement;
-        measurement.head<3>() = linear_vel;
-        measurement.tail<3>() = angular_vel;
+        measurement.template head<3>() = linear_vel;
+        measurement.template tail<3>() = angular_vel;
 
         // 5. Compute measurement covariance
         Matrix6T covariance;
@@ -253,8 +253,8 @@ public:
         // 6. Rotate Covariance to fusion frame
         Matrix6T rot6d;
         rot6d.setIdentity();
-        rot6d.block<3,3>(0,0) = rot;
-        rot6d.block<3,3>(3,3) = rot;
+        rot6d.template block<3,3>(0,0) = rot;
+        rot6d.template block<3,3>(3,3) = rot;
         covariance = rot6d * covariance * rot6d.transpose();
 
         // 7. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
@@ -332,8 +332,8 @@ public:
         // consider update_vector
         Matrix4T pose_transf;
         pose_transf.setIdentity();
-        pose_transf.block<3,3>(0,0) = orientation.toRotationMatrix();
-        pose_transf.block<3,1>(0,3) = Eigen::Vector3d{
+        pose_transf.template block<3,3>(0,0) = orientation.toRotationMatrix();
+        pose_transf.template block<3,1>(0,3) = Eigen::Vector3d{
             msg->pose.position.x * (int)update_vector[STATE_X],
             msg->pose.position.y * (int)update_vector[STATE_Y],
             msg->pose.position.z * (int)update_vector[STATE_Z]};
@@ -343,15 +343,15 @@ public:
 
         // 4. Compute measurement vector
         Vector6T measurement;
-        measurement.head<3>() = pose_transf.block<3,1>(0,3);
-        measurement.tail<3>() = pose_transf.block<3,3>(0,0).eulerAngles(0,1,2);
+        measurement.template head<3>() = pose_transf.template block<3,1>(0,3);
+        measurement.template tail<3>() = pose_transf.template block<3,3>(0,0).eulerAngles(0,1,2);
 
         // 5. Rotate Covariance to fusion frame
         Matrix6T rot6d;
         rot6d.setIdentity();
         auto rot = transform.rotation();
-        rot6d.block<3,3>(0,0) = rot;
-        rot6d.block<3,3>(3,3) = rot;
+        rot6d.template block<3,3>(0,0) = rot;
+        rot6d.template block<3,3>(3,3) = rot;
 
         // 6. Compute measurement covariance
         Matrix6T covariance;

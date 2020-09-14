@@ -36,7 +36,15 @@ namespace iav{ namespace state_predictor { namespace measurement{
  * @brief Measurement class that aims to unify all times of measurements
  *        in order for them to be treated equally afterwards.
  */
-template<uint num_state, typename T = double>
+// forward declaration for compatibility with gcc in Linux
+template<uint num_state, typename T = double> 
+class Measurement;
+
+template<uint num_state, typename T> 
+bool operator< (Measurement<num_state, T> m1, Measurement<num_state, T> m2);
+// --------------------------------------------------------
+
+template<uint num_state, typename T>
 class Measurement
 {
     using MappingMatrix = Eigen::Matrix<T, -1, num_state>;
@@ -103,8 +111,8 @@ public:
  * @param[in] m2 - Second measurement
  * @return returns true if m1 id older than m2.
  */
-    template<uint num_state, typename T> // for the case we keep members private and use getters
-    friend bool operator<(Measurement<num_state, T> m1, Measurement<num_state, T> m2);
+    // template<uint num_state, typename T> // for the case we keep members private and use getters
+    friend bool operator< <>(Measurement<num_state, T> m1, Measurement<num_state, T> m2);
 };
 
 /**
