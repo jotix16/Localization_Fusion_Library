@@ -177,14 +177,20 @@ struct FilterConfig{
     /**
      * @brief Default Constructor
      */
-    FilterConfig() = default;
+    FilterConfig() {}//= default;
 
     /**
      * @brief Constructor that parses the filter parameters and all of its sensors.
      * @param[in] path - Path to the .json file normally in the folder config/.
      * @return FilterConfig object
      */
-    FilterConfig(const char* path){
+    FilterConfig(const char* path)
+    {
+        reset(path);
+    }
+    
+    void reset(const char* path)
+    {
         // Create stream and check if valid
         std::ifstream ifs {path};
         if ( !ifs.is_open() )
@@ -216,8 +222,10 @@ struct FilterConfig{
             std::string sensor_type = sensor_types[i];
             for (int  j = 0; j < doc["sensor_inputs"][i].GetInt(); j++)
             {
-                std::string str = sensor_type+ SSTR(j);
-                m_sensor_configs.emplace(str, SensorConfig(doc, str.data(), i));
+                std::string sensor_name = sensor_type + SSTR(j);
+                std::string topic = doc[sensor_name.data()]["topic_name"].GetString();
+                std::cout << "Added from config topic: " << topic << std::endl;
+                m_sensor_configs.emplace(topic, SensorConfig(doc, sensor_name.data(), i));
             }
         }
     }

@@ -78,11 +78,22 @@ private:
     Clock m_wall_time;
 
 public:
+    FilterWrapper() = default;
+    
     /**
      * @brief Constructor that inizializes configuration related parameters and time-keeping
-     * @param[out] config_path - path to .json configuration file
+     * @param[in] config_path - path to .json configuration file
      */
     FilterWrapper(const char* config_path)
+    {
+        reset(config_path);
+    }
+
+    /**
+     * @brief FilterWrapper: Function that inizializes configuration related parameters and time-keeping
+     * @param[in] config_path - path to .json configuration file
+     */
+    void reset(const char* config_path)
     {
         configure(config_path);
         m_wall_time = Clock();
