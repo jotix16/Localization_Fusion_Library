@@ -100,7 +100,12 @@ namespace iav{ namespace state_predictor{ namespace utilities{
   * @param[in] rotation - The rotation to bind
   * @return the bounded value
   */
-  double clamp_rotation(double rotation);
+  double clamp_rotation(tTime rotation)
+  {
+      while (rotation > PI) rotation -= TAU;
+      while (rotation < -PI) rotation += TAU;
+      return rotation;
+  }
 
   /**
   * @brief Utility method that transforms standard datatypes to string
