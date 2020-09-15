@@ -24,38 +24,38 @@ set(${NAME_ROOT}_VERSION "${${NAME_ROOT}_MAJOR_VERSION}.${${NAME_ROOT}_MINOR_VER
 
 project(${NAME_ROOT} VERSION ${${NAME_ROOT}_VERSION})
 
-######################### R O S #################################
-#################################################################
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  std_msgs
-  message_generation
-)
+# ######################### R O S #################################
+# #################################################################
+# find_package(catkin REQUIRED COMPONENTS
+#   roscpp
+#   rospy
+#   std_msgs
+#   message_generation
+# )
 
 
-################################################
-## Declare ROS messages, services and actions ##
-################################################
-# add_message_files(
-# 	 FILES
-#  )
+# ################################################
+# ## Declare ROS messages, services and actions ##
+# ################################################
+# # add_message_files(
+# # 	 FILES
+# #  )
 
-## Generate added messages and services with any dependencies listed here
-#  generate_messages(
-#    DEPENDENCIES
-#    std_msgs
-#  )
+# ## Generate added messages and services with any dependencies listed here
+# #  generate_messages(
+# #    DEPENDENCIES
+# #    std_msgs
+# #  )
 
-catkin_package(
-  CATKIN_DEPENDS message_runtime
-)
+# catkin_package(
+#   CATKIN_DEPENDS message_runtime
+# )
 
-include_directories(
-  ${catkin_INCLUDE_DIRS}
-)
-#################################################################
-######################### R O S #################################
+# include_directories(
+#   ${catkin_INCLUDE_DIRS}
+# )
+# #################################################################
+# ######################### R O S #################################
 
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_EXAMPLES "Build examples, will link matplotlib. Therefore you will need a valid Python2 installation." ON)
@@ -89,7 +89,7 @@ set(${NAME_ROOT}_TESTS_PATH          ${CMAKE_CURRENT_LIST_DIR}/test)
 set(${NAME_ROOT}_TOOLS_PATH          ${CMAKE_CURRENT_LIST_DIR}/tools)
 set(${NAME_ROOT}_THIRDPARTY_PATH     ${CMAKE_CURRENT_LIST_DIR}/3rdParty)
 set(${NAME_ROOT}_INTERFACES          ${CMAKE_CURRENT_LIST_DIR}/interfaces)
-
+set(${NAME_ROOT}_ROS_SRC_PATH          ${CMAKE_CURRENT_LIST_DIR}/ros_src)
 # Set the default install prefix if it's not set by the user
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install CACHE PATH "Install directory used by install." FORCE)
@@ -101,8 +101,5 @@ add_subdirectory(${${NAME_ROOT}_SRC_PATH})
 add_subdirectory(${${NAME_ROOT}_EXAMPLES_PATH})
 # add_subdirectory(${${NAME_ROOT}_TESTS_PATH})
 add_subdirectory(${${NAME_ROOT}_INTERFACES})
+add_subdirectory(${${NAME_ROOT}_ROS_SRC_PATH}) ## turn library in a package
 
-# Add a rosnode
-add_executable(filter_ros_node examples/ex_filter_wrapper/ex_filter_wrapper.cpp)
-target_link_libraries(filter_ros_node ${catkin_LIBRARIES} estimator)
-# add_dependencies(filter_node beginner_tutorials_generate_messages_cpp)
