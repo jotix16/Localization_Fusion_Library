@@ -25,9 +25,9 @@
 
 #include <array>
 #include <iostream>
-#include<Eigen/Dense>
+#include <Eigen/Dense>
 
-#include<utilities/filter_utilities.h>
+#include <utilities/filter_utilities.h>
 
 
 //TO_DO: No AngleWrapping done yet, with the motivation that 

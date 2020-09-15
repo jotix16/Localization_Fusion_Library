@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include<string>
-#include<array>
+#include <string>
+#include <array>
 
-#include<eigen/Eigen>
+#include <Eigen/Eigen>
 
-#include<utilities/filter_utilities.h>
+#include <utilities/filter_utilities.h>
 
 namespace iav{ namespace state_predictor { namespace measurement{
 

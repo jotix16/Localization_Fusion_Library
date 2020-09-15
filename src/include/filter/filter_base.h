@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include<eigen/Eigen>
+#include <Eigen/Eigen>
 
-#include<motion_model/motion_model.h>
+#include <motion_model/motion_model.h>
 
 
 namespace iav{ namespace state_predictor { namespace filter {

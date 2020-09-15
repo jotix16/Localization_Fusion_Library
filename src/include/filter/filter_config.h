@@ -27,14 +27,14 @@
 #include <string>
 #include <sstream>
 
-#include<eigen/Eigen>
+#include <Eigen/Eigen>
 
 #include "rapidjson/document.h"
 #include "rapidjson/istreamwrapper.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 
-#include<utilities/filter_utilities.h>
+#include <utilities/filter_utilities.h>
 
 namespace iav{ namespace state_predictor { namespace filter {
 

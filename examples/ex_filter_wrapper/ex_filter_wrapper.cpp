@@ -10,7 +10,7 @@
 #include<nav_msgs/msg/Odometry.h>
 #include<sensor_msgs/msg/Imu.h>
 
-#include<eigen/Eigen>
+#include<Eigen/Eigen>
 
 class ClassWithClock {
     iav::state_predictor::Clock clock;
