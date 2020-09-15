@@ -45,7 +45,7 @@ include_directories(
 # target_link_libraries(filter_ros_node ${catkin_LIBRARIES} estimator)
 # add_dependencies(filter_node beginner_tutorials_generate_messages_cpp)
 
-add_definitions(-Dloqeee="${PROJECT_SOURCE_DIR}")
+add_definitions(-DNODE_PATH="${PROJECT_SOURCE_DIR}")
 add_executable(filter_ros_node src/filter_node.cpp)
 target_include_directories(filter_ros_node PRIVATE include)
 target_link_libraries(filter_ros_node ${catkin_LIBRARIES} estimator)

@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
 
     FilterNode node(n);
-
+    node.publish_current_state();
     ros::spin();
     return 0;
 
