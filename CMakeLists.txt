@@ -24,6 +24,39 @@ set(${NAME_ROOT}_VERSION "${${NAME_ROOT}_MAJOR_VERSION}.${${NAME_ROOT}_MINOR_VER
 
 project(${NAME_ROOT} VERSION ${${NAME_ROOT}_VERSION})
 
+######################### R O S #################################
+#################################################################
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  rospy
+  std_msgs
+  message_generation
+)
+
+
+################################################
+## Declare ROS messages, services and actions ##
+################################################
+# add_message_files(
+# 	 FILES
+#  )
+
+## Generate added messages and services with any dependencies listed here
+#  generate_messages(
+#    DEPENDENCIES
+#    std_msgs
+#  )
+
+catkin_package(
+  CATKIN_DEPENDS message_runtime
+)
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
+#################################################################
+######################### R O S #################################
+
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_EXAMPLES "Build examples, will link matplotlib. Therefore you will need a valid Python2 installation." ON)
 
@@ -68,3 +101,8 @@ add_subdirectory(${${NAME_ROOT}_SRC_PATH})
 add_subdirectory(${${NAME_ROOT}_EXAMPLES_PATH})
 add_subdirectory(${${NAME_ROOT}_TESTS_PATH})
 add_subdirectory(${${NAME_ROOT}_INTERFACES})
+
+# Add a rosnode
+add_executable(filter_ros_node examples/ex_filter_wrapper/ex_filter_wrapper.cpp)
+target_link_libraries(filter_ros_node ${catkin_LIBRARIES} ${PROJECT_NAME})
+# add_dependencies(filter_node beginner_tutorials_generate_messages_cpp)
