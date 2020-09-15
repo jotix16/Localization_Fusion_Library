@@ -99,10 +99,10 @@ include (GenerateExportHeader)
 add_subdirectory(${${NAME_ROOT}_THIRDPARTY_PATH})
 add_subdirectory(${${NAME_ROOT}_SRC_PATH})
 add_subdirectory(${${NAME_ROOT}_EXAMPLES_PATH})
-add_subdirectory(${${NAME_ROOT}_TESTS_PATH})
+# add_subdirectory(${${NAME_ROOT}_TESTS_PATH})
 add_subdirectory(${${NAME_ROOT}_INTERFACES})
 
 # Add a rosnode
 add_executable(filter_ros_node examples/ex_filter_wrapper/ex_filter_wrapper.cpp)
-target_link_libraries(filter_ros_node ${catkin_LIBRARIES} ${PROJECT_NAME})
+target_link_libraries(filter_ros_node ${catkin_LIBRARIES} estimator)
 # add_dependencies(filter_node beginner_tutorials_generate_messages_cpp)

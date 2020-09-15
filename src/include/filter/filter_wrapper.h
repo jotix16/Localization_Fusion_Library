@@ -25,7 +25,7 @@
 #pragma once
 
 #include <vector>
-#include <eigen/Eigen>
+#include <Eigen/Eigen>
 
 #include <utilities/filter_utilities.h>
 #include <filter/filter_config.h>
