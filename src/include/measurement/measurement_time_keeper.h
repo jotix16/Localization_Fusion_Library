@@ -40,6 +40,7 @@ private:
     tTime m_dt_to_global;
     // measurement time (timestamp) of the last measurement used for observation update
     tTime m_t_last_observation_update;
+    bool debug = true;
 
 public:
     MeasurementTimeKeeper(): m_inizialized(false)
@@ -56,6 +57,8 @@ public:
         m_dt_to_global = global_time_now - measurement_time_stamp;
         m_t_last_temporal_update = measurement_time_stamp;
         m_t_last_observation_update = measurement_time_stamp;
+        if(debug) std::cout << "---------------Measurement Time Keeper: dt_global: " << m_dt_to_global 
+                            << "last_temp: " <<m_t_last_temporal_update<<" -------------------\n";
         m_inizialized = true;
     }
 
@@ -86,17 +89,18 @@ public:
     {
         m_t_last_observation_update = time_stamp;
         m_dt_to_global = global_time - time_stamp;
+        if(debug) std::cout << "---------------Measurement Time Keeper: dt_global: " << m_dt_to_global<<"\n";
     }
 
 /**
  * @brief MeasurementTimeKeeper: Calculates the time difference since last temporal update.
  * @param[in] gloal_time_now - The wall time from which the time difference should be calculated.
  * @return The time difference from the last temporal update to global_time_now.
- *         dt = m_t_last_temp_update -(global_time_now - m_dt_to_global) 
+ *         dt = (global_time_now - m_dt_to_global) - m_t_last_temp_update
  */
     inline tTime time_since_last_temporal_update(tTime global_time_now) const
     {
-        return m_t_last_temporal_update + m_dt_to_global - global_time_now;
+        return global_time_now - m_dt_to_global - m_t_last_temporal_update;
     }
 
 /**
@@ -108,6 +112,11 @@ public:
     inline tTime latest_timestamp() const
     {
         return m_t_last_observation_update < m_t_last_temporal_update ? m_t_last_temporal_update : m_t_last_observation_update;
+    }
+
+    inline tTime to_measurement_time(tTime global_time_now) const
+    {
+        return global_time_now - m_dt_to_global;
     }
 };
 

@@ -1,18 +1,19 @@
-#include "ros/ros.h"
 #include <iostream>
+#include "ros/ros.h"
 
-#include<filter_node.h>
-
+#include <XmlRpcException.h>
+#include <filter_node.h>
+#include <cstdlib>
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "filter_node"); // creates the node
-    
-    ros::NodeHandle n;
+  ros::init(argc, argv, "filter_node");  // creates the node
+  ros::NodeHandle n;
+  ros::NodeHandle n_param("~");
 
-    FilterNode node(n);
-    node.publish_current_state();
-    ros::spin();
-    return 0;
+  NodeCtraEKF2D node(n, n_param);
+  node.publish_current_state();
+  ros::spin();
 
+  return 0;
 }

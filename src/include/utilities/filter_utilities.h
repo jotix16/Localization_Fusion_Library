@@ -102,8 +102,8 @@ namespace iav{ namespace state_predictor{ namespace utilities{
   */
   double clamp_rotation(tTime rotation)
   {
-      while (rotation > PI) rotation -= TAU;
-      while (rotation < -PI) rotation += TAU;
+      while (rotation > PI){rotation -= TAU;};
+      while (rotation < -PI){rotation += TAU;};
       return rotation;
   }
 

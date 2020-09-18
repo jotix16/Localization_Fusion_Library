@@ -90,7 +90,7 @@ public:
      * @brief FilterBase: Getter function for the state estimation vector
      * @return the state estimation vector
      */
-    inline StateVector get_state() const
+    inline const StateVector& get_state() const
     {
         return m_state;
     }

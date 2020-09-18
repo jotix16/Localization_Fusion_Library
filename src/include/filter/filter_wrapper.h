@@ -76,6 +76,7 @@ private:
     MeasurementTimeKeeper m_time_keeper;
     FilterConfig_ m_config;
     Clock m_wall_time;
+    bool debug = true;
 
 public:
     FilterWrapper() = default;
@@ -146,6 +147,7 @@ public:
         const TransformationMatrix& transform_to_world,
         const TransformationMatrix& transform_to_base_link)
     {
+        if(debug) std::cout << "---------------Wrapper Odom_callback: IN-------------------"<< std::endl;
         bool* update_vector = m_config.m_sensor_configs[msg->header.frame_id].m_update_vector;
         
         // 1. Create vector the same size as the submeasurement that will be used
@@ -187,12 +189,16 @@ public:
 
         // 4. Send measurement to be handled
         // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
-        T mahalanobis_thresh = 0.4;
+        T mahalanobis_thresh = 2220.8;
         // TO_DO: not sure about the time, should try out.
-        tTime stamp_sec = static_cast<tTime>(msg->header.stamp.nanosec/1000000000LL);
+        tTime stamp_sec = (static_cast<tTime>(msg->header.stamp.nanosec)/1000000000LL);
+        if(debug) std::cout << "---------------Wrapper Odom_callback:\n Innovation: " << sub_innovation.transpose() << "\n";
+        if(debug) std::cout << " Measurement: " << sub_measurement.transpose() << "\n";
+        if(debug) std::cout << " State: " << get_state().transpose() << "\n";
         Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, 
                          state_to_measurement_mapping, msg->header.frame_id, mahalanobis_thresh);
         handle_measurement(meas);
+        if(debug) std::cout << "---------------Wrapper Odom_callback: OUT-------------------\n";
     }
 
     /**
@@ -219,6 +225,7 @@ public:
         std::vector<uint>& update_indices,
         size_t ix1, size_t update_size)
     {
+        if(debug) std::cout << "---------------Wrapper Prepare_Twist: IN-------------------\n";
         // 1. Extract linear and angular velocities
         // - consider update_vector
         Vector3T linear_vel; 
@@ -274,7 +281,7 @@ public:
         {
             meas_index = update_indices[i] - POSE_SIZE;
             sub_measurement(i + ix1) = measurement(meas_index);
-            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[update_indices[i]]) - measurement(meas_index);
+            sub_innovation(i + ix1) = measurement(meas_index) - m_filter.at(States::full_state_to_estimated_state[update_indices[i]]);
             for (uint j = 0; j < update_size; j++)
             {
                 sub_covariance(i + ix1, j + ix1) = covariance(meas_index, meas_index);
@@ -287,6 +294,7 @@ public:
             if (States::full_state_to_estimated_state[update_indices[i]] < STATE_SIZE)
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
+        if(debug) std::cout << "---------------Wrapper Prepare_Twist: OUT-------------------\n";
     }
 
     /**
@@ -313,6 +321,7 @@ public:
         std::vector<uint>& update_indices,
         uint ix1, size_t update_size)
     {
+        if(debug) std::cout << "---------------Wrapper Prepare_Pose: IN-------------------\n";
         // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
         // - Handle bad (empty) quaternions and normalize
         Quaternion orientation;
@@ -374,7 +383,7 @@ public:
         for ( uint i = 0; i < update_size; i++)
         {
             sub_measurement(i + ix1) = measurement(update_indices[i]);
-            sub_innovation(i + ix1) = m_filter.at(States::full_state_to_estimated_state[update_indices[i]]) - measurement(update_indices[i]);
+            sub_innovation(i + ix1) = measurement(update_indices[i]) - m_filter.at(States::full_state_to_estimated_state[update_indices[i]]);
             for (uint j = 0; j < update_size; j++)
             {
                 sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i], update_indices[j]);
@@ -387,6 +396,7 @@ public:
             if (States::full_state_to_estimated_state[update_indices[i]]<15)
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
+        if(debug) std::cout << "---------------Wrapper Prepare_Pose: OUT-------------------\n";
     }
 
     /**
@@ -397,6 +407,7 @@ public:
      */
     bool handle_measurement(Measurement& measurement)
     {
+        if(debug) std::cout << "---------------Wrapper Handle_Measurement: IN-------------------\n";
         // TO_DO: this function differentiates the data_triggered and time_triggered option
         // it calls process_measurement imidiately if data triggered and otherwise puts the measurement in the buffer.
         bool data_triggered = true;
@@ -404,6 +415,7 @@ public:
         {
             return process_measurement(measurement);
         }
+        if(debug) std::cout << "---------------Wrapper Handle_Measurement: OUT-------------------\n";
         return true;
     }
 
@@ -415,6 +427,7 @@ public:
      */
     bool process_measurement(Measurement& measurement)
     {
+        if(debug) std::cout << "---------------Wrapper Process_Measurement: IN-------------------\n";
         // Get global time
         tTime time_now = m_wall_time.now();
 
@@ -426,22 +439,30 @@ public:
 
             // Initialize the filter with the first measurement
             // std::cout<<"Filter or timeMeasurement are not initialized. We are initializing!\n";
+            if(debug) std::cout << "---------------Wrapper: Reseting! **" <<  time_now <<" ; " << measurement.m_time_stamp << "**---------------\n";
             reset(measurement.m_measurement_vector, measurement.m_state_to_measurement_mapping, time_now, measurement.m_time_stamp);
             return false;
         }
         else
         {
             // 1. temporal update
-            auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
+            if(debug) std::cout << "---------------Wrapper: Temporal update, time now: "<< time_now << "---------------\n";
+            auto dt = m_time_keeper.time_since_last_temporal_update(time_now); // PROBLEM: is calculated wrong.
             if (m_filter.temporal_update(dt))
+            {
+                std::cout << "---------------Wrapper: Temporal update, dt: "<< dt << "---------------\n";
                 m_time_keeper.update_after_temporal_update(dt);
-
+            }
             // 2. observation update
             if (m_filter.observation_update(measurement.m_measurement_vector,measurement.m_innovation,
                     measurement.m_state_to_measurement_mapping, measurement.m_measurement_covariance,
                     measurement.m_mahalanobis_thresh))
+            {
+                if(debug) std::cout << "---------------Wrapper: Observation update!---------------\n";
                 m_time_keeper.update_with_measurement(measurement.m_time_stamp, time_now);
+            }
         }
+        if(debug) std::cout << "---------------Wrapper Process_Measurement: OUT-------------------\n";
         return true;
     }
 
@@ -449,7 +470,7 @@ public:
      * @brief FilterWrapper: Getter function for the state estimation
      * @return the state estimation vector
      */
-    inline StateVector get_state() const
+    inline const StateVector& get_state() const
     {
         return m_filter.get_state();
     }
@@ -489,7 +510,7 @@ public:
         // 1. reset filter
         StateVector x0;
         x0 = mapping_matrix.transpose()*measurement_vector;
-        std::cout << "Initializing with:" << x0.transpose()<<"\n" << mapping_matrix <<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n";
+        if(debug) std::cout << "Initializing with:" << x0.transpose()<<"\n" << mapping_matrix <<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n";
         // std::cout << "Init cov:\n" << m_config.m_init_estimation_covariance<<"\n";
 
         // extract the part of init_estimation and process_noise covariances you need
@@ -533,10 +554,98 @@ public:
     {
         m_config = FilterConfig_(config_path);
     }
+
+    // get state in odom form
+    nav_msgs::msg::Odometry get_state_odom()
+    {
+        const StateVector &state = m_filter.get_state();
+        const StateMatrix &cov_mat = m_filter.get_covariance();
+
+        nav_msgs::msg::Odometry msg;
+
+        uint ix, iy, iz;
+
+        // 1. Posisiton
+        ix = States::full_state_to_estimated_state[STATE_X];
+        iy = States::full_state_to_estimated_state[STATE_Y];
+        iz = States::full_state_to_estimated_state[STATE_Z];
+        msg.pose.pose.position.x = ix < 15 ? m_filter.at(ix) : 0;
+        msg.pose.pose.position.y = iy < 15 ? m_filter.at(iy) : 0;
+        msg.pose.pose.position.z = iz < 15 ? m_filter.at(iz) : 0;
+
+        // 2. Orientation
+        ix = States::full_state_to_estimated_state[STATE_ROLL];
+        iy = States::full_state_to_estimated_state[STATE_PITCH];
+        iz = States::full_state_to_estimated_state[STATE_YAW];
+        T roll =  ix < 15 ? m_filter.at(ix) : 0.0;
+        T pitch = iy < 15 ? m_filter.at(iy) : 0.0;
+        T yaw =   iz < 15 ? m_filter.at(iz) : 0.0;
+        // // euler to quaternion
+        Eigen::Quaterniond qq;
+        qq = Eigen::AngleAxisd(roll, Vector3T::UnitX())
+        * Eigen::AngleAxisd(pitch, Vector3T::UnitY())
+        * Eigen::AngleAxisd(yaw, Vector3T::UnitZ());
+        // qq.normalize();
+        // msg.pose.pose.orientation.x = qq.x();
+        // msg.pose.pose.orientation.y = qq.y();
+        // msg.pose.pose.orientation.z = qq.z();
+        // msg.pose.pose.orientation.w = qq.w();
+
+        // 3. Linear Twist
+        ix = States::full_state_to_estimated_state[STATE_V_X];
+        iy = States::full_state_to_estimated_state[STATE_V_Y];
+        iz = States::full_state_to_estimated_state[STATE_V_Z];
+        msg.twist.twist.linear.x = ix < 15 ? m_filter.at(ix) : 0;
+        msg.twist.twist.linear.y = iy < 15 ? m_filter.at(iy) : 0;
+        msg.twist.twist.linear.y = iz < 15 ? m_filter.at(iz) : 0;
+
+        // 4. Angular Twist
+        ix = States::full_state_to_estimated_state[STATE_V_ROLL];
+        iy = States::full_state_to_estimated_state[STATE_V_PITCH];
+        iz = States::full_state_to_estimated_state[STATE_V_YAW];
+        msg.twist.twist.angular.x = ix < 15 ? m_filter.at(ix) : 0;
+        msg.twist.twist.angular.y = iy < 15 ? m_filter.at(iy) : 0;
+        msg.twist.twist.angular.y = iz < 15 ? m_filter.at(iz) : 0;
+
+
+        // 6. Pose Covariance
+        for (int i = 0; i < POSE_SIZE; i++)
+        {
+            ix = States::full_state_to_estimated_state[i];
+            if ( ix > 14) continue;
+            for(int j = 0; j < POSE_SIZE; j++)
+            {
+                iy = States::full_state_to_estimated_state[j];
+                if ( iy > 14) continue;
+                msg.pose.covariance[i + j*6] = cov_mat(ix , iy);
+            }
+        }
+
+        // 7. Twist Covariance
+        for (int i = 0; i < TWIST_SIZE; i++)
+        {
+            ix = States::full_state_to_estimated_state[i+POSE_SIZE];
+            if ( ix > 14) continue;
+            for(int j = 0; j < TWIST_SIZE; j++)
+            {
+                iy = States::full_state_to_estimated_state[j+POSE_SIZE];
+                if ( iy > 14) continue;
+                msg.twist.covariance[i + j*6] = cov_mat(ix , iy);
+            }
+        }
+    }
+    
+    tTime get_last_measurement_time()
+    {
+        return m_time_keeper.latest_timestamp();
+    }
+
 };
 
 // explicit template initialization
 using FilterCtrvEKF2D = FilterWrapper<Ctrv_EKF2D, 6, double>;
+using FilterCtraEKF2D = FilterWrapper<Ctra_EKF2D, 8, double>;
+using FilterCtraEKF3D = FilterWrapper<Ctra_EKF3D, 15, double>;
 
 } // end namespace filter 
 } // end namespace state_predictor
