@@ -58,7 +58,7 @@ public:
     /**
      * @brief FilterBase: Default constructor
      */
-    int debug = 1;
+    int debug = 0;
     FilterEkf(){};
 
     bool passes_mahalanobis(const ObservationVector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)
@@ -77,31 +77,31 @@ public:
 
     bool temporal_update(const tTime& dt)
     {
-        if(debug) std::cout << "\n\n---------------FilterEKF Temporal_Update: IN---------------\n";
+        if(debug > 0) std::cout << "\n\n---------------FilterEKF Temporal_Update: IN---------------\n";
         if(!this->m_initialized) return false;
 
         // get jacobian matrix
         StateMatrix jacobian;
         // std::cout << "---------------FilterEKF before predict yaw: " << this->m_state[States::ORIENTATION_OFFSET_M] <<"\n";
-        if(debug) std::cout << "---------------FilterEKF before predict state: \n" << this->m_state.transpose() <<"\n";
+        if(debug > 0) std::cout << "---------------FilterEKF before predict state: \n" << this->m_state.transpose() <<"\n";
         if(debug > 1) std::cout << "---------------FilterEKF before predict cov: \n" << this->m_covariance <<"\n";
 		this->m_motion_model.compute_jacobian_and_predict(jacobian,this->m_state, dt);
-        if(debug) std::cout << "---------------FilterEKF after predict state: \n" << this->m_state.transpose() <<"\n";
-        if(debug) std::cout << "---------------FilterEKF: Compute_Jacobian_And_Predict---------------\n";
+        if(debug > 0) std::cout << "---------------FilterEKF after predict state: \n" << this->m_state.transpose() <<"\n";
+        if(debug > 0) std::cout << "---------------FilterEKF: Compute_Jacobian_And_Predict---------------\n";
 
         // wrap angles of state
         for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
         {
-           if(debug) std::cout << "---------------FilterEKF before clamp, yaw: " << this->m_state[i] <<"\n";
+           if(debug > 0) std::cout << "---------------FilterEKF before clamp, yaw: " << this->m_state[i] <<"\n";
            this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
-           if(debug) std::cout << "---------------FilterEKF after clamp, yaw: " << this->m_state[i] <<"\n";
+           if(debug > 0) std::cout << "---------------FilterEKF after clamp, yaw: " << this->m_state[i] <<"\n";
         }
-        if(debug) std::cout << "---------------FilterEKF: Clamp---------------\n";
+        if(debug > 0) std::cout << "---------------FilterEKF: Clamp---------------\n";
         
         // update the covariance: P = J * P * J' + Q
         this->m_covariance = jacobian *this->m_covariance * jacobian.transpose();
         this->m_covariance.noalias() += dt *this->m_process_noise;
-        if(debug) std::cout << "---------------FilterEKF Temporal_Update: OUT---------------\n\n";
+        if(debug > 0) std::cout << "---------------FilterEKF Temporal_Update: OUT---------------\n\n";
         return true;
     }
 
@@ -110,10 +110,10 @@ public:
         // Check if initialized
         if(!this->m_initialized)
         {
-            if(debug) std::cout << "\n---------------FilterEKF: Filter not initialized ---------------\n";
+            if(debug > 0) std::cout << "\n---------------FilterEKF: Filter not initialized ---------------\n";
             return false;
         }
-        if(debug) std::cout << "---------------FilterEKF before observation update state: \n" << this->m_state.transpose() <<"\n";
+        if(debug > 0) std::cout << "---------------FilterEKF before observation update state: \n" << this->m_state.transpose() <<"\n";
         if(debug > 1) std::cout << "H matrix: \n" <<     H       <<"\n";
         if(debug > 1) std::cout << "R cov matrix: \n" <<     R       <<"\n";
         if(debug > 1) std::cout << "P covariance estimation: \n" <<     this->m_covariance       <<"\n";
@@ -135,7 +135,7 @@ public:
         // check mahalanobis distance
         if(!passes_mahalanobis(innovation, hph_t_r_inv, mahalanobis_threshold))
         {
-            if(debug) std::cout << "---------------FilterEKF: Fail Mahalanobis" << mahalanobis_threshold << "---------------\n\n\n";
+            if(debug > 0) std::cout << "---------------FilterEKF: Fail Mahalanobis" << mahalanobis_threshold << "---------------\n\n\n";
             return false;
         }
 
@@ -149,7 +149,7 @@ public:
         {
            this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
         }
-        if(debug) std::cout << "---------------FilterEKF after observation update state: \n" << this->m_state.transpose() <<"\n";
+        if(debug > 0) std::cout << "---------------FilterEKF after observation update state: \n" << this->m_state.transpose() <<"\n";
         // Correct the covariance using Joseph form for stability. This is the
         // same as P = P - K * H * P, but presents less of a problem in the
         // presense of floating point roundoff.
