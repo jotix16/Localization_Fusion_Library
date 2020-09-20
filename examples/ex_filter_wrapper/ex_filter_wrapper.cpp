@@ -63,13 +63,19 @@ int main(){
     msg.twist.twist.angular.y = 0.0;
     msg.twist.twist.angular.z = 12.0;
 
+    bool c[15] = { true,true,true,
+                true,true,true,
+                true,true,true,
+                true,true,true,
+                true,true,true};
 
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    CallbackData cb("mikel",c, 2.0);
+    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     msg.header.stamp.sec = 3331;
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    my_filter_wrapper.odom_callback(&msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     std::cout<< "State: " <<my_filter_wrapper.get_state().transpose()<<"\n";
     std::cout<< "Covariance: \n" <<my_filter_wrapper.get_covariance().transpose()<<"\n";
     // geometry_msgs::msg::TwistWithCovariance twist;

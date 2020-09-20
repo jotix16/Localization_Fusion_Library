@@ -31,6 +31,8 @@
 
 using FilterWrapper = iav::state_predictor::filter::FilterCtrvEKF2D;
 
+
+
 template<class FilterT, typename T = double>
 class FilterNode
 {
@@ -87,6 +89,7 @@ class FilterNode
         {
             // 1. initialize filter
             std::string path = std::string(NODE_PATH) + std::string("/config/filter_config.json");
+            ROS_INFO_STREAM( "Initialize FilterWrapper from path: " << path << "\n");
             m_filter_wrapper.reset(path.c_str());
 
             // 2. initialize publisher
@@ -95,6 +98,7 @@ class FilterNode
             // 3. initialize subscribers            
             int odom_nr_;
             m_n_param.param("odom_nr", odom_nr_, 0);
+
             for(int i=0; i < odom_nr_; i++)
             {
                 std::stringstream ss;
@@ -102,9 +106,11 @@ class FilterNode
 
                 std::string odom_top;
                 m_n_param.getParam(ss.str(), odom_top);
+                const CallbackData odom_callback_data(odom_top, m_filter_wrapper.m_config.m_sensor_configs[odom_top].m_update_vector, 2200);
 
                 ROS_INFO_STREAM("Subscribing to: " << odom_top);
-                m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_top, 10, &FilterNode::odom_callback, this));
+                m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_top, 10, 
+                boost::bind(&FilterNode::odom_callback, this, _1, odom_callback_data)));
             }
             
             // 4. set the frames
@@ -129,7 +135,7 @@ class FilterNode
             return m_tf_buffer.lookupTransform(m_frame_id, header.frame_id, ros::Time(0));
         }
 
-        void odom_callback(const OdomMsg::ConstPtr& msg)
+        void odom_callback(const OdomMsg::ConstPtr& msg, CallbackData& cb)
         {
             TransformationMatrix transform_to_world;
             TransformationMatrix transform_to_base_link;
@@ -137,6 +143,8 @@ class FilterNode
             // msg->header.stamp
 
             // 1. get transformations from world and base_link to the sensor frame
+            std::cout << "MSG FRAME ID: " << cb.m_topic_name << "\n";
+            // ROS_INFO(msg->header.frame_id);
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
             geometry_msgs::TransformStamped transformStamped;
             try
@@ -168,11 +176,12 @@ class FilterNode
             to_local_msg(msg, msg_loc);
 
 
-            ros_info_msg(&msg);
             
             // 2. call filter's odom_callback
-            m_filter_wrapper.odom_callback(&msg_loc, transform_to_world, transform_to_base_link);
             ROS_INFO_STREAM( "Odom Callback called  " << ((double)msg->header.stamp.nsec)/1000000000LL << "\n");
+            ros_info_msg(msg_loc);
+            ros_info_msg(msg_loc);
+            m_filter_wrapper.odom_callback(cb, &msg_loc, transform_to_world, transform_to_base_link);
 
 
             // std::cout << transform_to_world.matrix() << "\n";
@@ -183,20 +192,20 @@ class FilterNode
 
         }
         
-        void ros_info_msg(const OdomMsgLocFusLib* msg)
+        void ros_info_msg(const OdomMsgLocFusLib& msg)
         {
             std::stringstream ss;
-            ss << msg->pose.pose.position.x << " "
-               << msg->pose.pose.position.y << " "
-               << msg->pose.pose.position.z << " "
-               << msg->twist.twist.linear.x << " "
-               << msg->twist.twist.linear.y << " "
-               << msg->twist.twist.linear.z << " "
-               << msg->twist.twist.angular.x << " "
-               << msg->twist.twist.angular.y << " "
-               << msg->twist.twist.angular.z << " ";
+            ss << msg.pose.pose.position.x << "//"
+               << msg.pose.pose.position.y << "//"
+               << msg.pose.pose.position.z << "//"
+               << msg.twist.twist.linear.x << "//"
+               << msg.twist.twist.linear.y << "//"
+               << msg.twist.twist.linear.z << "//"
+               << msg.twist.twist.angular.x << "//"
+               << msg.twist.twist.angular.y << "//"
+               << msg.twist.twist.angular.z << "//";
 
-            ROS_INFO_STREAM( "" << ss.str() << "\n");
+            ROS_INFO_STREAM( "Measurement: " << ss.str() << "\n");
         }
         
         void to_local_msg(const OdomMsg::ConstPtr& msg, OdomMsgLocFusLib &msg_loc)
@@ -207,14 +216,11 @@ class FilterNode
             msg_loc.pose.pose.position.x = msg->pose.pose.position.x;
             msg_loc.pose.pose.position.y = msg->pose.pose.position.y;
             msg_loc.pose.pose.position.z = msg->pose.pose.position.z;
-            std::cout << "\n Cov R: ";
             for (int i = 0; i < 36; i++)
             {
-                std::cout << msg->pose.covariance[i] << " ";
                 msg_loc.pose.covariance[i] = msg->pose.covariance[i]; 
                 msg_loc.twist.covariance[i] = msg->twist.covariance[i]; 
             }
-            std::cout << std::endl;
             msg_loc.pose.pose.orientation.x = msg->pose.pose.orientation.x;
             msg_loc.pose.pose.orientation.y = msg->pose.pose.orientation.y;
             msg_loc.pose.pose.orientation.z = msg->pose.pose.orientation.z;
@@ -269,15 +275,42 @@ class FilterNode
 
         void publish_current_state()
         {
-            OdomMsg msg_pub;
+            if (!m_filter_wrapper.is_initialized()) return;
             OdomMsgLocFusLib msg_loc;
             msg_loc = m_filter_wrapper.get_state_odom();
-            to_ros_msg(msg_pub, msg_loc);     
+
+            // publish topic
+            OdomMsg msg_pub;
+            to_ros_msg(msg_pub, msg_loc);
             msg_pub.header.stamp = ros::Time(m_filter_wrapper.get_last_measurement_time());
             msg_pub.header.frame_id = m_map_frame_id;
             msg_pub.child_frame_id = m_output_baselink_frame_id;
             m_position_publisher.publish(msg_pub);
-            ros_info_msg(&msg_loc);
+
+            // publish frame
+            geometry_msgs::TransformStamped transformStamped;
+            transformStamped.header = msg_pub.header;
+            transformStamped.child_frame_id = msg_pub.child_frame_id;
+            transformStamped.transform.translation.x = msg_pub.pose.pose.position.x;
+            transformStamped.transform.translation.y = msg_pub.pose.pose.position.y;
+            transformStamped.transform.translation.z = msg_pub.pose.pose.position.z;
+            transformStamped.transform.rotation = msg_pub.pose.pose.orientation;
+            m_tf_broadcaster.sendTransform(transformStamped);
+
+            // transformStamped.header.stamp = ros::Time::now();
+            // transformStamped.header.frame_id = "world";
+            // transformStamped.child_frame_id = turtle_name;
+            // transformStamped.transform.translation.x = msg->x;
+            // transformStamped.transform.translation.y = msg->y;
+            // transformStamped.transform.translation.z = 0.0;
+            // tf2::Quaternion q;
+            // q.setRPY(0, 0, msg->theta);
+            // transformStamped.transform.rotation.x = q.x();
+            // transformStamped.transform.rotation.y = q.y();
+            // transformStamped.transform.rotation.z = q.z();
+            // transformStamped.transform.rotation.w = q.w();
+            // br.sendTransform(transformStamped);
+            // ros_info_msg(msg_loc);
         }
 };
 
