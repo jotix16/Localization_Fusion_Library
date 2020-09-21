@@ -16,6 +16,7 @@ cp -r ...  ~/catkin_ws/src/
 ``` 
 4. Build the ros package
 ```bash
+cd ~/catkin_ws/
 catkin_make
 ```
 5. In order to start the node on a test bag do
@@ -147,4 +148,4 @@ The solution was found [here](https://github.com/ros-visualization/rviz/issues/1
 With the help of [this](https://www.digitalocean.com/community/tutorials/how-to-read-and-set-environmental-and-shell-variables-on-a-linux-vps)
  
 ## How to make Windows Terminal behave like Terminator from Ubuntu
-Open Windows Terminal and press Ctrl+, and copy the setting in [profile.json]([/profile.json](https://gitlab.iavgroup.local/-/snippets/177))
+Open Windows Terminal and press Ctrl+, and copy the setting in [profile.json](https://gitlab.iavgroup.local/-/snippets/177)
