@@ -178,9 +178,8 @@ class FilterNode
 
             
             // 2. call filter's odom_callback
-            ROS_INFO_STREAM( "Odom Callback called  " << ((double)msg->header.stamp.nsec)/1000000000LL << "\n");
-            ros_info_msg(msg_loc);
-            ros_info_msg(msg_loc);
+            ROS_INFO_STREAM( "Odom Callback called  msg time:" << ((double)msg->header.stamp.sec) << " now:" << ros::Time::now() <<"\n");
+            // ros_info_msg(msg_loc);
             m_filter_wrapper.odom_callback(cb, &msg_loc, transform_to_world, transform_to_base_link);
 
 
@@ -296,21 +295,6 @@ class FilterNode
             transformStamped.transform.translation.z = msg_pub.pose.pose.position.z;
             transformStamped.transform.rotation = msg_pub.pose.pose.orientation;
             m_tf_broadcaster.sendTransform(transformStamped);
-
-            // transformStamped.header.stamp = ros::Time::now();
-            // transformStamped.header.frame_id = "world";
-            // transformStamped.child_frame_id = turtle_name;
-            // transformStamped.transform.translation.x = msg->x;
-            // transformStamped.transform.translation.y = msg->y;
-            // transformStamped.transform.translation.z = 0.0;
-            // tf2::Quaternion q;
-            // q.setRPY(0, 0, msg->theta);
-            // transformStamped.transform.rotation.x = q.x();
-            // transformStamped.transform.rotation.y = q.y();
-            // transformStamped.transform.rotation.z = q.z();
-            // transformStamped.transform.rotation.w = q.w();
-            // br.sendTransform(transformStamped);
-            // ros_info_msg(msg_loc);
         }
 };
 

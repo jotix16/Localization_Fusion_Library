@@ -115,8 +115,6 @@ public:
         }
         if(debug > 0) std::cout << "---------------FilterEKF before observation update state: \n" << this->m_state.transpose() <<"\n";
         if(debug > 1) std::cout << "H matrix: \n" <<     H       <<"\n";
-        if(debug > 1) std::cout << "R cov matrix: \n" <<     R       <<"\n";
-        if(debug > 1) std::cout << "P covariance estimation: \n" <<     this->m_covariance       <<"\n";
         Matrix ph_t =this->m_covariance * H.transpose();
         Matrix hph_t_r_inv = (H * ph_t + R).inverse();
 
