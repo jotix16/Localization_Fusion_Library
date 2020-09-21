@@ -47,7 +47,7 @@ After following [a](#a.-enable-autocomplition-for-ROS-in-C++) and [b](#b.-shortc
             "cStandard": "c11",
             "cppStandard": "c++14",
             "intelliSenseMode": "gcc-x64",
-            "compileCommands": "/home/mzhobro/filter_ws/build/compile_commands.json"
+            "compileCommands": "~/catkin_ws/build/compile_commands.json"
         }
     ],
     "version": 4
