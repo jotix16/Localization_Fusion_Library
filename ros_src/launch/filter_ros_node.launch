@@ -1,16 +1,17 @@
 <!-- Launch file for test_ekf_localization_node_bag1 -->
-
 <!-- In this run, we ran a Clearpath Husky with a slightly broken Microstrain 3DM-GX2 IMU
      around a parking lot. The IMU was intentionally rotated +90 degrees about the X axis,
      then rotated (extrinsically) -90 degrees about the Z axis. -->
+
 
 <launch>
     <node pkg="tf2_ros" type="static_transform_publisher" name="bl_imu" args="0 -0.3 0.52 -1.570796327 0 1.570796327 base_link imu_link" />
     <node pkg="tf2_ros" type="static_transform_publisher" name="map_odom"  args="0 0 0 0 0 0 map odom" />
     <node pkg="tf2_ros" type="static_transform_publisher" name="odom_base" args="0 0 0 0 0 0 odom base_link" />
 
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find LocalizationFusionLibrary)/ros_src/rviz/config_file.rviz" />
     <node pkg="rosbag" type="play" name="rosbagplay" args="$(find LocalizationFusionLibrary)/test/test1.bag --clock -d 5" required="true"/>
-
+    
     <node name="filter_node" pkg="LocalizationFusionLibrary" type="filter_ros_node" output="screen">
       <param name="frequency" value="30"/>
 
@@ -63,5 +64,4 @@
                                                      0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    1e-9]</rosparam>
 
     </node>
-
 </launch>
