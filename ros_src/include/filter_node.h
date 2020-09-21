@@ -106,11 +106,9 @@ class FilterNode
 
                 std::string odom_top;
                 m_n_param.getParam(ss.str(), odom_top);
-                const CallbackData odom_callback_data(odom_top, m_filter_wrapper.m_config.m_sensor_configs[odom_top].m_update_vector, 2200);
-
                 ROS_INFO_STREAM("Subscribing to: " << odom_top);
                 m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_top, 10, 
-                boost::bind(&FilterNode::odom_callback, this, _1, odom_callback_data)));
+                boost::bind(&FilterNode::odom_callback, this, _1, odom_top)));
             }
             
             // 4. set the frames
@@ -135,7 +133,7 @@ class FilterNode
             return m_tf_buffer.lookupTransform(m_frame_id, header.frame_id, ros::Time(0));
         }
 
-        void odom_callback(const OdomMsg::ConstPtr& msg, CallbackData& cb)
+        void odom_callback(const OdomMsg::ConstPtr& msg, std::string topic_name)
         {
             TransformationMatrix transform_to_world;
             TransformationMatrix transform_to_base_link;
@@ -143,7 +141,7 @@ class FilterNode
             // msg->header.stamp
 
             // 1. get transformations from world and base_link to the sensor frame
-            std::cout << "MSG FRAME ID: " << cb.m_topic_name << "\n";
+            std::cout << "MSG FRAME ID: " << topic_name << "\n";
             // ROS_INFO(msg->header.frame_id);
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
             geometry_msgs::TransformStamped transformStamped;
@@ -180,7 +178,7 @@ class FilterNode
             // 2. call filter's odom_callback
             ROS_INFO_STREAM( "Odom Callback called  msg time:" << ((double)msg->header.stamp.sec) << " now:" << ros::Time::now() <<"\n");
             // ros_info_msg(msg_loc);
-            m_filter_wrapper.odom_callback(cb, &msg_loc, transform_to_world, transform_to_base_link);
+            m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_world, transform_to_base_link);
 
 
             // std::cout << transform_to_world.matrix() << "\n";

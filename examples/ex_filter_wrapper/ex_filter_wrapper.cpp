@@ -69,16 +69,15 @@ int main(){
                 true,true,true,
                 true,true,true};
 
-    CallbackData cb("mikel",c, 2.0);
-    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    std::string topic_name = "Mikel";
+    my_filter_wrapper.odom_callback(topic_name, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     msg.header.stamp.sec = 3331;
-    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    my_filter_wrapper.odom_callback(cb, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(topic_name, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(topic_name, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(topic_name, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    my_filter_wrapper.odom_callback(topic_name, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     std::cout<< "State: " <<my_filter_wrapper.get_state().transpose()<<"\n";
     std::cout<< "Covariance: \n" <<my_filter_wrapper.get_covariance().transpose()<<"\n";
-    // geometry_msgs::msg::TwistWithCovariance twist;
 
     return 1;
 }

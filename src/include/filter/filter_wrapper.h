@@ -40,22 +40,6 @@
 #include <nav_msgs/msg/Odometry.h>
 #include <sensor_msgs/msg/Imu.h>
 
-struct CallbackData
-{
-  CallbackData(const std::string &topic_name,
-               bool * update_vector,
-               const double mahalanobis_threshold) :
-    m_topic_name(topic_name),
-    m_update_vector(update_vector),
-    m_mahalanobis_threshold(mahalanobis_threshold)
-  {
-  }
-
-  std::string m_topic_name;
-  bool* m_update_vector;
-  double m_mahalanobis_threshold;
-};
-
 namespace iav{ namespace state_predictor { namespace filter {
 
 /**
@@ -161,13 +145,13 @@ public:
      * @param[in] transform_to_base_link - transf from sensor frame of msg to the base_link frame where the twist part is fused
      */
     void odom_callback(
-        CallbackData& cb,
+        const std::string& topic_name,
         nav_msgs::msg::Odometry* msg,
         const TransformationMatrix& transform_to_world,
         const TransformationMatrix& transform_to_base_link)
     {
         if(debug > 1) std::cout << "---------------Wrapper Odom_callback: IN-------------------"<< std::endl;
-        bool* update_vector = cb.m_update_vector;
+        bool* update_vector = m_config.m_sensor_configs[topic_name].m_update_vector;
 
         if (debug > 1)
         {
