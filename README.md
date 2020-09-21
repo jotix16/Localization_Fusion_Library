@@ -7,19 +7,11 @@ In order to be able to run the LocalizationFusionLibrary as a ROS node do the fo
 mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/
 catkin_make
-``` 
-3. Clone or copy this library in /catkin_ws/src
-```bash
-cd ~/catkin_ws/src
-git clone ... 
-cp -r ...  ~/catkin_ws/src/
-``` 
-4. Build the ros package
-```bash
-cd ~/catkin_ws/
-catkin_make
+git clone ...   # Clone the library in /catkin_ws/src
+cp -r path/to/library/localiztionfusionlibrary  ~/catkin_ws/src/ # or copy
+catkin_make # Build the ros package
 ```
-5. In order to start the node on a test bag do
+3. In order to start the node on a test bag do
 ```bash
 cd ~/catkin_ws/
 source devel/setup.bash
@@ -34,6 +26,12 @@ LocalizationFusionLibrary
     ├── c_cpp_properties.json
     └── settings.json
 ```
+After following [a](#a.-enable-autocomplition-for-ROS-in-C++) and [b](#b.-shortcuts-for-build-and-run), the workflow looks like:
+1. Open library with vscode: ```code ~/catkin_ws/src/localizationfusionlibrary ```
+2. Build the ROS package: **Ctrl** + **Shift** + **B**
+3. Roslaunch a test bag and the filternode: **Ctrl** + **Shift** + **3**
+
+
 ### a. Enable autocomplition for ROS in C++
 ##### c_cpp_properties.json
 ```json
@@ -58,8 +56,8 @@ LocalizationFusionLibrary
 
 ### b. Shortcuts for build and run
 Add shortcuts to build and run the roslaunch file in file->preferences->Keyboard Shortcuts( or **Ctrl** + **KS**) and then 
-1. Set **Tasks: Run Build Task** with Ctrl+Shift+B
-2. Set **Tasks: Run Test Task** with Ctrl+Shift+3
+1. Set **Tasks: Run Build Task** with **Ctrl**+**Shift**+**B**
+2. Set **Tasks: Run Test Task** with **Ctrl**+**Shift**+**3**
 
 ##### tasks.json
 ```json
@@ -149,3 +147,8 @@ With the help of [this](https://www.digitalocean.com/community/tutorials/how-to-
  
 ## How to make Windows Terminal behave like Terminator from Ubuntu
 Open Windows Terminal and press Ctrl+, and copy the setting in [profile.json](https://gitlab.iavgroup.local/-/snippets/177)
+
+1. Split vertically: **Ctrl**+**Shift**+**B**
+2. Split horizontally: **Ctrl**+**Shift**+**3**
+3. Close split: **Ctrl**+**W**
+4. Move around splits: **Alt** + **up**/**down**/**left**/**right**
