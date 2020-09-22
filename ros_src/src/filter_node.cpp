@@ -12,6 +12,8 @@ int main(int argc, char **argv)
   ros::NodeHandle n_param("~");
 
   NodeCtraEKF2D node(n, n_param);
+  node.init("filter_config.json");
+  // node.init("filter_config_rosario.json");
   node.publish_current_state();
   ros::spin();
 

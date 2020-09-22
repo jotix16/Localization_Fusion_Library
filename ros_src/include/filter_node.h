@@ -81,14 +81,12 @@ class FilterNode
 
     public:
         FilterNode(ros::NodeHandle& nh, ros::NodeHandle& n_param): m_nh(nh), m_n_param(n_param), m_tf_listener(m_tf_buffer)
-        {
-            init();
-        }
+        {}
 
-        void init()
+        void init(std::string config_file)
         {
             // 1. initialize filter
-            std::string path = std::string(NODE_PATH) + std::string("/config/filter_config.json");
+            std::string path = std::string(NODE_PATH) + std::string("/config/") + config_file;
             ROS_INFO_STREAM( "Initialize FilterWrapper from path: " << path << "\n");
             m_filter_wrapper.reset(path.c_str());
 
@@ -127,12 +125,6 @@ class FilterNode
                         "must not match the map_frame or odom_frame.");                     
         }
 
-        TransformStamped get_transform(const HeaderMsg & header)
-        {
-            std::string m_frame_id = "mikel"; //TO_DO
-            return m_tf_buffer.lookupTransform(m_frame_id, header.frame_id, ros::Time(0));
-        }
-
         void odom_callback(const OdomMsg::ConstPtr& msg, std::string topic_name)
         {
             TransformationMatrix transform_to_world;
@@ -141,9 +133,9 @@ class FilterNode
             // msg->header.stamp
 
             // 1. get transformations from world and base_link to the sensor frame
-            std::cout << "MSG FRAME ID: " << topic_name << "\n";
             // ROS_INFO(msg->header.frame_id);
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
+            std::cout << "MSG FRAME ID: " << msgFrame << "\n";
             geometry_msgs::TransformStamped transformStamped;
             try
             {
@@ -180,12 +172,18 @@ class FilterNode
             // ros_info_msg(msg_loc);
             m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_world, transform_to_base_link);
 
+            std::cout << "Cov pose:\n";
+            for (int i = 0; i < 36; i++)
+            {
+               std::cout << msg_loc.pose.covariance[i] << " "; 
+                // msg_loc.twist.covariance[i] = msg->twist.covariance[i]; 
+            }
 
             // std::cout << transform_to_world.matrix() << "\n";
             // std::cout << transform_to_base_link.matrix() << "\n";
 
             // 3. publish updated base_link frame
-            publish_current_state();
+            // publish_current_state();
 
         }
         
