@@ -140,6 +140,9 @@ public:
         Matrix K(num_state, z.rows());
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
+        // std::cout << "hph_t_r_inv:\n" << hph_t_r_inv <<"\n";
+        // std::cout << "ph_t:\n" << ph_t <<"\n";
+        // std::cout << std::fixed << std::setprecision(7)<< "R:\n" << R <<"\n";
         this->m_state.noalias() += K * innovation;
 
         // wrap angles of state
@@ -157,6 +160,14 @@ public:
         I_K_H.noalias() -= K * H;
         this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
         this->m_covariance.noalias() += K * R * K.transpose();
+        for (uint i = 0; i < States::STATE_SIZE_M; i++)
+        {
+            if(this->m_covariance(i,i) < 0)
+                this->m_covariance(i,i) = -this->m_covariance(i,i);
+            if(this->m_covariance(i,i) < 1e-9)
+                this->m_covariance(i,i) = 1e-9;
+        }
+        
         return true;
     }
 };
