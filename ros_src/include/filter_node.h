@@ -183,7 +183,7 @@ class FilterNode
             // std::cout << transform_to_base_link.matrix() << "\n";
 
             // 3. publish updated base_link frame
-            // publish_current_state();
+            publish_current_state();
 
         }
         
