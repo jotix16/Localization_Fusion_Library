@@ -166,6 +166,7 @@ public:
         // 1. Create vector the same size as the submeasurement that will be used
         // - its elements are the corresponding parts of the state
         // - the size of this index-vector enables initializing of the submeasurement matrixes
+        // TO_DO: we are not ignoring nan & inf measurements
         std::vector<uint> update_indices_pose;
         for (uint i = 0; i < POSE_SIZE; ++i)
         {
@@ -187,6 +188,7 @@ public:
         Vector sub_measurement(update_size); sub_measurement.setZero(); // z
         Vector sub_innovation(update_size); sub_innovation.setZero(); // z'-z 
         Matrix sub_covariance(update_size, update_size);
+        sub_covariance.setZero();
         MeasurementMatrix state_to_measurement_mapping;
         state_to_measurement_mapping.resize(update_size, States::STATE_SIZE_M);
         state_to_measurement_mapping.setZero();
@@ -202,7 +204,7 @@ public:
 
         // 4. Send measurement to be handled
         // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
-        T mahalanobis_thresh = 4;
+        T mahalanobis_thresh = 400;
         // TO_DO: not sure about the time, should try out.
         // tTime stamp_sec = (static_cast<tTime>(msg->header.stamp.nanosec)/1000000000LL);
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
@@ -265,8 +267,11 @@ public:
         // 3. Transform measurement to fusion frame
         auto rot = transform.rotation();
         auto origin = transform.translation();
-        linear_vel = rot * linear_vel;// + origin.cross(angular_vel_state); // add effects of angular velocitioes
+        linear_vel = rot * linear_vel + origin.cross(angular_vel_state); // add effects of angular velocitioes
                                                                          // v = rot*v + origin(x)w
+        // std::cout << "Origin\n" << origin.transpose() << "\n";
+        // std::cout << "Angular veloc\n" << angular_vel_state.transpose() << "\n";
+        // std::cout << "Effects of angular veloc\n" << origin.cross(angular_vel_state).transpose() << "\n";
         angular_vel = rot * angular_vel;
 
         // 4. Compute measurement vector
@@ -276,19 +281,24 @@ public:
 
         // 5. Compute measurement covariance
         Matrix6T covariance;
-        covariance.setIdentity();
+        covariance.setZero();
         copy_covariance<TWIST_SIZE>(covariance, msg->covariance);
 
         // 6. Rotate Covariance to fusion frame
         Matrix6T rot6d;
-        rot6d.setIdentity();
+        rot6d.setZero();
         rot6d.template block<3,3>(0,0) = rot;
         rot6d.template block<3,3>(3,3) = rot;
+        // std::cout << "Covariance\n";
+        // std::cout << std::fixed << std::setprecision(4) << covariance;
         covariance = rot6d * covariance * rot6d.transpose();
+        // std::cout << "Covariance after\n";
+        // std::cout << std::fixed << std::setprecision(4) << covariance;
 
         // 7. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
         uint meas_index = 0U;
         uint meas_index2 = 0U;
+        std::cout << "Twist\n";
         for ( uint i = 0; i < update_size; i++)
         {
             meas_index = update_indices[i] - POSE_SIZE;
@@ -297,8 +307,10 @@ public:
             for (uint j = 0; j < update_size; j++)
             {
                 meas_index2 = update_indices[j] - POSE_SIZE;
+                std::cout << "(" << i + ix1 << ", " << j + ix1 << ") ";
                 sub_covariance(i + ix1, j + ix1) = covariance(meas_index, meas_index2);
             }
+            std::cout << "\n";
         }
 
         // 7. Fill state to measurement mapping and inovation
@@ -385,18 +397,21 @@ public:
 
         // 5. Rotate Covariance to fusion frame
         Matrix6T rot6d;
-        rot6d.setIdentity();
+        rot6d.setZero();
         auto rot = transform.rotation();
         rot6d.template block<3,3>(0,0) = rot;
         rot6d.template block<3,3>(3,3) = rot;
 
         // 6. Compute measurement covariance
         Matrix6T covariance;
-        covariance.setIdentity();
+        covariance.setZero();
         copy_covariance<POSE_SIZE>(covariance, msg->covariance);
         covariance = rot6d * covariance * rot6d.transpose();
+        // std::cout << "Rot6d\n";
+        // std::cout << std::fixed << std::setprecision(4) << rot6d;
 
         // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        std::cout << "Pose:\n";
         for ( uint i = 0; i < update_size; i++)
         {
             sub_measurement(i + ix1) = measurement(update_indices[i]);
@@ -404,8 +419,13 @@ public:
             for (uint j = 0; j < update_size; j++)
             {
                 sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i], update_indices[j]);
+                std::cout << "(" << i + ix1 << ", " <<  j + ix1 << ") ";
             }
+            std::cout << "\n";
+                // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
+                // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
         }
+        std::cout <<"\n";
 
         // 5. Fill state to measurement mapping and inovation
         for (uint i = 0; i < update_size; i++)
@@ -465,8 +485,11 @@ public:
         else
         {
 
-            if(debug > 1) std::cout << " -> Noise temp:\n";
-            if(debug > 1) std::cout << std::fixed << std::setprecision(4) <<  measurement.m_measurement_covariance << "\n";
+            if(debug > 1)
+            {
+                std::cout << " -> Noise temp:\n";
+                std::cout << std::fixed << std::setprecision(4) <<  measurement.m_measurement_covariance << "\n";
+            }
             if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.m_innovation.transpose() << "\n";
             if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.m_measurement_vector.transpose() << "\n";
             if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n";
@@ -495,6 +518,7 @@ public:
                 if(debug > 1) std::cout << " -> Covar obsv: \n";
                 if(debug > 1) std::cout << std::fixed << std::setprecision(4) << get_covariance() << "\n";
             }
+            else if(debug > 0) std::cout << " Mahalanobis failed" << "\n";
         }
 
         if(debug > 1) std::cout << "---------------Wrapper Process_Measurement: OUT-------------------\n";
@@ -605,9 +629,9 @@ public:
         ix = States::full_state_to_estimated_state[STATE_X];
         iy = States::full_state_to_estimated_state[STATE_Y];
         iz = States::full_state_to_estimated_state[STATE_Z];
-        msg.pose.pose.position.x = ix < 15 ? m_filter.at(ix) : 0;
-        msg.pose.pose.position.y = iy < 15 ? m_filter.at(iy) : 0;
-        msg.pose.pose.position.z = iz < 15 ? m_filter.at(iz) : 0;
+        msg.pose.pose.position.x = ix < 15 ? m_filter.at(ix) : 0.0;
+        msg.pose.pose.position.y = iy < 15 ? m_filter.at(iy) : 0.0;
+        msg.pose.pose.position.z = iz < 15 ? m_filter.at(iz) : 0.0;
 
         // 2. Orientation
         ix = States::full_state_to_estimated_state[STATE_ROLL];
@@ -621,7 +645,8 @@ public:
         qq = Eigen::AngleAxisd(roll, Vector3T::UnitX())
         * Eigen::AngleAxisd(pitch, Vector3T::UnitY())
         * Eigen::AngleAxisd(yaw, Vector3T::UnitZ());
-        qq.normalize();
+        // qq.normalize();
+        // std::cout << qq.x() << " " << qq.y() << " "  << qq.z() << " "  << qq.w() << " "  <<"NORMMMM: " << qq.norm() <<"\n";
         msg.pose.pose.orientation.x = qq.x();
         msg.pose.pose.orientation.y = qq.y();
         msg.pose.pose.orientation.z = qq.z();
@@ -631,30 +656,32 @@ public:
         ix = States::full_state_to_estimated_state[STATE_V_X];
         iy = States::full_state_to_estimated_state[STATE_V_Y];
         iz = States::full_state_to_estimated_state[STATE_V_Z];
-        msg.twist.twist.linear.x = ix < 15 ? m_filter.at(ix) : 0;
-        msg.twist.twist.linear.y = iy < 15 ? m_filter.at(iy) : 0;
-        msg.twist.twist.linear.z = iz < 15 ? m_filter.at(iz) : 0;
+        msg.twist.twist.linear.x = ix < 15 ? m_filter.at(ix) : 0.0;
+        msg.twist.twist.linear.y = iy < 15 ? m_filter.at(iy) : 0.0;
+        msg.twist.twist.linear.z = iz < 15 ? m_filter.at(iz) : 0.0;
         
         // 4. Angular Twist
         ix = States::full_state_to_estimated_state[STATE_V_ROLL];
         iy = States::full_state_to_estimated_state[STATE_V_PITCH];
         iz = States::full_state_to_estimated_state[STATE_V_YAW];
-        msg.twist.twist.angular.x = ix < 15 ? m_filter.at(ix) : 0;
-        msg.twist.twist.angular.y = iy < 15 ? m_filter.at(iy) : 0;
-        msg.twist.twist.angular.z = iz < 15 ? m_filter.at(iz) : 0;
+        msg.twist.twist.angular.x = ix < 15 ? m_filter.at(ix) : 0.0;
+        msg.twist.twist.angular.y = iy < 15 ? m_filter.at(iy) : 0.0;
+        msg.twist.twist.angular.z = iz < 15 ? m_filter.at(iz) : 0.0;
 
         // 6. Pose Covariance
         for (int i = 0; i < POSE_SIZE; i++)
         {
             ix = States::full_state_to_estimated_state[i];
+            // if ( ix > 14) continue;
             for(int j = 0; j < POSE_SIZE; j++)
             {
                 iy = States::full_state_to_estimated_state[j];
                 if ( iy > 14 || ix > 14)
                 {
-                     msg.pose.covariance[i + j*6] = 0;
-                    continue;
+                     msg.pose.covariance[i + j*6] = 1e-9;
+                    // continue;
                 }
+                else
                 msg.pose.covariance[i + j*6] = cov_mat(ix , iy);
             }
         }
@@ -663,14 +690,62 @@ public:
         for (int i = 0; i < TWIST_SIZE; i++)
         {
             ix = States::full_state_to_estimated_state[i+POSE_SIZE];
-            if ( ix > 14) continue;
+            // if ( ix > 14) continue;
             for(int j = 0; j < TWIST_SIZE; j++)
             {
                 iy = States::full_state_to_estimated_state[j+POSE_SIZE];
-                if ( iy > 14) continue;
+                if ( iy > 14 || ix > 14) 
+                msg.twist.covariance[i + j*6] = 1e-9;
+                else
                 msg.twist.covariance[i + j*6] = cov_mat(ix , iy);
             }
         }
+
+        // 8. Debugg information
+        if(debug >2)
+        {
+            std::cout << "pose: ";
+            std::cout << msg.pose.pose.position.x << " ";
+            std::cout << msg.pose.pose.position.y << " ";
+            std::cout << msg.pose.pose.position.z << " ";
+            std::cout << msg.pose.pose.orientation.x << " ";
+            std::cout << msg.pose.pose.orientation.y << " ";
+            std::cout << msg.pose.pose.orientation.z << " ";
+            std::cout << msg.pose.pose.orientation.w << " ";
+            std::cout << "\n";
+
+            std::cout << "twist: ";
+            std::cout << msg.twist.twist.linear.x << " ";
+            std::cout << msg.twist.twist.linear.y << " ";
+            std::cout << msg.twist.twist.linear.z << " ";
+            std::cout << msg.twist.twist.angular.x << " ";
+            std::cout << msg.twist.twist.angular.y << " ";
+            std::cout << msg.twist.twist.angular.z << " ";
+            std::cout << "\n";
+            
+            std::cout << "pose cov:\n";
+            for (int i = 0; i < 6; i++)
+            {
+                for (int j = 0; j < 6; j++)
+                {
+                    std::cout << msg.pose.covariance[i*6+j] << " ";
+                }
+                std::cout << "\n";
+            }
+            std::cout << "\n";
+
+            std::cout << "twist cov:\n";
+            for (int i = 0; i < 6; i++)
+            {
+                for (int j = 0; j < 6; j++)
+                {
+                    std::cout << msg.twist.covariance[i*6+j] << " ";
+                }
+                std::cout << "\n";
+            }
+            std::cout << "\n";
+        }
+
         return msg;
     }
     
