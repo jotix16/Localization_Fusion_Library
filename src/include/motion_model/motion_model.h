@@ -389,8 +389,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 			// The Linear part
 			x_coef = dt * cy * cp;
-			y_coef = dt * cy*sp*sr - sy*cr;
-			z_coef = dt * cy*sp*cr+sy*sr;
+			y_coef = dt * (cy * sp * sr - sy * cr);
+			z_coef = dt * (cy * sp * cr + sy * sr);
 			jacobi(States::X, States::V_X) = x_coef;
 			jacobi(States::X, States::V_Y) = y_coef;
 			jacobi(States::X, States::V_Z) = z_coef;
@@ -398,9 +398,9 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			jacobi(States::X, States::A_Y) = dt_2 * y_coef;
 			jacobi(States::X, States::A_Z) = dt_2 * z_coef;
 
-			x_coef = sy * cp;
-			y_coef = sy*sp*sr+cy*cr;
-			z_coef = sy*sp*cr-cy*sr;
+			x_coef = dt * sy * cp;
+			y_coef = dt * (sy * sp * sr + cy * cr);
+			z_coef = dt * (sy * sp * cr - cy * sr);
 			jacobi(States::Y, States::V_X) = x_coef;
 			jacobi(States::Y, States::V_Y) = y_coef;
 			jacobi(States::Y, States::V_Z) = z_coef;
@@ -408,9 +408,9 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			jacobi(States::Y, States::A_Y) = dt_2 * y_coef;
 			jacobi(States::Y, States::A_Z) = dt_2 * z_coef;
 
-			x_coef = -sp;
-			y_coef = cp * sr;
-			z_coef = cp * cr;
+			x_coef = -dt * sp;
+			y_coef = dt * cp * sr;
+			z_coef = dt * cp * cr;
 			jacobi(States::Z, States::V_X) = x_coef;
 			jacobi(States::Z, States::V_Y) = y_coef;
 			jacobi(States::Z, States::V_Z) = z_coef;
@@ -444,24 +444,24 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 			// X
 			x_coef = 0;
-			y_coef = cy*sp*cr + sy*sr;
-			z_coef = -cy*sp*sr + sy*cr;
-			T dJx_dR =v_y * y_coef + v_z * z_coef + a_y * y_coef + a_z * z_coef;
+			y_coef = cy * sp * cr + sy * sr;
+			z_coef = -cy * sp * sr + sy * cr;
+			T dJx_dR = v_y * y_coef + v_z * z_coef + a_y * y_coef + a_z * z_coef;
 
 			x_coef = -cy * sp;
 			y_coef = cy * cp * sr;
 			z_coef = cy * cp * cr;
 			T dJx_dP = v_x * x_coef + v_y * y_coef + v_z * z_coef + a_x * x_coef + a_y * y_coef + a_z * z_coef;
 
-			x_coef = sy * cp;
-			y_coef = -sy*sp*sr - cy*cr;
-			z_coef = -sy*sp*cr + cy*sr;
+			x_coef = -sy * cp;
+			y_coef = -sy * sp * sr - cy * cr;
+			z_coef = -sy * sp * cr + cy * sr;
 			T dJx_dY = v_x * x_coef + v_y * y_coef + v_z * z_coef + a_x * x_coef + a_y * y_coef + a_z * z_coef;
 
 			// Y
 			x_coef = 0;
-			y_coef = sy*sp*cr - cy*sr;
-			z_coef = -sy*sp*sr - cy*cr;
+			y_coef = sy * sp * cr - cy * sr;
+			z_coef = -sy * sp * sr - cy * cr;
 			T dJy_dR = v_y * y_coef + v_z * z_coef + a_y * y_coef + a_z * z_coef;
 
 			x_coef = -sy * sp;
@@ -470,8 +470,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			T dJy_dP = v_x * x_coef + v_y * y_coef + v_z * z_coef + a_x * x_coef + a_y * y_coef + a_z * z_coef;
 
 			x_coef = cy * cp;
-			y_coef = (cy*sp*sr - sy*cr);
-			z_coef = (cy*sp*cr + sy*sr);
+			y_coef = (cy * sp * sr - sy * cr);
+			z_coef = (cy * sp * cr + sy * sr);
 			T dJy_dY = v_x * x_coef + v_y * y_coef + v_z * z_coef + a_x * x_coef + a_y * y_coef + a_z * z_coef;
 
 			// Z
@@ -487,11 +487,11 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 			// ROLL PITCH YAW
 			T cpi_2 = cpi * cpi;
-			T dJR_dR = cr * tp * v_pitch - sr * tp *v_yaw;
+			T dJR_dR = 1.0 + cr * tp * v_pitch - sr * tp * v_yaw;
 			T dJR_dP = sr * cpi_2 * v_pitch + cr * cpi_2 * v_yaw;
-			T dJP_dR = -sr * v_yaw - cr * v_yaw ;
-			T dJY_dR = cr * cpi * v_pitch - sr * cpi *v_yaw;
-			T dJY_dP = -sr *tp * cpi * v_pitch - cr * tp * cpi * v_yaw;
+			T dJP_dR = -sr * v_pitch - cr * v_yaw ;
+			T dJY_dR = cr * cpi * v_pitch - sr * cpi * v_yaw;
+			T dJY_dP = sr * tp * cpi * v_pitch + cr * tp * cpi * v_yaw;
 
 			jacobi(States::X, States::ROLL) = dJx_dR;
 			jacobi(States::X, States::PITCH) = dJx_dP;
@@ -568,8 +568,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 			// The Linear part
 			x_coef = dt * cy * cp;
-			y_coef = dt * cy*sp*sr - sy*cr;
-			z_coef = dt * cy*sp*cr+sy*sr;
+			y_coef = dt * (cy * sp * sr - sy * cr);
+			z_coef = dt * (cy * sp * cr + sy * sr);
 			transform_matrix(States::X, States::V_X) = x_coef;
 			transform_matrix(States::X, States::V_Y) = y_coef;
 			transform_matrix(States::X, States::V_Z) = z_coef;
@@ -577,9 +577,9 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			transform_matrix(States::X, States::A_Y) = dt_2 * y_coef;
 			transform_matrix(States::X, States::A_Z) = dt_2 * z_coef;
 
-			x_coef = sy * cp;
-			y_coef = sy*sp*sr+cy*cr;
-			z_coef = sy*sp*cr-cy*sr;
+			x_coef = dt * sy * cp;
+			y_coef = dt * (sy * sp * sr + cy * cr);
+			z_coef = dt * (sy * sp * cr - cy * sr);
 			transform_matrix(States::Y, States::V_X) = x_coef;
 			transform_matrix(States::Y, States::V_Y) = y_coef;
 			transform_matrix(States::Y, States::V_Z) = z_coef;
@@ -587,9 +587,9 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			transform_matrix(States::Y, States::A_Y) = dt_2 * y_coef;
 			transform_matrix(States::Y, States::A_Z) = dt_2 * z_coef;
 
-			x_coef = -sp;
-			y_coef = cp * sr;
-			z_coef = cp * cr;
+			x_coef = -dt * sp;
+			y_coef = dt * cp * sr;
+			z_coef = dt * cp * cr;
 			transform_matrix(States::Z, States::V_X) = x_coef;
 			transform_matrix(States::Z, States::V_Y) = y_coef;
 			transform_matrix(States::Z, States::V_Z) = z_coef;
