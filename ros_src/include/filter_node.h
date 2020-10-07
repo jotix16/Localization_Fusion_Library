@@ -112,7 +112,6 @@ class FilterNode
             {
                 std::stringstream ss;
                 ss << "odom" << i ;
-
                 std::string odom_top;
                 m_nh_param.getParam(ss.str(), odom_top);
                 ROS_INFO_STREAM("Subscribing to: " << odom_top);
@@ -147,10 +146,7 @@ class FilterNode
             TransformationMatrix transform_to_world;
             TransformationMatrix transform_to_base_link;
 
-            // msg->header.stamp
-
             // 1. get transformations from world and base_link to the sensor frame
-            // ROS_INFO(msg->header.frame_id);
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
             std::string msgChildFrame = (msg->child_frame_id == "" ? m_baselink_frame_id : msg->child_frame_id);
             geometry_msgs::TransformStamped transformStamped1;
@@ -182,15 +178,12 @@ class FilterNode
             // get msg in our local msg form.
             OdomMsgLocFusLib msg_loc;
             to_local_msg(msg, msg_loc);
-
-
-            
+          
             // 2. call filter's odom_callback
             // ros_info_msg(msg_loc);
             std::cout << "CHILD FRANE ID: " << msgChildFrame << "\n";
             std::cout << "MSG FRAME ID: " << msgFrame << "\n";
             m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_world, transform_to_base_link);
-
 
             // std::cout << transform_to_world.matrix() << "\n";
             // std::cout << transform_to_base_link.matrix() << "\n";
