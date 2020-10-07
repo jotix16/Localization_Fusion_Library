@@ -54,7 +54,10 @@ protected:
     StateVector m_state;
     StateMatrix m_covariance;
     StateMatrix m_process_noise;
-    const StateMatrix m_identity;
+    bool m_debug;
+    std::ostream* m_debug_stream;
+
+    const StateMatrix m_identity ; // needed for a few operations.
 
 public:
     /**
@@ -63,10 +66,22 @@ public:
     FilterBase():m_initialized(0), m_identity(StateMatrix::Identity())
     { }
 
-/**
- * @brief FilterBase: Check if filter is initialized.
- * @return returns true if filter is initialized, otherwise false.
- */
+    /**
+     * @brief FilterBase: Initializes dhe debug
+     */
+    void setDebug(std::ostream* out_stream)
+    {
+            m_debug_stream = out_stream;
+            m_debug = true;
+            DEBUG("-----------------------------------------\n");
+            DEBUG("----- /FilterBase::Debug is on!" << " ------\n");
+            DEBUG("-----------------------------------------\n");
+    }
+
+    /**
+     * @brief FilterBase: Check if filter is initialized.
+     * @return returns true if filter is initialized, otherwise false.
+     */
     inline bool is_initialized() const
     {
         return m_initialized;

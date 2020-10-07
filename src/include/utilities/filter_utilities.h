@@ -25,8 +25,10 @@
 
 #include <chrono>
 
-namespace iav{ namespace state_predictor {
+#define DEBUG_W(msg) if (m_debug) { m_debug_stream << msg; } //used in FilterWrapper
+#define DEBUG(msg) if (m_debug) { *m_debug_stream << msg; } // used everywhere else
 
+namespace iav{ namespace state_predictor {
   /**
    * These are constants that can be used everywhere under state_predictor namespace
    */
@@ -59,7 +61,7 @@ namespace iav{ namespace state_predictor {
 		 */
     inline tTime now() const
     {
-      return std::chrono::duration<tTime>(clock_t::now() - init_time).count();
+      return std::chrono::duration<tTime>(clock_t::now() - init_time).count(); // returns time in seconds
     }
   };
 

@@ -80,6 +80,8 @@ private:
     MeasurementTimeKeeper m_time_keeper;
     Clock m_wall_time;
     int debug = 1;
+    bool m_debug;
+    std::ofstream m_debug_stream;
 
 public:
     FilterWrapper() = default;
@@ -102,6 +104,41 @@ public:
         configure(config_path);
         m_wall_time = Clock();
         m_time_keeper = MeasurementTimeKeeper();
+        m_debug = true;
+        create_debug();
+    }
+
+    /**
+     * @brief FilterWrapper: Function that creates the debug stream if m_debug is set.
+     */
+    void create_debug()
+    {
+        if (m_debug)
+        {
+            std::string debugOutFile = std::string("DEBUG_localization_fusion.txt");
+            try
+            {
+                m_debug_stream.open(debugOutFile.c_str());
+
+                // Make sure we succeeded
+                if (m_debug_stream.is_open())
+                {
+                    DEBUG_W("-----------------------------------------\n");
+                    DEBUG_W("----- /FilterWrapper::Debug is on!" << " ------\n");
+                    DEBUG_W("-----------------------------------------\n");
+                    m_filter.setDebug(&m_debug_stream);
+                }
+                else
+                {
+                    std::cout<< "RosFilter::loadParams() - unable to create debug output file " << debugOutFile;
+                }
+            }
+            catch(const std::exception &e)
+            {
+                std::cout<<"RosFilter::loadParams() - unable to create debug output file" << debugOutFile
+                                << ". Error was " << e.what() << "\n";
+            }
+        }
     }
 
     /**
