@@ -63,6 +63,7 @@ public:
     using Matrix = typename FilterT::Matrix;
     using MeasurementMatrix = typename FilterT::ObservationMatrix;
 
+    using AngleAxisT = typename Eigen::AngleAxis<T>;
     using Matrix6T = typename Eigen::Matrix<T, 6, 6>;
     using Matrix4T = typename Eigen::Matrix<T, 4, 4>;
     using Matrix3T = typename Eigen::Matrix<T, 3, 3>;
@@ -360,11 +361,25 @@ public:
         }
         else
         {
-            // we dont ignore roll pitch yaw but rotations in certain directions in sensor frame
             orientation = {msg->pose.orientation.w,
-                           msg->pose.orientation.x * (int)update_vector[STATE_ROLL],
-                           msg->pose.orientation.y * (int)update_vector[STATE_PITCH],
-                           msg->pose.orientation.z * (int)update_vector[STATE_YAW]  };
+                           msg->pose.orientation.x,
+                           msg->pose.orientation.y,
+                           msg->pose.orientation.z};
+            if (orientation.norm()-1.0 > 0.01)
+            {
+                orientation.normalize();
+            }
+
+            // - consider update_vector
+            // -- extract roll pitch yaw 
+            auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
+            // -- ignore roll pitch yaw according to update_vector 
+            rpy[0] *= (int)update_vector[STATE_ROLL];
+            rpy[1] *= (int)update_vector[STATE_PITCH];
+            rpy[2] *= (int)update_vector[STATE_YAW];
+            orientation = AngleAxisT(rpy[0], Vector3T::UnitX())
+                        * AngleAxisT(rpy[1], Vector3T::UnitY())
+                        * AngleAxisT(rpy[2], Vector3T::UnitZ());
 
             if (orientation.norm()-1.0 > 0.01)
             {
@@ -642,9 +657,9 @@ public:
         T yaw =   iz < 15 ? m_filter.at(iz) : 0.0;
         // // euler to quaternion
         Eigen::Quaterniond qq;
-        qq = Eigen::AngleAxisd(roll, Vector3T::UnitX())
-        * Eigen::AngleAxisd(pitch, Vector3T::UnitY())
-        * Eigen::AngleAxisd(yaw, Vector3T::UnitZ());
+        qq = AngleAxisT(roll, Vector3T::UnitX())
+        * AngleAxisT(pitch, Vector3T::UnitY())
+        * AngleAxisT(yaw, Vector3T::UnitZ());
         // qq.normalize();
         // std::cout << qq.x() << " " << qq.y() << " "  << qq.z() << " "  << qq.w() << " "  <<"NORMMMM: " << qq.norm() <<"\n";
         msg.pose.pose.orientation.x = qq.x();
