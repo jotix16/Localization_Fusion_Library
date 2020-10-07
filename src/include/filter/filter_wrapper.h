@@ -177,7 +177,9 @@ public:
     }
 
     /**
-     * @brief FilterWrapper: Callback for receiving all odom msgs
+     * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
+     * by considering transforming them in the fusing frame, considering the update_vector to ignore parts
+     * of the measurements and capturing matrixes with faulty values.
      * @param[in] msg - pointer to the msg of the measurement
      * @param[in] transform_to_world - transf from sensor frame of msg to the world frame where the pose part is fused
      * @param[in] transform_to_base_link - transf from sensor frame of msg to the base_link frame where the twist part is fused
@@ -238,8 +240,6 @@ public:
         // 4. Send measurement to be handled
         // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
         T mahalanobis_thresh = 400;
-        // TO_DO: not sure about the time, should try out.
-        // tTime stamp_sec = (static_cast<tTime>(msg->header.stamp.nanosec)/1000000000LL);
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
         Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, 
                          state_to_measurement_mapping, msg->header.frame_id, mahalanobis_thresh);
@@ -646,14 +646,15 @@ public:
         m_config = FilterConfig_(config_path);
     }
 
-    // get state in odom form
+    /**
+     * @brief FilterWrapper: Function that creates an Odometry msg with data from the estimated state.
+     * @return Odometry msg from the state. Not known values are set to 0
+     */
     nav_msgs::msg::Odometry get_state_odom()
     {
         const StateVector &state = m_filter.get_state();
         const StateMatrix &cov_mat = m_filter.get_covariance();
-
         nav_msgs::msg::Odometry msg;
-
         uint ix, iy, iz;
 
         // 1. Posisiton
@@ -671,13 +672,11 @@ public:
         T roll =  ix < 15 ? m_filter.at(ix) : 0.0;
         T pitch = iy < 15 ? m_filter.at(iy) : 0.0;
         T yaw =   iz < 15 ? m_filter.at(iz) : 0.0;
-        // // euler to quaternion
+        // euler to quaternion
         Eigen::Quaterniond qq;
         qq = AngleAxisT(roll, Vector3T::UnitX())
         * AngleAxisT(pitch, Vector3T::UnitY())
         * AngleAxisT(yaw, Vector3T::UnitZ());
-        // qq.normalize();
-        // std::cout << qq.x() << " " << qq.y() << " "  << qq.z() << " "  << qq.w() << " "  <<"NORMMMM: " << qq.norm() <<"\n";
         msg.pose.pose.orientation.x = qq.x();
         msg.pose.pose.orientation.y = qq.y();
         msg.pose.pose.orientation.z = qq.z();
@@ -757,7 +756,12 @@ public:
 
         return msg;
     }
-    
+
+    /**
+     * @brief FilterWrapper: Function that returns the latest timestamp the state changed
+     * @return Latest timestamp the state changed which is the 
+     * max( temporal_update_timestamp, observation_update_timestamp).
+     */ 
     tTime get_last_measurement_time()
     {
         return m_time_keeper.latest_timestamp();

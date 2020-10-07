@@ -51,9 +51,9 @@ class FilterNode
         // filter wrapper
         FilterT m_filter_wrapper;
 
-        // nod handler(needed for subscription and co)
-        ros::NodeHandle m_nh;
-        ros::NodeHandle m_n_param;
+        // ros handles
+        ros::NodeHandle m_nh; // node handler(needed for subscription and co)
+        ros::NodeHandle m_nh_param;
 
         // Subscription vectors
         std::vector<ros::Subscriber> m_odom_sub_topics;
@@ -80,9 +80,20 @@ class FilterNode
 
 
     public:
-        FilterNode(ros::NodeHandle& nh, ros::NodeHandle& n_param): m_nh(nh), m_n_param(n_param), m_tf_listener(m_tf_buffer)
+        /**
+         * @brief Constructor that inizializes configuration related parameters and time-keeping
+         * @param[in] nh - the main node handler needed for subscriptions and other ros related stuff
+         * @param[in] nh_param - node handler needed for parameter reading
+         */
+        FilterNode(ros::NodeHandle& nh, ros::NodeHandle& nh_param): m_nh(nh), m_nh_param(nh_param), m_tf_listener(m_tf_buffer)
         {}
 
+        /**
+         * @brief FilterNode: Function that inizializes the FilterWrapper from the .json config file and the 
+         * ros node parameters from the launch file. In addition to that it initializes the subscribers/publishers
+         * and sets the initial frame transformations.
+         * @param[in] config_path - path to .json configuration file
+         */
         void init(std::string config_file)
         {
             // 1. initialize filter
@@ -95,7 +106,7 @@ class FilterNode
 
             // 3. initialize subscribers            
             int odom_nr_;
-            m_n_param.param("odom_nr", odom_nr_, 0);
+            m_nh_param.param("odom_nr", odom_nr_, 0);
 
             for(int i=0; i < odom_nr_; i++)
             {
@@ -103,17 +114,17 @@ class FilterNode
                 ss << "odom" << i ;
 
                 std::string odom_top;
-                m_n_param.getParam(ss.str(), odom_top);
+                m_nh_param.getParam(ss.str(), odom_top);
                 ROS_INFO_STREAM("Subscribing to: " << odom_top);
                 m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_top, 10, 
                 boost::bind(&FilterNode::odom_callback, this, _1, odom_top)));
             }
             
             // 4. set the frames
-            m_n_param.param("map_frame", m_map_frame_id, std::string("map"));
-            m_n_param.param("odom_frame", m_odom_frame_id, std::string("odom"));
-            m_n_param.param("base_link_frame", m_baselink_frame_id, std::string("base_link"));
-            m_n_param.param("base_link_frame_output", m_output_baselink_frame_id, m_baselink_frame_id);
+            m_nh_param.param("map_frame", m_map_frame_id, std::string("map"));
+            m_nh_param.param("odom_frame", m_odom_frame_id, std::string("odom"));
+            m_nh_param.param("base_link_frame", m_baselink_frame_id, std::string("base_link"));
+            m_nh_param.param("base_link_frame_output", m_output_baselink_frame_id, m_baselink_frame_id);
 
             ROS_FATAL_COND(m_map_frame_id == m_odom_frame_id ||
                         m_odom_frame_id == m_baselink_frame_id ||
@@ -124,7 +135,13 @@ class FilterNode
                         "and base_link_frame must be unique. If using a base_link_frame_output values, it "
                         "must not match the map_frame or odom_frame.");                     
         }
-
+    
+        /**
+         * @brief FilterNode: Callback for receiving all odom msgs. It extracts transformation matrixes
+         * to the fusing frames and calls the corresponding callback from filter_wrapper.
+         * @param[in] msg - reference to the odom msg of the measurement
+         * @param[string] topic_name - name of the topic where we listened the message
+         */
         void odom_callback(const OdomMsg::ConstPtr& msg, std::string topic_name)
         {
             TransformationMatrix transform_to_world;
@@ -182,7 +199,60 @@ class FilterNode
             publish_current_state();
 
         }
-        
+
+        /**
+         * @brief FilterNode: Callback for receiving all IMU msgs. It extracts transformation matrixes
+         * to the fusing frames and calls the corresponding callback from filter_wrapper.
+         * @param[in] msg - reference to the IMU msg of the measurement
+         * @param[string] topic_name - name of the topic where we listened the message
+         */
+        void imu_callback(const ImuMsg::ConstPtr& msg)
+        {
+            ROS_INFO("IMU Callback called!\n");
+        }
+
+        void pose_callback(const PoseWithCovStampedMsg::ConstPtr& msg)
+        {
+            ROS_INFO("Pose Callback called!\n");
+        }
+
+        void twist_callback(const TwistWithCovStampedMsg::ConstPtr& msg)
+        {
+            ROS_INFO("Twist Callback called!\n");
+        }
+
+        /**
+         * @brief FilterNode: Helper function tht publishes the estimated state and updates the respective tf2 frames.
+         */
+        void publish_current_state()
+        {
+            if (!m_filter_wrapper.is_initialized()) return;
+            OdomMsgLocFusLib msg_loc;
+            msg_loc = m_filter_wrapper.get_state_odom();
+
+            // publish topic
+            OdomMsg msg_pub;
+            to_ros_msg(msg_pub, msg_loc);
+            msg_pub.header.stamp = ros::Time(m_filter_wrapper.get_last_measurement_time());
+            msg_pub.header.frame_id = m_map_frame_id;
+            msg_pub.child_frame_id = m_output_baselink_frame_id;
+            m_position_publisher.publish(msg_pub);
+
+            // publish frame
+            geometry_msgs::TransformStamped transformStamped;
+            transformStamped.header = msg_pub.header;
+            transformStamped.child_frame_id = msg_pub.child_frame_id;
+            transformStamped.transform.translation.x = msg_pub.pose.pose.position.x;
+            transformStamped.transform.translation.y = msg_pub.pose.pose.position.y;
+            transformStamped.transform.translation.z = msg_pub.pose.pose.position.z;
+            transformStamped.transform.rotation = msg_pub.pose.pose.orientation;
+            m_tf_broadcaster.sendTransform(transformStamped);
+        }
+
+        /**
+         * @brief FilterNode: Helper function to print out a msg.
+         * @param[in] msg - reference to the msg to be printerd
+         */
         void ros_info_msg(const OdomMsgLocFusLib& msg)
         {
             std::stringstream ss;
@@ -198,7 +268,12 @@ class FilterNode
 
             std::cout << "Measurement: " << ss.str() << "\n";
         }
-        
+
+        /**
+         * @brief FilterNode: Helper function to transform ros odom to idl(ros2) odom
+         * @param[in] msg - reference to the ROS msg to be transformed
+         * @param[inout] msg_loc - reference to the msg[idl(ROS2)] to be filled and returned
+         */
         void to_local_msg(const OdomMsg::ConstPtr& msg, OdomMsgLocFusLib &msg_loc)
         {
             msg_loc.header.frame_id = msg->header.frame_id;
@@ -224,6 +299,11 @@ class FilterNode
             msg_loc.twist.twist.angular.z = msg->twist.twist.angular.z;
         }
 
+        /**
+         * @brief FilterNode: Helper function to transform idl(ROS2) odom to ros odom
+         * @param[in] msg_loc - reference to the msg[idl(ROS2)] to transformed
+         * @param[inout] msg - reference to the ROS msg to be filled and returned
+         */
         void to_ros_msg(OdomMsg& msg, const OdomMsgLocFusLib &msg_loc)
         {
             msg.header.frame_id =      msg_loc.header.frame_id;
@@ -249,45 +329,6 @@ class FilterNode
             msg.twist.twist.angular.z =   msg_loc.twist.twist.angular.z;
         }
 
-        void pose_callback(const PoseWithCovStampedMsg::ConstPtr& msg)
-        {
-            ROS_INFO("Pose Callback called!\n");
-        }
-
-        void twist_callback(const TwistWithCovStampedMsg::ConstPtr& msg)
-        {
-            ROS_INFO("Twist Callback called!\n");
-        }
-
-        void imu_callback(const ImuMsg::ConstPtr& msg)
-        {
-            ROS_INFO("IMU Callback called!\n");
-        }
-
-        void publish_current_state()
-        {
-            if (!m_filter_wrapper.is_initialized()) return;
-            OdomMsgLocFusLib msg_loc;
-            msg_loc = m_filter_wrapper.get_state_odom();
-
-            // publish topic
-            OdomMsg msg_pub;
-            to_ros_msg(msg_pub, msg_loc);
-            msg_pub.header.stamp = ros::Time(m_filter_wrapper.get_last_measurement_time());
-            msg_pub.header.frame_id = m_map_frame_id;
-            msg_pub.child_frame_id = m_output_baselink_frame_id;
-            m_position_publisher.publish(msg_pub);
-
-            // publish frame
-            geometry_msgs::TransformStamped transformStamped;
-            transformStamped.header = msg_pub.header;
-            transformStamped.child_frame_id = msg_pub.child_frame_id;
-            transformStamped.transform.translation.x = msg_pub.pose.pose.position.x;
-            transformStamped.transform.translation.y = msg_pub.pose.pose.position.y;
-            transformStamped.transform.translation.z = msg_pub.pose.pose.position.z;
-            transformStamped.transform.rotation = msg_pub.pose.pose.orientation;
-            m_tf_broadcaster.sendTransform(transformStamped);
-        }
 };
 
 // explicit template initialization
