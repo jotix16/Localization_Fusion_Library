@@ -115,7 +115,7 @@ public:
     {
         if (m_debug)
         {
-            std::string debugOutFile = std::string("DEBUG_localization_fusion.txt");
+            std::string debugOutFile = std::string("DEBUG_localization_fusion.log");
             try
             {
                 m_debug_stream.open(debugOutFile.c_str());
@@ -123,9 +123,9 @@ public:
                 // Make sure we succeeded
                 if (m_debug_stream.is_open())
                 {
-                    DEBUG_W("-----------------------------------------\n");
-                    DEBUG_W("----- /FilterWrapper::Debug is on!" << " ------\n");
-                    DEBUG_W("-----------------------------------------\n");
+                    DEBUG_W("\t\t\t-----------------------------------------\n");
+                    DEBUG_W("\t\t\t----- /FilterWrapper::Debug is on!" << " ------\n");
+                    DEBUG_W("\t\t\t-----------------------------------------\n");
                     m_filter.setDebug(&m_debug_stream);
                 }
                 else
@@ -188,17 +188,12 @@ public:
         const TransformationMatrix& transform_to_world,
         const TransformationMatrix& transform_to_base_link)
     {
-        if(debug > 1) std::cout << "---------------Wrapper Odom_callback: IN-------------------"<< std::endl;
+        DEBUG_W("\n\t\t--------------- Wrapper Odom_callback: IN -------------------\n");
         bool* update_vector = m_config.m_sensor_configs[topic_name].m_update_vector;
 
-        if (debug > 1)
+        if (debug > -1)
         {
-            std::cout << msg->header.frame_id <<" ~~ Update_vector: ";
-            for(int i = 0; i < 15; ++i)
-            {
-                std::cout << 2.0 * update_vector[i] << " ";
-            }
-            std::cout << "\n";
+            DEBUG_W( "\n" << msg->header.frame_id <<" ~~ Update_vector: " << printtt<bool>(update_vector, 1,15));
         }
 
         // 1. Create vector the same size as the submeasurement that will be used
@@ -249,7 +244,8 @@ public:
         Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, 
                          state_to_measurement_mapping, msg->header.frame_id, mahalanobis_thresh);
         handle_measurement(meas);
-        if(debug > 0) std::cout << "---------------Wrapper Odom_callback: OUT-------------------\n";
+        DEBUG_W("\t\t--------------- Wrapper Odom_callback: OUT -------------------\n");
+
     }
 
     /**
@@ -276,7 +272,7 @@ public:
         std::vector<uint>& update_indices,
         size_t ix1, size_t update_size)
     {
-        if(debug > 1) std::cout << "---------------Wrapper Prepare_Twist: IN-------------------\n";
+        DEBUG_W("\n\t\t--------------- Wrapper Prepare_Twist: IN -------------------\n");
         // 1. Extract linear and angular velocities
         // - consider update_vector
         Vector3T linear_vel; 
@@ -307,9 +303,9 @@ public:
         auto origin = transform.translation();
         linear_vel = rot * linear_vel + origin.cross(angular_vel_state); // add effects of angular velocitioes
                                                                          // v = rot*v + origin(x)w
-        // std::cout << "Origin\n" << origin.transpose() << "\n";
-        // std::cout << "Angular veloc\n" << angular_vel_state.transpose() << "\n";
-        // std::cout << "Effects of angular veloc\n" << origin.cross(angular_vel_state).transpose() << "\n";
+        // DEBUG_W("Origin\n" << origin.transpose() << "\n");
+        // DEBUG_W("Angular veloc\n" << angular_vel_state.transpose() << "\n");
+        // DEBUG_W("Effects of angular veloc\n" << origin.cross(angular_vel_state).transpose() << "\n");
         angular_vel = rot * angular_vel;
 
         // 4. Compute measurement vector
@@ -327,16 +323,11 @@ public:
         rot6d.setZero();
         rot6d.template block<3,3>(0,0) = rot;
         rot6d.template block<3,3>(3,3) = rot;
-        // std::cout << "Covariance\n";
-        // std::cout << std::fixed << std::setprecision(4) << covariance;
         covariance = rot6d * covariance * rot6d.transpose();
-        // std::cout << "Covariance after\n";
-        // std::cout << std::fixed << std::setprecision(4) << covariance;
 
         // 7. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
         uint meas_index = 0U;
         uint meas_index2 = 0U;
-        std::cout << "Twist\n";
         for ( uint i = 0; i < update_size; i++)
         {
             meas_index = update_indices[i] - POSE_SIZE;
@@ -345,10 +336,8 @@ public:
             for (uint j = 0; j < update_size; j++)
             {
                 meas_index2 = update_indices[j] - POSE_SIZE;
-                std::cout << "(" << i + ix1 << ", " << j + ix1 << ") ";
                 sub_covariance(i + ix1, j + ix1) = covariance(meas_index, meas_index2);
             }
-            std::cout << "\n";
         }
 
         // 7. Fill state to measurement mapping and inovation
@@ -358,7 +347,7 @@ public:
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
         
-        if(debug > 1) std::cout << "---------------Wrapper Prepare_Twist: OUT-------------------\n";
+        DEBUG_W("\t\t--------------- Wrapper Prepare_Twist: OUT -------------------\n");
     }
 
     /**
@@ -385,15 +374,15 @@ public:
         std::vector<uint>& update_indices,
         uint ix1, size_t update_size)
     {
-        if(debug > 1) std::cout << "---------------Wrapper Prepare_Pose: IN-------------------\n";
-
+        DEBUG_W("\n\t\t--------------- Wrapper Prepare_Pose: IN -------------------\n");
+        DEBUG_W("\n");
         // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
         // - Handle bad (empty) quaternions and normalize
         Quaternion orientation;
         if (msg->pose.orientation.x == 0 && msg->pose.orientation.y == 0 &&
             msg->pose.orientation.z == 0 && msg->pose.orientation.w == 0)
         {
-            if(debug > 0) std::cout << "---------------Wrapper Prepare_Pose: Orientation is all 0 -------------------\n";
+            DEBUG_W("Invalid orientation quaternion. Orientation is set to all 0!\n");
             orientation = {1.0, 0.0, 0.0, 0.0};
         }
         else
@@ -440,8 +429,7 @@ public:
 
         // 3. Transform pose to fusion frame
         pose_transf = transform * pose_transf;
-        if(debug > 1) std::cout << "---------------Wrapper Prepare_Pose: -------------------\n";
-        if(debug > 1) std::cout << " -> Pose transformed:\n" << pose_transf << "\n";
+        DEBUG_W( " -> Pose transformed:\n" << pose_transf << "\n");
         // 4. Compute measurement vector
         Vector6T measurement;
         measurement.template head<3>() = pose_transf.template block<3,1>(0,3);
@@ -459,11 +447,8 @@ public:
         covariance.setZero();
         copy_covariance<POSE_SIZE>(covariance, msg->covariance);
         covariance = rot6d * covariance * rot6d.transpose();
-        // std::cout << "Rot6d\n";
-        // std::cout << std::fixed << std::setprecision(4) << rot6d;
 
         // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
-        std::cout << "Pose:\n";
         for ( uint i = 0; i < update_size; i++)
         {
             sub_measurement(i + ix1) = measurement(update_indices[i]);
@@ -471,13 +456,10 @@ public:
             for (uint j = 0; j < update_size; j++)
             {
                 sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i], update_indices[j]);
-                std::cout << "(" << i + ix1 << ", " <<  j + ix1 << ") ";
             }
-            std::cout << "\n";
                 // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
                 // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
         }
-        std::cout <<"\n";
 
         // 5. Fill state to measurement mapping and inovation
         for (uint i = 0; i < update_size; i++)
@@ -486,9 +468,8 @@ public:
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
         
-        if(debug > 1) std::cout << " -> Noise:\n";
-        if(debug > 1) std::cout << std::fixed << std::setprecision(4) << covariance << "\n";
-        if(debug > 1) std::cout << "---------------Wrapper Prepare_Pose: OUT-------------------\n";
+        DEBUG_W(" -> Noise:\n" << std::fixed << std::setprecision(4) << covariance << "\n");
+        DEBUG_W("\t\t--------------- Wrapper Prepare_Pose: OUT -------------------\n");
     }
 
     /**
@@ -517,46 +498,45 @@ public:
      */
     bool process_measurement(Measurement& measurement)
     {
-        if(debug > 1) std::cout << "---------------Wrapper Process_Measurement: IN-------------------\n";
+        DEBUG_W("\n\t\t--------------- Wrapper Process_Measurement: IN -------------------\n");
         // Get global time
         tTime time_now = m_wall_time.now();
 
         if (!is_initialized()) {
-            if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.m_innovation.transpose() << "\n";
-            if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.m_measurement_vector.transpose() << "\n";
+            DEBUG_W("\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.m_innovation.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.m_measurement_vector.transpose() << "\n");
             // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
             // and the filter is not set to any state, we reset it.
             // We only consider the parts that are allowed by update_vector
             // TO_DO: any other way?
 
             // Initialize the filter with the first measurement
-            // std::cout<<"Filter or timeMeasurement are not initialized. We are initializing!\n";
             reset(measurement.m_measurement_vector, measurement.m_state_to_measurement_mapping, time_now, measurement.m_time_stamp);
             return false;
         }
         else
         {
-
             if(debug > 1)
             {
-                std::cout << " -> Noise temp:\n";
-                std::cout << std::fixed << std::setprecision(4) <<  measurement.m_measurement_covariance << "\n";
+                DEBUG_W(" -> Noise temp:\n");
+                DEBUG_W(std::fixed << std::setprecision(4) <<  measurement.m_measurement_covariance << "\n");
             }
-            if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.m_innovation.transpose() << "\n";
-            if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.m_measurement_vector.transpose() << "\n";
-            if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n";
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.m_innovation.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.m_measurement_vector.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n");
 
             // 1. temporal update
-            auto dt = m_time_keeper.time_since_last_temporal_update(time_now); // PROBLEM: is calculated wrong.
-            if(debug > 0) std::cout << "---------------Wrapper: Temporal update, dt = "<< dt << "---------------\n";
+            auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
+            DEBUG_W("\n--------------- Wrapper: Temporal update, dt = "<< dt << " ---------------\n");
             if (dt < 0) return false;
             if (m_filter.temporal_update(dt))
             {
                 m_time_keeper.update_after_temporal_update(dt);
                 
-                if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> State temp: " << get_state().transpose() << "\n";
-                if(debug > 1) std::cout << " -> Covar temp: \n";
-                if(debug > 1) std::cout << std::fixed << std::setprecision(4) << get_covariance() << "\n";
+                DEBUG_W(std::fixed << std::setprecision(4) << " -> State temp: " << get_state().transpose() << "\n");
+                if(debug > 1) DEBUG_W(" -> Covar temp: \n");
+                if(debug > 1) DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
             }
             // 2. observation update
             if (m_filter.observation_update(measurement.m_measurement_vector,measurement.m_innovation,
@@ -565,15 +545,15 @@ public:
             {
                 m_time_keeper.update_with_measurement(measurement.m_time_stamp, time_now);
 
-                if(debug > 0) std::cout << "---------------Wrapper: Observation update!---------------\n";
-                if(debug > 0) std::cout << std::fixed << std::setprecision(4) << " -> State obsv: " << get_state().transpose() << "\n";
-                if(debug > 1) std::cout << " -> Covar obsv: \n";
-                if(debug > 1) std::cout << std::fixed << std::setprecision(4) << get_covariance() << "\n";
+                DEBUG_W("\n--------------- Wrapper: Observation update! ---------------\n");
+                DEBUG_W(std::fixed << std::setprecision(4) << " -> State obsv: " << get_state().transpose() << "\n");
+                if(debug > 1) DEBUG_W(" -> Covar obsv: \n");
+                if(debug > 1) DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
             }
-            else if(debug > 0) std::cout << " Mahalanobis failed" << "\n";
+            else DEBUG_W(" Mahalanobis failed" << "\n");
         }
 
-        if(debug > 1) std::cout << "---------------Wrapper Process_Measurement: OUT-------------------\n";
+        DEBUG_W("\t\t--------------- Wrapper Process_Measurement: OUT -------------------\n");
         return true;
     }
 
@@ -621,9 +601,8 @@ public:
         // 1. reset filter
         StateVector x0;
         x0 = mapping_matrix.transpose()*measurement_vector;
-        if(debug > 1) std::cout << "Initializing with:" << x0.transpose()<<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n";
-        if(debug > 1) std::cout << mapping_matrix << "\n";
-        // std::cout << "Init cov:\n" << m_config.m_init_estimation_covariance<<"\n";
+        if(debug > 1) DEBUG_W("<---RESET--->\n Initializing with:" << x0.transpose()<<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n");
+        if(debug > 1) DEBUG_W("Mapping Matrix:\n" << mapping_matrix << "\n");
 
         // extract the part of init_estimation and process_noise covariances you need
         // TO_DO: maybe better send some indices_vector and have only one loop? 
@@ -724,14 +703,12 @@ public:
         for (int i = 0; i < POSE_SIZE; i++)
         {
             ix = States::full_state_to_estimated_state[i];
-            // if ( ix > 14) continue;
             for(int j = 0; j < POSE_SIZE; j++)
             {
                 iy = States::full_state_to_estimated_state[j];
                 if ( iy > 14 || ix > 14)
                 {
                      msg.pose.covariance[i + j*6] = 1e-9;
-                    // continue;
                 }
                 else
                 msg.pose.covariance[i + j*6] = cov_mat(ix , iy);
@@ -742,7 +719,6 @@ public:
         for (int i = 0; i < TWIST_SIZE; i++)
         {
             ix = States::full_state_to_estimated_state[i+POSE_SIZE];
-            // if ( ix > 14) continue;
             for(int j = 0; j < TWIST_SIZE; j++)
             {
                 iy = States::full_state_to_estimated_state[j+POSE_SIZE];
@@ -754,48 +730,29 @@ public:
         }
 
         // 8. Debugg information
-        if(debug >2)
+        if(debug >-1)
         {
-            std::cout << "pose: ";
-            std::cout << msg.pose.pose.position.x << " ";
-            std::cout << msg.pose.pose.position.y << " ";
-            std::cout << msg.pose.pose.position.z << " ";
-            std::cout << msg.pose.pose.orientation.x << " ";
-            std::cout << msg.pose.pose.orientation.y << " ";
-            std::cout << msg.pose.pose.orientation.z << " ";
-            std::cout << msg.pose.pose.orientation.w << " ";
-            std::cout << "\n";
+            DEBUG_W("\n******************** State msg to be published: ********************\n")
+            DEBUG_W("pose: "
+                 << msg.pose.pose.position.x << " "
+                 << msg.pose.pose.position.y << " "
+                 << msg.pose.pose.position.z << " "
+                 << msg.pose.pose.orientation.x << " "
+                 << msg.pose.pose.orientation.y << " "
+                 << msg.pose.pose.orientation.z << " "
+                 << msg.pose.pose.orientation.w << " \n");
 
-            std::cout << "twist: ";
-            std::cout << msg.twist.twist.linear.x << " ";
-            std::cout << msg.twist.twist.linear.y << " ";
-            std::cout << msg.twist.twist.linear.z << " ";
-            std::cout << msg.twist.twist.angular.x << " ";
-            std::cout << msg.twist.twist.angular.y << " ";
-            std::cout << msg.twist.twist.angular.z << " ";
-            std::cout << "\n";
-            
-            std::cout << "pose cov:\n";
-            for (int i = 0; i < 6; i++)
-            {
-                for (int j = 0; j < 6; j++)
-                {
-                    std::cout << msg.pose.covariance[i*6+j] << " ";
-                }
-                std::cout << "\n";
-            }
-            std::cout << "\n";
+            DEBUG_W("twist: "
+                 << msg.twist.twist.linear.x << " "
+                 << msg.twist.twist.linear.y << " "
+                 << msg.twist.twist.linear.z << " "
+                 << msg.twist.twist.angular.x << " "
+                 << msg.twist.twist.angular.y << " "
+                 << msg.twist.twist.angular.z << " \n");
 
-            std::cout << "twist cov:\n";
-            for (int i = 0; i < 6; i++)
-            {
-                for (int j = 0; j < 6; j++)
-                {
-                    std::cout << msg.twist.covariance[i*6+j] << " ";
-                }
-                std::cout << "\n";
-            }
-            std::cout << "\n";
+            DEBUG_W("pose cov:\n" << std::fixed << std::setprecision(4) << printtt(msg.pose.covariance, 6,6));
+            DEBUG_W("twist cov:\n" << std::fixed << std::setprecision(4) << printtt(msg.twist.covariance, 6,6));
+            DEBUG_W("********************************************************************\n\n")
         }
 
         return msg;
