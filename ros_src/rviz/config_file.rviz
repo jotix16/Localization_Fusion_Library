@@ -8,6 +8,8 @@ Panels:
         - /Status1
         - /Odometry1
         - /Odometry1/Shape1
+        - /Odometry1/Covariance1
+        - /Odometry1/Covariance1/Position1
         - /Odometry2
       Splitter Ratio: 0.5
     Tree Height: 555
@@ -93,8 +95,8 @@ Visualization Manager:
           Scale: 1
           Value: true
         Position:
-          Alpha: 0.30000001192092896
-          Color: 204; 51; 204
+          Alpha: 0.10000000149011612
+          Color: 255; 85; 0
           Scale: 1
           Value: true
         Value: true
@@ -177,25 +179,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 53.07825469970703
+      Distance: 71.01007080078125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 32.377593994140625
-        Y: -3.1038875579833984
-        Z: 3.936739683151245
+        X: 44.83336639404297
+        Y: -0.6918646693229675
+        Z: 0.19381976127624512
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8853979706764221
+      Pitch: 0.8803979158401489
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.4853975474834442
+      Yaw: 0.735397458076477
     Saved: ~
 Window Geometry:
   Displays:
