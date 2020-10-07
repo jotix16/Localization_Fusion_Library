@@ -135,13 +135,14 @@ class FilterNode
             // 1. get transformations from world and base_link to the sensor frame
             // ROS_INFO(msg->header.frame_id);
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
-            std::cout << "MSG FRAME ID: " << msgFrame << "\n";
-            geometry_msgs::TransformStamped transformStamped;
+            std::string msgChildFrame = (msg->child_frame_id == "" ? m_baselink_frame_id : msg->child_frame_id);
+            geometry_msgs::TransformStamped transformStamped1;
+            geometry_msgs::TransformStamped transformStamped2;
             try
             {
                 // a. world frame to sensor frame for the pose part of msg
-                transformStamped = m_tf_buffer.lookupTransform(m_map_frame_id, msgFrame ,ros::Time(0), ros::Duration(3.0));
-                transform_to_world = tf2::transformToEigen(transformStamped);
+                transformStamped1 = m_tf_buffer.lookupTransform(m_map_frame_id, msgFrame ,ros::Time(0), ros::Duration(1.0));
+                transform_to_world = tf2::transformToEigen(transformStamped1);
 
                 if (m_baselink_frame_id == msgFrame)
                 {
@@ -150,8 +151,8 @@ class FilterNode
                 else 
                 {
                     // b. base_link frame to sensor frame for the twist part of msg
-                    transformStamped = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgFrame, ros::Time(0), ros::Duration(3.0));
-                    transform_to_base_link = tf2::transformToEigen(transformStamped);
+                    transformStamped2 = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgChildFrame, ros::Time(0), ros::Duration(1.0));
+                    transform_to_base_link = tf2::transformToEigen(transformStamped2);
                 }
             }
             catch (tf2::TransformException &ex)
@@ -168,16 +169,11 @@ class FilterNode
 
             
             // 2. call filter's odom_callback
-            ROS_INFO_STREAM( "Odom Callback called  msg time:" << ((double)msg->header.stamp.sec) << " now:" << ros::Time::now() <<"\n");
             // ros_info_msg(msg_loc);
+            std::cout << "CHILD FRANE ID: " << msgChildFrame << "\n";
+            std::cout << "MSG FRAME ID: " << msgFrame << "\n";
             m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_world, transform_to_base_link);
 
-            std::cout << "Cov pose:\n";
-            for (int i = 0; i < 36; i++)
-            {
-               std::cout << msg_loc.pose.covariance[i] << " "; 
-                // msg_loc.twist.covariance[i] = msg->twist.covariance[i]; 
-            }
 
             // std::cout << transform_to_world.matrix() << "\n";
             // std::cout << transform_to_base_link.matrix() << "\n";
@@ -200,7 +196,7 @@ class FilterNode
                << msg.twist.twist.angular.y << "//"
                << msg.twist.twist.angular.z << "//";
 
-            ROS_INFO_STREAM( "Measurement: " << ss.str() << "\n");
+            std::cout << "Measurement: " << ss.str() << "\n";
         }
         
         void to_local_msg(const OdomMsg::ConstPtr& msg, OdomMsgLocFusLib &msg_loc)
