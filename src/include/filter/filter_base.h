@@ -78,6 +78,7 @@ public:
      * @param[in] P0 - initial covariance estimation
      * @param[in] Q - process noise
      */
+    // TO_DO: check out if valuies make sin and has to return bool
     void reset(const StateVector& x0, const StateMatrix& P0, const StateMatrix& Q)
     {
         m_state = x0;
@@ -90,6 +91,7 @@ public:
      * @brief FilterBase: Getter function for the state estimation vector
      * @return the state estimation vector
      */
+    // not necessary const reference since problems with thread.
     inline const StateVector& get_state() const
     {
         return m_state;
