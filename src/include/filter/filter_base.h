@@ -63,7 +63,7 @@ public:
     /**
      * @brief FilterBase: Default constructor
      */
-    FilterBase():m_initialized(0), m_identity(StateMatrix::Identity())
+    FilterBase():m_initialized(0), m_identity(StateMatrix::Identity()), m_debug(false)
     { }
 
     /**
@@ -72,7 +72,6 @@ public:
     void setDebug(std::ostream* out_stream)
     {
             m_debug_stream = out_stream;
-            m_debug = true;
             DEBUG("\t\t\t-----------------------------------------\n");
             DEBUG("\t\t\t----- /FilterBase::Debug is on!" << " ------\n");
             DEBUG("\t\t\t-----------------------------------------\n");

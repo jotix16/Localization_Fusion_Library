@@ -26,7 +26,7 @@
 #include <chrono>
 
 #define DEBUG_W(msg) if (m_debug) { m_debug_stream << msg; } //used in FilterWrapper
-#define DEBUG(msg) if (m_debug) { *m_debug_stream << msg; } // used everywhere else
+#define DEBUG(msg) if (this->m_debug) { *(this->m_debug_stream) << msg; } // used everywhere else
 
 namespace iav{ namespace state_predictor {
   /**
