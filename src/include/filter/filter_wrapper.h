@@ -193,7 +193,7 @@ public:
 
         if (debug > -1)
         {
-            DEBUG_W( "\n" << msg->header.frame_id <<" ~~ Update_vector: " << printtt<bool>(update_vector, 1,15));
+            DEBUG_W( "\n" << msg->header.frame_id <<" ~~ Update_vector: " << utilities::printtt(update_vector, 1,15));
         }
 
         // 1. Create vector the same size as the submeasurement that will be used
@@ -750,8 +750,8 @@ public:
                  << msg.twist.twist.angular.y << " "
                  << msg.twist.twist.angular.z << " \n");
 
-            DEBUG_W("pose cov:\n" << std::fixed << std::setprecision(4) << printtt(msg.pose.covariance, 6,6));
-            DEBUG_W("twist cov:\n" << std::fixed << std::setprecision(4) << printtt(msg.twist.covariance, 6,6));
+            DEBUG_W("pose cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.pose.covariance, 6,6));
+            DEBUG_W("twist cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.twist.covariance, 6,6));
             DEBUG_W("********************************************************************\n\n")
         }
 

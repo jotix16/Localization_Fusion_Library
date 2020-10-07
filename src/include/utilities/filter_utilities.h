@@ -98,6 +98,50 @@ namespace iav{ namespace state_predictor {
 namespace iav{ namespace state_predictor{ namespace utilities{
 
   /**
+   * @brief Templated function to print out arrays of different types T
+   * @param[template] T - type of data in array
+   * @param[in] arr - array to be printed
+   * @param[in] a - nr of rows
+   * @param[in] b - nr of columns
+   * @return the matrix as a string
+   */
+  template<typename T>
+  std::string printtt(T* arr, int a, int b=0){
+      std::ostringstream out;
+      for (int i = 0; i < a; i++)
+      {
+          for (int j = 0; j < b; j++)
+          {
+              out << " " << arr[i*a+j];
+          }
+          out << "\n";
+      }
+      return out.str();
+  }
+
+  /**
+   * @brief Templated function to print out arrays of different types T
+   * @param[template] T - type of data in array
+   * @param[in] arr - std::array to be printed
+   * @param[in] a - nr of rows
+   * @param[in] b - nr of columns
+   * @return the matrix as a string
+   */
+  template<typename T, long unsigned int size>
+  std::string printtt(std::array<T, size> arr, int a, int b=0){
+      std::ostringstream out;
+      for (int i = 0; i < a; i++)
+      {
+          for (int j = 0; j < b; j++)
+          {
+              out << " " << arr[i*a+j];
+          }
+          out << "\n";
+      }
+      return out.str();
+  }
+
+  /**
   * @brief Utility method keeping RPY angles in the range [-pi, pi].
   * @param[in] rotation - The rotation to bind
   * @return the bounded value
