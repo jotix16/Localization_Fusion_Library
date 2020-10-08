@@ -45,32 +45,31 @@ namespace iav{ namespace state_predictor { namespace filter {
 /**
  * @brief Class that wrapps the filter and takes care of timekeeping and measurement processing
  * @param<template> FilterT - The filter algorithm that we are usign for fusion
- * @param<template> num_state - Size of the state
  * @param<template> T - Type that should be used for calculations(default is double, but float can be used too)
  */
-template<class FilterT, int num_state, typename T = double>
+template<class FilterT, typename T = double>
 class FilterWrapper
 {
 public:
-    using Measurement= typename measurement::Measurement<num_state,T>;
     using MeasurementTimeKeeper = measurement::MeasurementTimeKeeper;
+    
+    using Measurement = typename FilterT::Measurement;
+    using MappingMatrix = typename Measurement::MappingMatrix;
     using FilterConfig_ = FilterConfig<T>;
-
     using States = typename FilterT::States;
     using StateVector = typename FilterT::StateVector;
     using StateMatrix = typename FilterT::StateMatrix;
     using Vector = typename FilterT::Vector;
     using Matrix = typename FilterT::Matrix;
-    using MeasurementMatrix = typename FilterT::ObservationMatrix;
 
     using AngleAxisT = typename Eigen::AngleAxis<T>;
+    using QuaternionT = typename Eigen::Quaternion<T>;
+    using TransformationMatrix = typename Eigen::Transform<T, 3, Eigen::TransformTraits::Isometry>;
     using Matrix6T = typename Eigen::Matrix<T, 6, 6>;
     using Matrix4T = typename Eigen::Matrix<T, 4, 4>;
     using Matrix3T = typename Eigen::Matrix<T, 3, 3>;
     using Vector6T = typename Eigen::Matrix<T, 6, 1>;
     using Vector3T = typename Eigen::Matrix<T, 3, 1>;
-    using Quaternion = typename Eigen::Quaternion<T>;
-    using TransformationMatrix = typename Eigen::Transform<T, 3, Eigen::TransformTraits::Isometry>;
 
 public:
     FilterConfig_ m_config;
@@ -223,7 +222,7 @@ public:
         Vector sub_measurement = Vector::Zero(update_size); // z
         Vector sub_innovation = Vector::Zero(update_size); // z'-z 
         Matrix sub_covariance = Matrix::Zero(update_size, update_size);
-        MeasurementMatrix state_to_measurement_mapping = MeasurementMatrix::Zero(update_size, States::STATE_SIZE_M);
+        MappingMatrix state_to_measurement_mapping = MappingMatrix::Zero(update_size, States::STATE_SIZE_M);
         std::vector<uint> sub_u_indices;
         sub_u_indices.reserve( update_size ); // preallocate memory
         sub_u_indices.insert( sub_u_indices.end(), update_indices_pose.begin(), update_indices_pose.end() );
@@ -271,7 +270,7 @@ public:
         Vector& sub_measurement,
         Matrix& sub_covariance, 
         Vector& sub_innovation, 
-        MeasurementMatrix& state_to_measurement_mapping,
+        MappingMatrix& state_to_measurement_mapping,
         const std::vector<uint>& update_indices,
         size_t ix1, size_t update_size)
     {
@@ -373,7 +372,7 @@ public:
         Vector& sub_measurement,
         Matrix& sub_covariance, 
         Vector& sub_innovation, 
-        MeasurementMatrix& state_to_measurement_mapping,
+        MappingMatrix& state_to_measurement_mapping,
         const std::vector<uint>& update_indices,
         uint ix1, size_t update_size)
     {
@@ -381,7 +380,7 @@ public:
         DEBUG_W("\n");
         // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
         // - Handle bad (empty) quaternions and normalize
-        Quaternion orientation;
+        QuaternionT orientation;
         if (msg->pose.orientation.x == 0 && msg->pose.orientation.y == 0 &&
             msg->pose.orientation.z == 0 && msg->pose.orientation.w == 0)
         {
@@ -593,7 +592,6 @@ public:
      * @param[in] time_stamp - time stamp of the measurement
      * @return true if reseting was successful
      */
-    // bool reset(Vector measurement_vector, MeasurementMatrix mapping_matrix, tTime time_now, tTime time_stamp)
     bool reset(const Measurement& measurement, tTime time_now)
     {
         //TO_DO: check if the measurement is stateful?
@@ -670,7 +668,7 @@ public:
         T pitch = iy < 15 ? m_filter.at(iy) : 0.0;
         T yaw =   iz < 15 ? m_filter.at(iz) : 0.0;
         // euler to quaternion
-        Eigen::Quaterniond qq;
+        QuaternionT qq;
         qq = AngleAxisT(roll, Vector3T::UnitX())
         * AngleAxisT(pitch, Vector3T::UnitY())
         * AngleAxisT(yaw, Vector3T::UnitZ());
@@ -767,9 +765,9 @@ public:
 };
 
 // explicit template initialization
-using FilterCtrvEKF2D = FilterWrapper<Ctrv_EKF2D, 6, double>;
-using FilterCtraEKF2D = FilterWrapper<Ctra_EKF2D, 8, double>;
-using FilterCtraEKF3D = FilterWrapper<Ctra_EKF3D, 15, double>;
+using FilterCtrvEKF2D = FilterWrapper<Ctrv_EKF2D, double>;
+using FilterCtraEKF2D = FilterWrapper<Ctra_EKF2D, double>;
+using FilterCtraEKF3D = FilterWrapper<Ctra_EKF3D, double>;
 
 } // end namespace filter 
 } // end namespace state_predictor

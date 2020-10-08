@@ -47,9 +47,10 @@ bool operator< (Measurement<num_state, T> m1, Measurement<num_state, T> m2);
 template<uint num_state, typename T>
 class Measurement
 {
+public:
     using MappingMatrix = Eigen::Matrix<T, Eigen::Dynamic, num_state>;
-    using MeasurementVector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-    using CovarianceMatrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+    using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
 public:
     // Time stamp of the measurement
@@ -59,11 +60,11 @@ public:
     // Mahalanobis threshold for the measurement.
     T m_mahalanobis_thresh;
     // Measurement vector to be considered 
-    MeasurementVector z;
+    Vector z;
     // The precalculated innovation(spares computations, instead of H*x)
-    MeasurementVector innovation;
+    Vector innovation;
     // Measurement covariance matrix
-    CovarianceMatrix R;
+    Matrix R;
     // Maps the state to the measurement, in literature known as matrix H
     MappingMatrix H;
     // corresponging full-state-indexes of the measurement vector z
@@ -80,8 +81,8 @@ public:
  * @param[in] sensor_id - Sensor id from where the measurement came.
  * @param[in] mahalanobis_thresh - Mahalanobis threshold for the measurement.
  */
-    Measurement(const tTime time_stamp, const MeasurementVector& measurement, const CovarianceMatrix& covariance,
-                const MeasurementVector& innovation, const MappingMatrix map_matrix, 
+    Measurement(const tTime time_stamp, const Vector& measurement, const Matrix& covariance,
+                const Vector& innovation, const MappingMatrix map_matrix, 
                 const std::vector<uint> update_indices, const std::string& sensor_id, const T& mahalanobis_thresh):
                 m_time_stamp{time_stamp}, m_sensor_id{sensor_id}, z{measurement},
                 R{covariance}, H{map_matrix}, m_update_indices{update_indices},
@@ -93,13 +94,13 @@ public:
  * @brief Measurement: Getter function for the measurement vector.
  * @return Measurement vector.
  */
-    inline const MeasurementVector get_measurement() { return z; }
+    inline const Vector get_measurement() { return z; }
 
 /**
  * @brief Measurement: Getter function for the measurement covariance matrix.
  * @return Measurement covariance matrix.
  */
-    inline const CovarianceMatrix get_covariance() { return R; }
+    inline const Matrix get_covariance() { return R; }
 
 /**
  * @brief Measurement: Getter function for the mapping matrix.

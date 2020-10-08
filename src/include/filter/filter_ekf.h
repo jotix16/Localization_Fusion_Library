@@ -46,11 +46,9 @@ class FilterEkf : public FilterBase<MotionModelT, num_state, T>
 {
 public:
     using FilterBase_ = FilterBase<MotionModelT, num_state, T>;
-    using Measurement= typename FilterBase_::Measurement;
+    using Measurement = typename FilterBase_::Measurement;
     using StateVector = typename FilterBase_::StateVector;
     using StateMatrix = typename FilterBase_::StateMatrix;
-    using ObservationVector = typename FilterBase_::ObservationVector;
-    using ObservationMatrix = typename FilterBase_::ObservationMatrix;
     using Matrix = typename FilterBase_::Matrix;
     using Vector = typename FilterBase_::Vector;
     using States = typename FilterBase_::States;
@@ -62,7 +60,7 @@ public:
     int debug = 1;
     FilterEkf(){};
 
-    bool passes_mahalanobis(const ObservationVector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)
+    bool passes_mahalanobis(const Vector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)
     {
         T sq_measurement_mahalanobis = innovation.dot(hph_t_r_inv * innovation);
         T threshold = mahalanobis_threshold * mahalanobis_threshold;
@@ -124,7 +122,7 @@ public:
         // O(n) complexity instead of O(mn)
         // wrap angles of innovation
         uint meas_index = 0U;
-        ObservationVector innovation(m.m_update_indices.size());
+        Vector innovation(m.m_update_indices.size());
         for ( uint i = 0; i < m.m_update_indices.size(); i++)
         {
             meas_index = m.m_update_indices[i];
@@ -157,7 +155,7 @@ public:
         // presense of floating point roundoff.
         // The Joseph Update has the form: P = (I - KH)P(I - KH)' + KRK'
         // if covariance diagonal elements are near 0 or negative we give them a small value 
-        StateMatrix I_K_H =this->m_identity;
+        StateMatrix I_K_H = this->m_identity;
         I_K_H.noalias() -= K * m.H;
         this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
         this->m_covariance.noalias() += K * m.R * K.transpose();

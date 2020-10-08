@@ -40,14 +40,12 @@ template<class MotionModelT, int num_state, typename T = double>
 class FilterBase
 {
 public:
-    using Measurement= typename measurement::Measurement<num_state,T>;
+    using Measurement = typename measurement::Measurement<num_state,T>;
     using States = typename MotionModelT::States;
     using StateVector = typename MotionModelT::StateVector;
     using StateMatrix = typename MotionModelT::StateMatrix;
-    using Matrix = typename Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-    using Vector = typename Eigen::Matrix<T, Eigen::Dynamic, 1>;
-    using ObservationVector = Vector;
-    using ObservationMatrix = typename Eigen::Matrix<T, Eigen::Dynamic, num_state>;
+    using Matrix = typename Measurement::Matrix;
+    using Vector = typename Measurement::Vector;
 
 protected:
     bool m_initialized;
@@ -139,7 +137,7 @@ public:
      * @param[in] mahalanobis_threshold - Mahalanobis threshold
      * @return true if measurement(innovation) is not an outlier, otherwise false
      */
-    virtual bool passes_mahalanobis(const ObservationVector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)=0;
+    virtual bool passes_mahalanobis(const Vector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)=0;
 
     /**
      * @brief FilterBase: Function that has to be implemented by every filter/fusion algorithm
@@ -159,7 +157,6 @@ public:
      * @param[in] mahalanobis_threshold - Mahalanobis threshold
      * @return returns true observation update is successful
      */
-    // virtual bool observation_update(const ObservationVector& z, ObservationVector& innovation, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)=0;
     virtual bool observation_update(const Measurement& measurement)=0;
 };
 } // end namespace filter 

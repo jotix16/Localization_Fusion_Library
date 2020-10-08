@@ -166,12 +166,12 @@ struct SensorConfig{
 */
 template<typename T = double>
 struct FilterConfig{
-    using StateMatrix = Eigen::Matrix<T, STATE_SIZE, STATE_SIZE>;
+    using FullStateMatrix = Eigen::Matrix<T, STATE_SIZE, STATE_SIZE>;
     using Document = rapidjson::Document;
     using IStreamWrapper = rapidjson::IStreamWrapper;
     
-    StateMatrix m_init_estimation_covariance;
-    StateMatrix m_process_noise;
+    FullStateMatrix m_init_estimation_covariance;
+    FullStateMatrix m_process_noise;
     std::map<std::string, struct SensorConfig> m_sensor_configs;
 
     /**
