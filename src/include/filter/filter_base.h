@@ -33,14 +33,14 @@ namespace iav{ namespace state_predictor { namespace filter {
 /**
  * @brief Base class that every Filtering(Fusing) algorithms should inherit from.
  * @param<template> MotionModelT - The motion model used. This defines the state to be estimated too.
- * @param<template> num_state - Size of the state
- * @param<template> T - Type that should be used for calculations(default is double, but float can be used too)
  */
-template<class MotionModelT, int num_state, typename T = double>
+template<class MotionModelT>
 class FilterBase
 {
 public:
-    using Measurement = typename measurement::Measurement<num_state,T>;
+    static constexpr int num_state = MotionModelT::number_states;
+    using T = typename MotionModelT::ValueType;
+    using Measurement = typename measurement::Measurement<num_state, T>;
     using States = typename MotionModelT::States;
     using StateVector = typename MotionModelT::StateVector;
     using StateMatrix = typename MotionModelT::StateMatrix;

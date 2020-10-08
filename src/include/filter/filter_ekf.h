@@ -36,22 +36,22 @@ namespace iav{ namespace state_predictor { namespace filter {
 /**
  * @brief Filter class that inherits from FilterBase class
  * @param<template> MotionModelT - The motion model used. This defines the state to be estimated too.
- * @param<template> num_state - Size of the state
  * @param<template> T - Type that should be used for calculations(default is double, but float can be used too)
  */
 //TO_DO: we can use dynamic process noise covariance. Especially for cases when
 // we don't want to increase the covariance estimation of the state when the vehicle is not moving
-template<class MotionModelT, int num_state, typename T = double>
-class FilterEkf : public FilterBase<MotionModelT, num_state, T>
+template<class MotionModelT>
+class FilterEkf : public FilterBase<MotionModelT>
 {
 public:
-    using FilterBase_ = FilterBase<MotionModelT, num_state, T>;
-    using Measurement = typename FilterBase_::Measurement;
-    using StateVector = typename FilterBase_::StateVector;
-    using StateMatrix = typename FilterBase_::StateMatrix;
-    using Matrix = typename FilterBase_::Matrix;
-    using Vector = typename FilterBase_::Vector;
-    using States = typename FilterBase_::States;
+    using FilterBaseT = FilterBase<MotionModelT>;
+    using T = typename FilterBaseT::T;
+    using Measurement = typename FilterBaseT::Measurement;
+    using StateVector = typename FilterBaseT::StateVector;
+    using StateMatrix = typename FilterBaseT::StateMatrix;
+    using Matrix = typename FilterBaseT::Matrix;
+    using Vector = typename FilterBaseT::Vector;
+    using States = typename FilterBaseT::States;
 
 public:
     /**
@@ -102,7 +102,7 @@ public:
         return true;
     }
 
-    bool observation_update(const Measurement& m)
+    bool observation_update(const Measurement& m) 
     {
         DEBUG("\n\t\t--------------- FilterEKF Observation_Update: IN ---------------\n");
         
@@ -137,7 +137,7 @@ public:
             return false;
         }
 
-        Matrix K(num_state, m.z.rows());
+        Matrix K(this->num_state, m.z.rows());
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
         DEBUG(std::fixed << std::setprecision(4) << "ph_t:\n" << ph_t << "\n");
@@ -172,9 +172,9 @@ public:
 };
 
 // explicit template initialization
-using Ctrv_EKF2D = FilterEkf<motion_model::Ctrv2D, 6, double>;
-using Ctra_EKF2D = FilterEkf<motion_model::Ctra2D, 8, double>;
-using Ctra_EKF3D = FilterEkf<motion_model::Ctra3D, 15, double>;
+using Ctrv_EKF2D = FilterEkf<motion_model::Ctrv2D>;
+using Ctra_EKF2D = FilterEkf<motion_model::Ctra2D>;
+using Ctra_EKF3D = FilterEkf<motion_model::Ctra3D>;
 
 } // end namespace filter 
 } // end namespace state_predictor

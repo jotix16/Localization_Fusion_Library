@@ -42,6 +42,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	{
 	public:		
 		static constexpr int number_states = num_states;
+		using ValueType = T;
+		// using number_states = num_states;
 		using StateVector = Eigen::Matrix<T, num_states, 1>;
 		using StateMatrix = Eigen::Matrix<T, num_states, num_states>;
 	};

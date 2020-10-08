@@ -62,10 +62,10 @@ void printt(T* arr, int a, int b){
 struct SensorConfig{
     using Document = rapidjson::Document;
     public:
-    bool m_update_vector[15];
-    double m_pose_mahalanobis_thresh[6];    
-    double m_acc_mahalanobis_thresh[3];
-    double m_speed_mahalanobis_thresh[6];
+    bool m_update_vector[STATE_SIZE];
+    double m_pose_mahalanobis_thresh[POSE_SIZE];    
+    double m_acc_mahalanobis_thresh[ACCELERATION_SIZE];
+    double m_speed_mahalanobis_thresh[TWIST_SIZE];
 
     /**
      * @brief Default constructor
@@ -122,7 +122,7 @@ struct SensorConfig{
 
         if(type <= 1) // only for odom and pose
         {
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < POSE_SIZE; i++)
             {
                 m_pose_mahalanobis_thresh[i] = doc[sensor_name]["pose_mahalanobis_thresh"][i].GetDouble();
             }
@@ -130,7 +130,7 @@ struct SensorConfig{
 
         if(type > 1 || type ==0) // only for twist and imu
         {
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < TWIST_SIZE; i++)
             {
                 m_speed_mahalanobis_thresh[i] = doc[sensor_name]["speed_mahalanobis_thresh"][i].GetDouble();
             }
@@ -138,7 +138,7 @@ struct SensorConfig{
 
         if(type > 12) // only for imu
         {
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < ACCELERATION_SIZE; i++)
             {
                 m_acc_mahalanobis_thresh[i] = doc[sensor_name]["acc_mahalanobis_thresh"][i].GetDouble();
             }
@@ -151,13 +151,13 @@ struct SensorConfig{
     void print()
     {
         std::cout<<"\n Update_vector \n";
-        printt(m_update_vector, 1, 15);
+        printt(m_update_vector, 1, STATE_SIZE);
 
         std::cout<<"\n Pose_mahalanobis_thresh \n";
-        printt(m_pose_mahalanobis_thresh, 1, 6);
+        printt(m_pose_mahalanobis_thresh, 1, POSE_SIZE);
 
         std::cout<<"\n Speed_mahalanobis_thresh \n";
-        printt(m_speed_mahalanobis_thresh, 1, 6);
+        printt(m_speed_mahalanobis_thresh, 1, POSE_SIZE);
     }
 };
 

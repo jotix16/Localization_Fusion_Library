@@ -47,12 +47,12 @@ namespace iav{ namespace state_predictor { namespace filter {
  * @param<template> FilterT - The filter algorithm that we are usign for fusion
  * @param<template> T - Type that should be used for calculations(default is double, but float can be used too)
  */
-template<class FilterT, typename T = double>
+template<class FilterT>
 class FilterWrapper
 {
 public:
+    using T = typename FilterT::T;
     using MeasurementTimeKeeper = measurement::MeasurementTimeKeeper;
-    
     using Measurement = typename FilterT::Measurement;
     using MappingMatrix = typename Measurement::MappingMatrix;
     using FilterConfig_ = FilterConfig<T>;
@@ -702,10 +702,10 @@ public:
                 iy = States::full_state_to_estimated_state[j];
                 if ( iy > 14 || ix > 14)
                 {
-                     msg.pose.covariance[i + j*6] = 1e-9;
+                     msg.pose.covariance[i + j*POSE_SIZE] = 1e-9;
                 }
                 else
-                msg.pose.covariance[i + j*6] = cov_mat(ix , iy);
+                msg.pose.covariance[i + j*POSE_SIZE] = cov_mat(ix , iy);
             }
         }
 
@@ -717,9 +717,9 @@ public:
             {
                 iy = States::full_state_to_estimated_state[j+POSE_SIZE];
                 if ( iy > 14 || ix > 14) 
-                msg.twist.covariance[i + j*6] = 1e-9;
+                msg.twist.covariance[i + j*TWIST_SIZE] = 1e-9;
                 else
-                msg.twist.covariance[i + j*6] = cov_mat(ix , iy);
+                msg.twist.covariance[i + j*TWIST_SIZE] = cov_mat(ix , iy);
             }
         }
 
@@ -744,8 +744,8 @@ public:
                  << msg.twist.twist.angular.y << " "
                  << msg.twist.twist.angular.z << " \n");
 
-            DEBUG_W("pose cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.pose.covariance, 6,6));
-            DEBUG_W("twist cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.twist.covariance, 6,6));
+            DEBUG_W("pose cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.pose.covariance, POSE_SIZE, POSE_SIZE));
+            DEBUG_W("twist cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.twist.covariance, TWIST_SIZE, TWIST_SIZE));
             DEBUG_W("********************************************************************\n\n")
         }
 
@@ -765,9 +765,9 @@ public:
 };
 
 // explicit template initialization
-using FilterCtrvEKF2D = FilterWrapper<Ctrv_EKF2D, double>;
-using FilterCtraEKF2D = FilterWrapper<Ctra_EKF2D, double>;
-using FilterCtraEKF3D = FilterWrapper<Ctra_EKF3D, double>;
+using FilterCtrvEKF2D = FilterWrapper<Ctrv_EKF2D>;
+using FilterCtraEKF2D = FilterWrapper<Ctra_EKF2D>;
+using FilterCtraEKF3D = FilterWrapper<Ctra_EKF3D>;
 
 } // end namespace filter 
 } // end namespace state_predictor
