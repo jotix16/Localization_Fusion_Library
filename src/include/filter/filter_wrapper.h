@@ -570,7 +570,7 @@ public:
      * @brief FilterWrapper: Getter function for the covariance estimation
      * @return the covariance estimation matrix
      */
-    inline StateMatrix get_covariance() const
+    inline const StateMatrix get_covariance() const
     {
         return m_filter.get_covariance();
     }
