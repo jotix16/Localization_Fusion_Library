@@ -44,10 +44,10 @@ public:
     using States = typename MotionModelT::States;
     using StateVector = typename MotionModelT::StateVector;
     using StateMatrix = typename MotionModelT::StateMatrix;
-    using Matrix = typename Eigen::Matrix<T, -1, -1>;
-    using Vector = typename Eigen::Matrix<T, -1, 1>;
+    using Matrix = typename Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+    using Vector = typename Eigen::Matrix<T, Eigen::Dynamic, 1>;
     using ObservationVector = Vector;
-    using ObservationMatrix = typename Eigen::Matrix<T, -1, num_state>;
+    using ObservationMatrix = typename Eigen::Matrix<T, Eigen::Dynamic, num_state>;
 
 protected:
     bool m_initialized;
@@ -116,7 +116,7 @@ public:
      * @brief FilterBase: Getter function for the covariance estimation matrix
      * @return the covariance estimation matrix
      */
-    inline StateMatrix get_covariance() const
+    inline const StateMatrix get_covariance() const
     {
         return m_covariance;
     }

@@ -47,9 +47,9 @@ bool operator< (Measurement<num_state, T> m1, Measurement<num_state, T> m2);
 template<uint num_state, typename T>
 class Measurement
 {
-    using MappingMatrix = Eigen::Matrix<T, -1, num_state>;
-    using MeasurementVector = Eigen::Matrix<T, -1, 1>;
-    using CovarianceMatrix = Eigen::Matrix<T, -1, -1>;
+    using MappingMatrix = Eigen::Matrix<T, Eigen::Dynamic, num_state>;
+    using MeasurementVector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    using CovarianceMatrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
 public:
     // Time stamp of the measurement
@@ -59,18 +59,14 @@ public:
     // Mahalanobis threshold for the measurement.
     T m_mahalanobis_thresh;
     // Measurement vector to be considered 
-    // MeasurementVector m_measurement_vector;
     MeasurementVector z;
     // The precalculated innovation(spares computations, instead of H*x)
-    // MeasurementVector m_innovation;
     MeasurementVector innovation;
     // Measurement covariance matrix
-    // CovarianceMatrix m_measurement_covariance;
     CovarianceMatrix R;
     // Maps the state to the measurement, in literature known as matrix H
-    // MappingMatrix m_state_to_measurement_mapping;
     MappingMatrix H;
-
+    // corresponging full-state-indexes of the measurement vector z
     std::vector<uint> m_update_indices;
 
 public:
