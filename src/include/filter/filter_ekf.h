@@ -60,6 +60,13 @@ public:
     int debug = 1;
     FilterEkf(){};
 
+    /**
+     * @brief FilterBase: Function that checks if measurement is an outlier by checking the mahalanobis distance
+     * @param[in] innovation - Innovation
+     * @param[in] hph_t_r_inv - (H P H^t)^-1
+     * @param[in] mahalanobis_threshold - Mahalanobis threshold
+     * @return true if measurement(innovation) is not an outlier, otherwise false
+     */
     bool passes_mahalanobis(const Vector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)
     {
         T sq_measurement_mahalanobis = innovation.dot(hph_t_r_inv * innovation);

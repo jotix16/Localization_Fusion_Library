@@ -137,7 +137,7 @@ public:
      * @param[in] mahalanobis_threshold - Mahalanobis threshold
      * @return true if measurement(innovation) is not an outlier, otherwise false
      */
-    virtual bool passes_mahalanobis(const Vector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)=0;
+    // virtual bool passes_mahalanobis(const Vector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)=0;
 
     /**
      * @brief FilterBase: Function that has to be implemented by every filter/fusion algorithm
