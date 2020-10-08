@@ -46,6 +46,7 @@ class FilterEkf : public FilterBase<MotionModelT, num_state, T>
 {
 public:
     using FilterBase_ = FilterBase<MotionModelT, num_state, T>;
+    using Measurement= typename FilterBase_::Measurement;
     using StateVector = typename FilterBase_::StateVector;
     using StateMatrix = typename FilterBase_::StateMatrix;
     using ObservationVector = typename FilterBase_::ObservationVector;
@@ -103,7 +104,7 @@ public:
         return true;
     }
 
-    bool observation_update(const ObservationVector& z, ObservationVector& innovation, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)
+    bool observation_update(const Measurement& m)
     {
         DEBUG("\n\t\t--------------- FilterEKF Observation_Update: IN ---------------\n");
         
@@ -113,31 +114,32 @@ public:
             if(debug > 1) DEBUG("\n---------------FilterEKF: Filter not initialized ---------------\n");
             return false;
         }
-        if(debug > 1) DEBUG("H matrix: \n" << H << "\n");
-        Matrix ph_t = this->m_covariance * H.transpose();
-        Matrix hph_t_r_inv = (H * ph_t + R).inverse();
+        if(debug > 1) DEBUG("H matrix: \n" << m.H << "\n");
+        Matrix ph_t = this->m_covariance * m.H.transpose();
+        Matrix hph_t_r_inv = (m.H * ph_t + m.R).inverse();
 
+        // Compute innovation 
+        // avoid calculating innovation directly like
+        // innov = z - Hx, instead calculate it with a loop and update_indices 
+        // O(n) complexity instead of O(mn)
         // wrap angles of innovation
-        // TO_DO: mach vorher
-        innovation = z - H * this->m_state;
-        for (uint j = States::ORIENTATION_OFFSET_M; j < States::POSITION_V_OFFSET_M; j++)
+        uint meas_index = 0U;
+        ObservationVector innovation(m.m_update_indices.size());
+        for ( uint i = 0; i < m.m_update_indices.size(); i++)
         {
-            for (uint i = 0; i < H.rows(); i++)
-            {
-                if(H(i,j)>0.5)
-                {
-                    innovation[i] = utilities::clamp_rotation(innovation[i]);
-                    break;
-                }
-            }
+            meas_index = m.m_update_indices[i];
+            innovation[i] = m.z(i) - this->m_state(States::full_state_to_estimated_state[meas_index]);
+            // clamp
+            if(meas_index < STATE_V_X && meas_index > STATE_Z) innovation[i] = utilities::clamp_rotation(innovation[i]);
         }
+
         // check mahalanobis distance
-        if(!passes_mahalanobis(innovation, hph_t_r_inv, mahalanobis_threshold))
+        if(!passes_mahalanobis(innovation, hph_t_r_inv, m.m_mahalanobis_thresh))
         {
             return false;
         }
 
-        Matrix K(num_state, z.rows());
+        Matrix K(num_state, m.z.rows());
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
         DEBUG(std::fixed << std::setprecision(4) << "ph_t:\n" << ph_t << "\n");
@@ -156,9 +158,9 @@ public:
         // The Joseph Update has the form: P = (I - KH)P(I - KH)' + KRK'
         // if covariance diagonal elements are near 0 or negative we give them a small value 
         StateMatrix I_K_H =this->m_identity;
-        I_K_H.noalias() -= K * H;
+        I_K_H.noalias() -= K * m.H;
         this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
-        this->m_covariance.noalias() += K * R * K.transpose();
+        this->m_covariance.noalias() += K * m.R * K.transpose();
 
         for (uint i = 0; i < States::STATE_SIZE_M; i++)
         {

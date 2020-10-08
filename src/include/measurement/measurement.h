@@ -59,13 +59,19 @@ public:
     // Mahalanobis threshold for the measurement.
     T m_mahalanobis_thresh;
     // Measurement vector to be considered 
-    MeasurementVector m_measurement_vector;
+    // MeasurementVector m_measurement_vector;
+    MeasurementVector z;
     // The precalculated innovation(spares computations, instead of H*x)
-    MeasurementVector m_innovation;
+    // MeasurementVector m_innovation;
+    MeasurementVector innovation;
     // Measurement covariance matrix
-    CovarianceMatrix m_measurement_covariance;
+    // CovarianceMatrix m_measurement_covariance;
+    CovarianceMatrix R;
     // Maps the state to the measurement, in literature known as matrix H
-    MappingMatrix m_state_to_measurement_mapping;
+    // MappingMatrix m_state_to_measurement_mapping;
+    MappingMatrix H;
+
+    std::vector<uint> m_update_indices;
 
 public:
 /**
@@ -78,12 +84,12 @@ public:
  * @param[in] sensor_id - Sensor id from where the measurement came.
  * @param[in] mahalanobis_thresh - Mahalanobis threshold for the measurement.
  */
-    Measurement(const tTime time_stamp, const MeasurementVector& measurement,
-                const CovarianceMatrix& covariance, const MeasurementVector& innovation, 
-                const MappingMatrix map_matrix, const std::string& sensor_id, const T& mahalanobis_thresh):
-                m_time_stamp{time_stamp}, m_sensor_id{sensor_id}, m_measurement_vector{measurement},
-                m_measurement_covariance{covariance}, m_state_to_measurement_mapping{map_matrix},
-                m_innovation{innovation}, m_mahalanobis_thresh{mahalanobis_thresh}
+    Measurement(const tTime time_stamp, const MeasurementVector& measurement, const CovarianceMatrix& covariance,
+                const MeasurementVector& innovation, const MappingMatrix map_matrix, 
+                const std::vector<uint> update_indices, const std::string& sensor_id, const T& mahalanobis_thresh):
+                m_time_stamp{time_stamp}, m_sensor_id{sensor_id}, z{measurement},
+                R{covariance}, H{map_matrix}, m_update_indices{update_indices},
+                innovation{innovation}, m_mahalanobis_thresh{mahalanobis_thresh}
 
     { }
 
@@ -91,19 +97,19 @@ public:
  * @brief Measurement: Getter function for the measurement vector.
  * @return Measurement vector.
  */
-    inline const MeasurementVector get_measurement() { return m_measurement_vector; }
+    inline const MeasurementVector get_measurement() { return z; }
 
 /**
  * @brief Measurement: Getter function for the measurement covariance matrix.
  * @return Measurement covariance matrix.
  */
-    inline const CovarianceMatrix get_covariance() { return m_measurement_covariance; }
+    inline const CovarianceMatrix get_covariance() { return R; }
 
 /**
  * @brief Measurement: Getter function for the mapping matrix.
  * @return State to measurement mapping matrix.
  */
-    inline const MappingMatrix get_mapping() { return m_state_to_measurement_mapping; }
+    inline const MappingMatrix get_mapping() { return H; }
   
 /**
  * @brief Measurement: Defines the operator < as friend of the class. In order to be able to compare measurements.

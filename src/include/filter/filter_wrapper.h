@@ -198,8 +198,8 @@ public:
             DEBUG_W( "\n" << msg->header.frame_id <<" ~~ Update_vector: " << utilities::printtt(update_vector, 1,15));
         }
 
-        // 1. Create vector the same size as the submeasurement that will be used
-        // - its elements are the corresponding parts of the state
+        // 1. Create vector the same size as the submeasurement
+        // - its elements are the corresponding parts of the state we are estimating
         // - the size of this index-vector enables initializing of the submeasurement matrixes
         // TO_DO: we are not ignoring nan & inf measurements
         std::vector<uint> update_indices_pose;
@@ -218,15 +218,18 @@ public:
         }
         size_t update_size_twist = update_indices_twist.size();
 
-        // 2. Initialize submeasurement matrixes
+        // 2. Initialize submeasurement related variables
         size_t update_size = update_size_pose + update_size_twist; 
-        Vector sub_measurement(update_size); sub_measurement.setZero(); // z
-        Vector sub_innovation(update_size); sub_innovation.setZero(); // z'-z 
-        Matrix sub_covariance(update_size, update_size);
-        sub_covariance.setZero();
-        MeasurementMatrix state_to_measurement_mapping;
-        state_to_measurement_mapping.resize(update_size, States::STATE_SIZE_M);
-        state_to_measurement_mapping.setZero();
+        Vector sub_measurement = Vector::Zero(update_size); // z
+        Vector sub_innovation = Vector::Zero(update_size); // z'-z 
+        Matrix sub_covariance = Matrix::Zero(update_size, update_size);
+        MeasurementMatrix state_to_measurement_mapping = MeasurementMatrix::Zero(update_size, States::STATE_SIZE_M);
+        std::vector<uint> sub_u_indices;
+        sub_u_indices.reserve( update_size ); // preallocate memory
+        sub_u_indices.insert( sub_u_indices.end(), update_indices_pose.begin(), update_indices_pose.end() );
+        sub_u_indices.insert( sub_u_indices.end(), update_indices_twist.begin(), update_indices_twist.end() );
+        // if we just want to put update_indices_twist after update_indices_pose instaed of creating a new one
+        // update_indices_pose.insert( update_indices_pose.end(), update_indices_twist.begin(), update_indices_twist.end() );
         
         // 3. Fill the submeasurement matrixes
         prepare_pose(&(msg->pose), transform_to_world, update_vector, sub_measurement,
@@ -241,8 +244,8 @@ public:
         // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
         T mahalanobis_thresh = 400;
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
-        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, 
-                         state_to_measurement_mapping, msg->header.frame_id, mahalanobis_thresh);
+        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
+                        sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
         handle_measurement(meas);
         DEBUG_W("\t\t--------------- Wrapper Odom_callback: OUT -------------------\n");
 
@@ -269,7 +272,7 @@ public:
         Matrix& sub_covariance, 
         Vector& sub_innovation, 
         MeasurementMatrix& state_to_measurement_mapping,
-        std::vector<uint>& update_indices,
+        const std::vector<uint>& update_indices,
         size_t ix1, size_t update_size)
     {
         DEBUG_W("\n\t\t--------------- Wrapper Prepare_Twist: IN -------------------\n");
@@ -371,7 +374,7 @@ public:
         Matrix& sub_covariance, 
         Vector& sub_innovation, 
         MeasurementMatrix& state_to_measurement_mapping,
-        std::vector<uint>& update_indices,
+        const std::vector<uint>& update_indices,
         uint ix1, size_t update_size)
     {
         DEBUG_W("\n\t\t--------------- Wrapper Prepare_Pose: IN -------------------\n");
@@ -504,15 +507,15 @@ public:
 
         if (!is_initialized()) {
             DEBUG_W("\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.m_innovation.transpose() << "\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.m_measurement_vector.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.innovation.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.z.transpose() << "\n");
             // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
             // and the filter is not set to any state, we reset it.
             // We only consider the parts that are allowed by update_vector
             // TO_DO: any other way?
 
             // Initialize the filter with the first measurement
-            reset(measurement.m_measurement_vector, measurement.m_state_to_measurement_mapping, time_now, measurement.m_time_stamp);
+            reset(measurement, time_now);
             return false;
         }
         else
@@ -520,10 +523,10 @@ public:
             if(debug > 1)
             {
                 DEBUG_W(" -> Noise temp:\n");
-                DEBUG_W(std::fixed << std::setprecision(4) <<  measurement.m_measurement_covariance << "\n");
+                DEBUG_W(std::fixed << std::setprecision(4) <<  measurement.R << "\n");
             }
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.m_innovation.transpose() << "\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.m_measurement_vector.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.innovation.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.z.transpose() << "\n");
             DEBUG_W(std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n");
 
             // 1. temporal update
@@ -539,9 +542,7 @@ public:
                 if(debug > 1) DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
             }
             // 2. observation update
-            if (m_filter.observation_update(measurement.m_measurement_vector,measurement.m_innovation,
-                    measurement.m_state_to_measurement_mapping, measurement.m_measurement_covariance,
-                    measurement.m_mahalanobis_thresh))
+            if (m_filter.observation_update(measurement))
             {
                 m_time_keeper.update_with_measurement(measurement.m_time_stamp, time_now);
 
@@ -592,48 +593,44 @@ public:
      * @param[in] time_stamp - time stamp of the measurement
      * @return true if reseting was successful
      */
-    bool reset(Vector measurement_vector, MeasurementMatrix mapping_matrix, tTime time_now, tTime time_stamp)
+    // bool reset(Vector measurement_vector, MeasurementMatrix mapping_matrix, tTime time_now, tTime time_stamp)
+    bool reset(const Measurement& measurement, tTime time_now)
     {
         //TO_DO: check if the measurement is stateful?
         // either odometry or pose
-        // Maybe need to template it according to the motionmodel used
 
         // 1. reset filter
         StateVector x0;
-        x0 = mapping_matrix.transpose()*measurement_vector;
-        if(debug > 1) DEBUG_W("<---RESET--->\n Initializing with:" << x0.transpose()<<"\n" << "Measurement: "<< measurement_vector.transpose() <<"\n");
-        if(debug > 1) DEBUG_W("Mapping Matrix:\n" << mapping_matrix << "\n");
+        // could use update_indeces to avoid matrix multiplication but since it only
+        // happens once it not that big of a deal
+        x0 = measurement.H.transpose() * measurement.z;
+        if(debug > 1) DEBUG_W("<---RESET--->\n Initializing with:" << x0.transpose()<<"\n");
+        if(debug > 1) DEBUG_W("Mapping Matrix:\n" << measurement.H << "\n");
 
         // extract the part of init_estimation and process_noise covariances you need
-        // TO_DO: maybe better send some indices_vector and have only one loop? 
-        //        But should be fine as it is called only once in the beginning.
         StateMatrix init_cov;
         init_cov.setIdentity();
         StateMatrix process_noise;
         process_noise.setIdentity();
         uint ind_temp1;
         uint ind_temp2;
-        for (uint i = 0; i < STATE_SIZE; ++i)
+        for (auto i:measurement.m_update_indices)
         {
             ind_temp1 = States::full_state_to_estimated_state[i];
-            if( ind_temp1 < STATE_SIZE)
+
+            for (auto j:measurement.m_update_indices)
             {
-                for (uint j = 0; j < STATE_SIZE; j++)
-                {
-                    ind_temp2 = States::full_state_to_estimated_state[j];
-                    if( ind_temp2< STATE_SIZE)
-                    {
-                        init_cov(ind_temp1, ind_temp2) = m_config.m_init_estimation_covariance(i,j);
-                        process_noise(ind_temp1, ind_temp2) = m_config.m_process_noise(i,j);
-                    }
-                }
+                ind_temp2 = States::full_state_to_estimated_state[j];
+
+                init_cov(ind_temp1, ind_temp2) = m_config.m_init_estimation_covariance(i,j);
+                process_noise(ind_temp1, ind_temp2) = m_config.m_process_noise(i,j);
             }
         }
         
         m_filter.reset(x0, init_cov, process_noise);
 
         // 2. reset timekeeper
-        m_time_keeper.reset(time_now, time_stamp);
+        m_time_keeper.reset(time_now, measurement.m_time_stamp);
         return true;
     }
 

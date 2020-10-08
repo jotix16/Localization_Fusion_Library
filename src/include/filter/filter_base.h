@@ -26,7 +26,7 @@
 #include <Eigen/Eigen>
 
 #include <motion_model/motion_model.h>
-
+#include <measurement/measurement.h>
 
 namespace iav{ namespace state_predictor { namespace filter {
 
@@ -40,6 +40,7 @@ template<class MotionModelT, int num_state, typename T = double>
 class FilterBase
 {
 public:
+    using Measurement= typename measurement::Measurement<num_state,T>;
     using States = typename MotionModelT::States;
     using StateVector = typename MotionModelT::StateVector;
     using StateMatrix = typename MotionModelT::StateMatrix;
@@ -158,7 +159,8 @@ public:
      * @param[in] mahalanobis_threshold - Mahalanobis threshold
      * @return returns true observation update is successful
      */
-    virtual bool observation_update(const ObservationVector& z, ObservationVector& innovation, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)=0;
+    // virtual bool observation_update(const ObservationVector& z, ObservationVector& innovation, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)=0;
+    virtual bool observation_update(const Measurement& measurement)=0;
 };
 } // end namespace filter 
 } // end namespace state_predictor
