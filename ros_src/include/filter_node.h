@@ -39,10 +39,12 @@ class FilterNode
     public:
         using OdomMsg = nav_msgs::Odometry;
         using OdomMsgLocFusLib = nav_msgs::msg::Odometry;
+        using ImuMsg = sensor_msgs::Imu;
+        using ImuMsgLocFusLib = sensor_msgs::msg::Imu;
 
         using PoseWithCovStampedMsg = geometry_msgs::PoseWithCovarianceStamped;
         using TwistWithCovStampedMsg = geometry_msgs::TwistWithCovarianceStamped;
-        using ImuMsg = sensor_msgs::Imu;
+        
         using HeaderMsg = std_msgs::msg::Header;
         using TransformStamped = geometry_msgs::TransformStamped;
         using TransformationMatrix = typename Eigen::Transform<double, 3, Eigen::TransformTraits::Isometry>;
@@ -69,6 +71,7 @@ class FilterNode
         tf2_ros::TransformBroadcaster m_tf_broadcaster;
 
         // frames
+        std::string m_world_frame_id; // to be used for orientation part of IMU and GPS
         std::string m_map_frame_id;
         std::string m_odom_frame_id;
         std::string m_baselink_frame_id;
@@ -104,7 +107,7 @@ class FilterNode
             // 2. initialize publisher
             m_position_publisher = m_nh.advertise<OdomMsg>("odometry/filtered", 20);
 
-            // 3. initialize subscribers            
+            // 3.a. initialize odom subscribers
             int odom_nr_;
             m_nh_param.param("odom_nr", odom_nr_, 0);
 
@@ -112,13 +115,28 @@ class FilterNode
             {
                 std::stringstream ss;
                 ss << "odom" << i ;
-                std::string odom_top;
-                m_nh_param.getParam(ss.str(), odom_top);
-                ROS_INFO_STREAM("Subscribing to: " << odom_top);
-                m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_top, 10, 
-                boost::bind(&FilterNode::odom_callback, this, _1, odom_top)));
+                std::string odom_topic;
+                m_nh_param.getParam(ss.str(), odom_topic);
+                ROS_INFO_STREAM("Subscribing to: " << odom_topic);
+                m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_topic, 10, 
+                boost::bind(&FilterNode::odom_callback, this, _1, odom_topic)));
             }
             
+            // 3.b. initialize odom subscribers
+            int imu_nr_;
+            m_nh_param.param("imu_nr", imu_nr_, 0);
+
+            for(int i=0; i < imu_nr_; i++)
+            {
+                std::stringstream ss;
+                ss << "imu" << i ;
+                std::string imu_topic;
+                m_nh_param.getParam(ss.str(), imu_topic);
+                ROS_INFO_STREAM("Subscribing to: " << imu_topic);
+                m_imu_sub_topics.push_back(m_nh.subscribe<ImuMsg>(imu_topic, 10, 
+                boost::bind(&FilterNode::imu_callback, this, _1, imu_topic)));
+            }
+
             // 4. set the frames
             m_nh_param.param("map_frame", m_map_frame_id, std::string("map"));
             m_nh_param.param("odom_frame", m_odom_frame_id, std::string("odom"));
@@ -143,19 +161,19 @@ class FilterNode
          */
         void odom_callback(const OdomMsg::ConstPtr& msg, std::string topic_name)
         {
-            TransformationMatrix transform_to_world;
+            TransformationMatrix transform_to_map;
             TransformationMatrix transform_to_base_link;
 
-            // 1. get transformations from world and base_link to the sensor frame
+            // 1. get transformations from map and base_link to the sensor frame
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
             std::string msgChildFrame = (msg->child_frame_id == "" ? m_baselink_frame_id : msg->child_frame_id);
             geometry_msgs::TransformStamped transformStamped1;
             geometry_msgs::TransformStamped transformStamped2;
             try
             {
-                // a. world frame to sensor frame for the pose part of msg
+                // a. map frame to sensor frame for the pose part of msg
                 transformStamped1 = m_tf_buffer.lookupTransform(m_map_frame_id, msgFrame ,ros::Time(0), ros::Duration(1.0));
-                transform_to_world = tf2::transformToEigen(transformStamped1);
+                transform_to_map = tf2::transformToEigen(transformStamped1);
 
                 if (m_baselink_frame_id == msgFrame)
                 {
@@ -177,20 +195,16 @@ class FilterNode
 
             // get msg in our local msg form.
             OdomMsgLocFusLib msg_loc;
-            to_local_msg(msg, msg_loc);
+            to_local_odom_msg(msg, msg_loc);
           
             // 2. call filter's odom_callback
             // ros_info_msg(msg_loc);
             std::cout << "CHILD FRANE ID: " << msgChildFrame << "\n";
             std::cout << "MSG FRAME ID: " << msgFrame << "\n";
-            m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_world, transform_to_base_link);
-
-            // std::cout << transform_to_world.matrix() << "\n";
-            // std::cout << transform_to_base_link.matrix() << "\n";
+            m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_map, transform_to_base_link);
 
             // 3. publish updated base_link frame
             publish_current_state();
-
         }
 
         /**
@@ -199,9 +213,45 @@ class FilterNode
          * @param[in] msg - reference to the IMU msg of the measurement
          * @param[string] topic_name - name of the topic where we listened the message
          */
-        void imu_callback(const ImuMsg::ConstPtr& msg)
+        void imu_callback(const ImuMsg::ConstPtr& msg, std::string topic_name)
         {
-            ROS_INFO("IMU Callback called!\n");
+            TransformationMatrix transform_to_world;
+            TransformationMatrix transform_to_base_link;
+
+            // 1. get transformations from world and base_link to the sensor frame
+            std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
+            geometry_msgs::TransformStamped transform_stamped;
+            try
+            {
+                // a. baselink frame to sensor frame for the velocity and acceleratation part of the imu msg
+                if (m_baselink_frame_id == msgFrame)
+                {
+                    transform_to_base_link.setIdentity();
+                }
+                else
+                {
+                    transform_stamped = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgFrame ,ros::Time(0), ros::Duration(1.0));
+                    transform_to_base_link = tf2::transformToEigen(transform_stamped);
+                }
+            }
+            catch (tf2::TransformException &ex)
+            {
+                ROS_INFO("%s",ex.what());
+                ros::Duration(1.0).sleep();
+                return;
+            }
+
+            // // get msg in our local msg form.
+            ImuMsgLocFusLib msg_loc;
+            to_local_imu_msg(msg, msg_loc);
+          
+            // // 2. call filter's imu_callback
+            // // ros_info_msg(msg_loc);
+            // std::cout << "MSG FRAME ID: " << msgFrame << "\n";
+            m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_to_world, transform_to_base_link);
+
+            // // 3. publish updated base_link frame
+            // publish_current_state();
         }
 
         void pose_callback(const PoseWithCovStampedMsg::ConstPtr& msg)
@@ -225,7 +275,7 @@ class FilterNode
 
             // publish topic
             OdomMsg msg_pub;
-            to_ros_msg(msg_pub, msg_loc);
+            to_ros_odom_msg(msg_pub, msg_loc);
             msg_pub.header.stamp = ros::Time(m_filter_wrapper.get_last_measurement_time());
             msg_pub.header.frame_id = m_map_frame_id;
             msg_pub.child_frame_id = m_output_baselink_frame_id;
@@ -243,31 +293,11 @@ class FilterNode
         }
 
         /**
-         * @brief FilterNode: Helper function to print out a msg.
-         * @param[in] msg - reference to the msg to be printerd
-         */
-        void ros_info_msg(const OdomMsgLocFusLib& msg)
-        {
-            std::stringstream ss;
-            ss << msg.pose.pose.position.x << "//"
-               << msg.pose.pose.position.y << "//"
-               << msg.pose.pose.position.z << "//"
-               << msg.twist.twist.linear.x << "//"
-               << msg.twist.twist.linear.y << "//"
-               << msg.twist.twist.linear.z << "//"
-               << msg.twist.twist.angular.x << "//"
-               << msg.twist.twist.angular.y << "//"
-               << msg.twist.twist.angular.z << "//";
-
-            std::cout << "Measurement: " << ss.str() << "\n";
-        }
-
-        /**
-         * @brief FilterNode: Helper function to transform ros odom to idl(ros2) odom
+         * @brief FilterNode: Helper function to transform ros odom to idl(ros2)_odom
          * @param[in] msg - reference to the ROS msg to be transformed
          * @param[inout] msg_loc - reference to the msg[idl(ROS2)] to be filled and returned
          */
-        void to_local_msg(const OdomMsg::ConstPtr& msg, OdomMsgLocFusLib &msg_loc)
+        void to_local_odom_msg(const OdomMsg::ConstPtr& msg, OdomMsgLocFusLib &msg_loc)
         {
             msg_loc.header.frame_id = msg->header.frame_id;
             msg_loc.header.stamp.sec = msg->header.stamp.sec;
@@ -293,11 +323,52 @@ class FilterNode
         }
 
         /**
+         * @brief FilterNode: Helper function to transform ros imu to idl(ros2)_imu
+         * @param[in] msg - reference to the ROS msg to be transformed
+         * @param[inout] msg_loc - reference to the msg[idl(ROS2)] to be filled and returned
+         */
+        void to_local_imu_msg(const ImuMsg::ConstPtr& msg, ImuMsgLocFusLib &msg_loc)
+        {
+            // header
+            msg_loc.header.frame_id = msg->header.frame_id;
+            msg_loc.header.stamp.sec = msg->header.stamp.sec;
+            msg_loc.header.stamp.nanosec = msg->header.stamp.nsec;
+
+            // orientation
+            msg_loc.orientation.x = msg->orientation.x;
+            msg_loc.orientation.y = msg->orientation.y;
+            msg_loc.orientation.z = msg->orientation.z;
+            msg_loc.orientation.w = msg->orientation.w;
+            for (int i = 0; i < 9; i++)
+            {
+                msg_loc.orientation_covariance[i] = msg->orientation_covariance[i];
+            }
+
+            // angular velocity
+            msg_loc.angular_velocity.x = msg->angular_velocity.x;
+            msg_loc.angular_velocity.y = msg->angular_velocity.y;
+            msg_loc.angular_velocity.z = msg->angular_velocity.z;
+            for (int i = 0; i < 9; i++)
+            {
+                msg_loc.angular_velocity_covariance[i] = msg->angular_velocity_covariance[i]; 
+            }
+
+            // linear acceleration
+            msg_loc.linear_acceleration.x = msg->linear_acceleration.x;
+            msg_loc.linear_acceleration.y = msg->linear_acceleration.y;
+            msg_loc.linear_acceleration.z = msg->linear_acceleration.z;
+            for (int i = 0; i < 9; i++)
+            {
+                msg_loc.linear_acceleration_covariance[i] = msg->linear_acceleration_covariance[i]; 
+            }
+        }
+
+        /**
          * @brief FilterNode: Helper function to transform idl(ROS2) odom to ros odom
          * @param[in] msg_loc - reference to the msg[idl(ROS2)] to transformed
          * @param[inout] msg - reference to the ROS msg to be filled and returned
          */
-        void to_ros_msg(OdomMsg& msg, const OdomMsgLocFusLib &msg_loc)
+        void to_ros_odom_msg(OdomMsg& msg, const OdomMsgLocFusLib &msg_loc)
         {
             msg.header.frame_id =      msg_loc.header.frame_id;
             msg.header.stamp.sec =     msg_loc.header.stamp.sec;
@@ -320,6 +391,26 @@ class FilterNode
             msg.twist.twist.angular.x =   msg_loc.twist.twist.angular.x;
             msg.twist.twist.angular.y =   msg_loc.twist.twist.angular.y;
             msg.twist.twist.angular.z =   msg_loc.twist.twist.angular.z;
+        }
+
+        /**
+         * @brief FilterNode: Helper function to print out a msg.
+         * @param[in] msg - reference to the msg to be printed
+         */
+        void ros_info_msg(const OdomMsgLocFusLib& msg)
+        {
+            std::stringstream ss;
+            ss << msg.pose.pose.position.x << "//"
+               << msg.pose.pose.position.y << "//"
+               << msg.pose.pose.position.z << "//"
+               << msg.twist.twist.linear.x << "//"
+               << msg.twist.twist.linear.y << "//"
+               << msg.twist.twist.linear.z << "//"
+               << msg.twist.twist.angular.x << "//"
+               << msg.twist.twist.angular.y << "//"
+               << msg.twist.twist.angular.z << "//";
+
+            std::cout << "Measurement: " << ss.str() << "\n";
         }
 
 };

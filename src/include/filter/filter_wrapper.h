@@ -39,6 +39,8 @@
 #include <geometry_msgs/msg/TwistWithCovariance.h>
 #include <nav_msgs/msg/Odometry.h>
 #include <sensor_msgs/msg/Imu.h>
+#include <mutex>
+#include <thread>
 
 namespace iav{ namespace state_predictor { namespace filter {
 
@@ -80,6 +82,7 @@ private:
     Clock m_wall_time;
     int debug = 1;
     bool m_debug;
+    std::mutex m_callback_mutex; 
     std::ofstream m_debug_stream;
 
 public:
@@ -179,14 +182,14 @@ public:
      * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
      * by considering transforming them in the fusing frame, considering the update_vector to ignore parts
      * of the measurements and capturing matrixes with faulty values.
-     * @param[in] msg - pointer to the msg of the measurement
-     * @param[in] transform_to_world - transf from sensor frame of msg to the world frame where the pose part is fused
-     * @param[in] transform_to_base_link - transf from sensor frame of msg to the base_link frame where the twist part is fused
+     * @param[in] msg - pointer to the odom msg of the measurement
+     * @param[in] transform_to_map - transf from sensor frame of msg to map frame where pose is fused
+     * @param[in] transform_to_base_link - transf from sensor frame of msg to base_link frame where twist is fused
      */
     void odom_callback(
         const std::string& topic_name,
         nav_msgs::msg::Odometry* msg,
-        const TransformationMatrix& transform_to_world,
+        const TransformationMatrix& transform_to_map,
         const TransformationMatrix& transform_to_base_link)
     {
         DEBUG_W("\n\t\t--------------- Wrapper Odom_callback: IN -------------------\n");
@@ -231,7 +234,7 @@ public:
         // update_indices_pose.insert( update_indices_pose.end(), update_indices_twist.begin(), update_indices_twist.end() );
         
         // 3. Fill the submeasurement matrixes
-        prepare_pose(&(msg->pose), transform_to_world, update_vector, sub_measurement,
+        prepare_pose(&(msg->pose), transform_to_map, update_vector, sub_measurement,
                      sub_covariance, sub_innovation, state_to_measurement_mapping,
                      update_indices_pose, 0, update_size_pose);
 
@@ -248,6 +251,113 @@ public:
         handle_measurement(meas);
         DEBUG_W("\t\t--------------- Wrapper Odom_callback: OUT -------------------\n");
 
+    }
+
+    /**
+     * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
+     * by considering transforming them in the fusing frame, considering the update_vector to ignore parts
+     * of the measurements and capturing matrixes with faulty values.
+     * @param[in] msg - pointer to the imu msg of the measurement
+     * @param[in] transform_to_world - transf from sensor frame of msg to world frame where orientation is fused
+     * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     */
+    void imu_callback(
+        const std::string& topic_name,
+        sensor_msgs::msg::Imu* msg,
+        const TransformationMatrix& transform_to_world,
+        const TransformationMatrix& transform_to_base_link)
+    {
+        DEBUG_W("\n\t\t--------------- Wrapper Imu_callback: IN -------------------\n");
+        bool* update_vector = m_config.m_sensor_configs[topic_name].m_update_vector;
+
+        if (debug > -1)
+        {
+            DEBUG_W( "\n" << msg->header.frame_id <<" ~~ Update_vector: " << utilities::printtt(update_vector, 1,15));
+        }
+
+        // 1. Create vector the same size as the submeasurement
+        // - its elements are the corresponding parts of the state we are estimating
+        // - the size of this index-vector enables initializing of the submeasurement matrixes
+        // TO_DO: we are not ignoring nan & inf measurements
+        std::vector<uint> update_indices_pose;
+        for (uint i = POSITION_SIZE; i < POSE_SIZE; ++i)
+        {
+            if(States::full_state_to_estimated_state[i] < STATE_SIZE)
+                update_indices_pose.push_back(i);
+        }
+        size_t update_size_pose = update_indices_pose.size();
+
+        std::vector<uint> update_indices_twist;
+        for (uint i = POSE_SIZE; i < POSE_SIZE + ORIENTATION_SIZE; ++i)
+        {
+            if(States::full_state_to_estimated_state[i] < STATE_SIZE)
+                update_indices_twist.push_back(i);
+        }
+        size_t update_size_twist = update_indices_twist.size();
+
+        // 2. Initialize submeasurement related variables
+        size_t update_size = update_size_pose + update_size_twist; 
+        Vector sub_measurement = Vector::Zero(update_size); // z
+        Vector sub_innovation = Vector::Zero(update_size); // z'-z 
+        Matrix sub_covariance = Matrix::Zero(update_size, update_size);
+        MappingMatrix state_to_measurement_mapping = MappingMatrix::Zero(update_size, States::STATE_SIZE_M);
+        std::vector<uint> sub_u_indices;
+        sub_u_indices.reserve( update_size ); // preallocate memory
+        sub_u_indices.insert( sub_u_indices.end(), update_indices_pose.begin(), update_indices_pose.end() );
+        sub_u_indices.insert( sub_u_indices.end(), update_indices_twist.begin(), update_indices_twist.end() );
+        // if we just want to put update_indices_twist after update_indices_pose instaed of creating a new one
+        // update_indices_pose.insert( update_indices_pose.end(), update_indices_twist.begin(), update_indices_twist.end() );
+        
+        // 3. Fill the submeasurement matrixes
+        // prepare_pose(&(msg->pose), transform_to_world, update_vector, sub_measurement,
+        //              sub_covariance, sub_innovation, state_to_measurement_mapping,
+        //              update_indices_pose, 0, update_size_pose);
+        // Ignore rotational velocity if the first covariance value is -1
+        if ((msg->angular_velocity_covariance[0] + 1) < 1e-9)
+        {
+            std::cout << "Received IMU message with -1 as its first covariance value for angular"
+                      << "velocity. Ignoring angular velocity...\n";
+        }
+        else
+        {
+            // Repeat for velocity
+            // geometry_msgs::TwistWithCovarianceStamped* twistPtr = new geometry_msgs::TwistWithCovarianceStamped();
+            geometry_msgs::msg::TwistWithCovariance* twistPtr = new geometry_msgs::msg::TwistWithCovariance();
+            // twistPtr->header = msg->header;
+            twistPtr->twist.angular = msg->angular_velocity;
+
+            // Copy the covariance
+            std::cout << "Angular v covariance:\n";
+            for (size_t i = 0; i < ORIENTATION_SIZE; i++)
+            {
+                for (size_t j = 0; j < ORIENTATION_SIZE; j++)
+                {
+                    twistPtr->covariance[TWIST_SIZE * (i + ORIENTATION_SIZE) + (j + ORIENTATION_SIZE)] =
+                    msg->angular_velocity_covariance[ORIENTATION_SIZE * i + j];
+                    std::cout <<twistPtr->covariance[TWIST_SIZE * (i + ORIENTATION_SIZE) + (j + ORIENTATION_SIZE)] << " ";
+                }
+                std::cout <<"\n";
+            }
+
+            std::cout << "Angular v:" << twistPtr->twist.angular.x << " "
+                                      << twistPtr->twist.angular.y << " "
+                                      << twistPtr->twist.angular.z << "\n";
+            // geometry_msgs::TwistWithCovarianceStampedConstPtr tptr(twistPtr);
+            // twistCallback(tptr, twistCallbackData, baseLinkFrameId_);
+            prepare_twist(twistPtr, transform_to_base_link, update_vector, sub_measurement,
+                          sub_covariance, sub_innovation, state_to_measurement_mapping,
+                          update_indices_twist, update_size_pose, update_size_twist);
+
+
+            // 4. Send measurement to be handled
+            // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
+            T mahalanobis_thresh = 400;
+            tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
+            Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
+                            sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
+            // handle_measurement(meas);
+        }
+        DEBUG_W("\t\t--------------- Wrapper Odom_callback: OUT -------------------\n");
     }
 
     /**
@@ -275,21 +385,26 @@ public:
         size_t ix1, size_t update_size)
     {
         DEBUG_W("\n\t\t--------------- Wrapper Prepare_Twist: IN -------------------\n");
-        // 1. Extract linear and angular velocities
+
+        // 1. Extract angular velocities
+        // - consider update_vector
+        Vector3T angular_vel;
+        angular_vel <<
+            msg->twist.angular.x * (int)update_vector[STATE_V_ROLL],
+            msg->twist.angular.y * (int)update_vector[STATE_V_PITCH],
+            msg->twist.angular.z * (int)update_vector[STATE_V_YAW];
+        // - Transform measurement to fusion frame
+        auto rot = transform.rotation();
+        angular_vel = rot * angular_vel;
+
+        // 2. Extract linear velocities
         // - consider update_vector
         Vector3T linear_vel; 
         linear_vel <<
             msg->twist.linear.x * (int)update_vector[STATE_V_X],
             msg->twist.linear.y * (int)update_vector[STATE_V_Y],
             msg->twist.linear.z * (int)update_vector[STATE_V_Z];
-
-        Vector3T angular_vel;
-        angular_vel <<
-            msg->twist.angular.x * (int)update_vector[STATE_V_ROLL],
-            msg->twist.angular.y * (int)update_vector[STATE_V_PITCH],
-            msg->twist.angular.z * (int)update_vector[STATE_V_YAW];
-
-        // 2. Extract angular velocities from the estimated state
+        // - Extract angular velocities from the estimated state
         // - needed to add the effect of angular velocities to the linear ones(look below).
         Vector3T angular_vel_state;
         uint vroll_ix = States::full_state_to_estimated_state[STATE_V_ROLL];
@@ -299,16 +414,13 @@ public:
         angular_vel_state(0) = vroll_ix < STATE_SIZE ? m_filter.at(vroll_ix) : 0.0;
         angular_vel_state(1) = vpitch_ix < STATE_SIZE ? m_filter.at(vpitch_ix) : 0.0;
         angular_vel_state(2) = vyaw_ix < STATE_SIZE ? m_filter.at(vyaw_ix) : 0.0;
-
-        // 3. Transform measurement to fusion frame
-        auto rot = transform.rotation();
+        // - Transform measurement to fusion frame
         auto origin = transform.translation();
         linear_vel = rot * linear_vel + origin.cross(angular_vel_state); // add effects of angular velocitioes
                                                                          // v = rot*v + origin(x)w
         // DEBUG_W("Origin\n" << origin.transpose() << "\n");
         // DEBUG_W("Angular veloc\n" << angular_vel_state.transpose() << "\n");
         // DEBUG_W("Effects of angular veloc\n" << origin.cross(angular_vel_state).transpose() << "\n");
-        angular_vel = rot * angular_vel;
 
         // 4. Compute measurement vector
         Vector6T measurement;
@@ -532,6 +644,7 @@ public:
             auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
             DEBUG_W("\n--------------- Wrapper: Temporal update, dt = "<< dt << " ---------------\n");
             if (dt < 0) return false;
+            // std::lock_guard<std::mutex> guard(m_callback_mutex);
             if (m_filter.temporal_update(dt))
             {
                 m_time_keeper.update_after_temporal_update(dt);
