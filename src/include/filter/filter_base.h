@@ -62,7 +62,7 @@ public:
     /**
      * @brief FilterBase: Default constructor
      */
-    FilterBase():m_initialized(0), m_identity(StateMatrix::Identity()), m_debug(false)
+    FilterBase():m_initialized(0), m_identity(StateMatrix::Identity()), m_debug(true)
     { }
 
     /**

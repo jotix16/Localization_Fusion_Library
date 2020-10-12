@@ -111,7 +111,7 @@ struct SensorConfig{
             }
             else if(type == 3)
             {
-                if(i >= POSITION_SIZE && i < POSITION_SIZE + TWIST_SIZE || i >= POSITION_SIZE + POSE_SIZE)
+                if(i >= POSITION_SIZE && i < POSITION_SIZE + 3 || i >= POSITION_SIZE + POSE_SIZE)
                 {
                     m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
                     continue;
@@ -128,7 +128,7 @@ struct SensorConfig{
             }
         }
 
-        if(type > 1 || type ==0) // only for twist and imu
+        if(type > 1 || type == 0) // only for twist and imu
         {
             for (int i = 0; i < TWIST_SIZE; i++)
             {
@@ -136,7 +136,7 @@ struct SensorConfig{
             }
         }
 
-        if(type > 12) // only for imu
+        if(type > 2) // only for imu
         {
             for (int i = 0; i < ACCELERATION_SIZE; i++)
             {
@@ -228,6 +228,7 @@ struct FilterConfig{
                 m_sensor_configs.emplace(topic, SensorConfig(doc, sensor_name.data(), i));
             }
         }
+
     }
 
     /**

@@ -103,6 +103,7 @@ public:
         
         // update the covariance: P = J * P * J' + Q
         this->m_covariance = jacobian *this->m_covariance * jacobian.transpose();
+        // this->m_covariance.noalias() += dt*this->m_process_noise;
         this->m_covariance.noalias() += this->m_process_noise;
 
         DEBUG("\t\t--------------- FilterEKF Temporal_Update: OUT ---------------\n");
@@ -116,10 +117,10 @@ public:
         // Check if initialized
         if(!this->m_initialized)
         {
-            if(debug > 1) DEBUG("\n---------------FilterEKF: Filter not initialized ---------------\n");
+            if(debug > 0) DEBUG("\n---------------FilterEKF: Filter not initialized ---------------\n");
             return false;
         }
-        if(debug > 1) DEBUG("H matrix: \n" << m.H << "\n");
+        if(debug > 0) DEBUG("H matrix: \n" << m.H << "\n");
         Matrix ph_t = this->m_covariance * m.H.transpose();
         Matrix hph_t_r_inv = (m.H * ph_t + m.R).inverse();
 
