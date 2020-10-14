@@ -195,29 +195,38 @@ public:
     {
         DEBUG_W("\n\t\t--------------- Wrapper Odom_callback: IN -------------------\n");
         bool* update_vector = m_config.m_sensor_configs[topic_name].m_update_vector;
-        bool valid_angular_velocity, valid_linear_velocity;
-        valid_linear_velocity = update_vector[STATE_V_X] && update_vector[STATE_V_Y] && update_vector[STATE_V_Z];
-        valid_angular_velocity = update_vector[STATE_V_ROLL] && update_vector[STATE_V_PITCH] && update_vector[STATE_V_YAW];
+        DEBUG_W( "\n" << msg->header.frame_id <<" ~~ Update_vector: " << utilities::printtt(update_vector, 1, STATE_SIZE));
 
-        if (debug > -1)
-        {
-            DEBUG_W( "\n" << msg->header.frame_id <<" ~~ Update_vector: " << utilities::printtt(update_vector, 1,15));
-        }
+        // If a whole position, orientation or linear_velocity, angular_velocity should be ignored
+        // we cannot assume them to be zeros as in the case where we ignore only a component of each of them.
+        // In such a case we make sure that the update_indeces don't include these parts at all.
+        bool valid_position, valid_orientation, valid_angular_velocity, valid_linear_velocity;
+        valid_position = update_vector[STATE_X] || update_vector[STATE_Y] || update_vector[STATE_Z];
+        valid_orientation = update_vector[STATE_ROLL] || update_vector[STATE_PITCH] || update_vector[STATE_YAW];
+        valid_linear_velocity = update_vector[STATE_V_X] || update_vector[STATE_V_Y] || update_vector[STATE_V_Z];
+        valid_angular_velocity = update_vector[STATE_V_ROLL] || update_vector[STATE_V_PITCH] || update_vector[STATE_V_YAW];
+
 
         // 1. Create vector the same size as the submeasurement
         // - its elements are the corresponding parts of the state we are estimating
         // - the size of this index-vector enables initializing of the submeasurement matrixes
         // TO_DO: we are not ignoring nan & inf measurements
+        uint start_index, end_index;
+        start_index = valid_position ?  0 : POSITION_SIZE;
+        end_index = valid_orientation ?  POSE_SIZE : POSE_SIZE - ORIENTATION_SIZE;
         std::vector<uint> update_indices_pose;
-        for (uint i = 0; i < POSE_SIZE; ++i)
+        for (uint i = start_index; i < end_index; ++i)
         {
             if(States::full_state_to_estimated_state[i] < STATE_SIZE)
                 update_indices_pose.push_back(i);
         }
         size_t update_size_pose = update_indices_pose.size();
 
+
+        start_index = valid_linear_velocity ?  POSE_SIZE : POSE_SIZE + ORIENTATION_SIZE;
+        end_index = valid_angular_velocity ?  TWIST_SIZE + POSE_SIZE : TWIST_SIZE + POSE_SIZE - ORIENTATION_SIZE;
         std::vector<uint> update_indices_twist;
-        for (uint i = POSE_SIZE; i < TWIST_SIZE + POSE_SIZE; ++i)
+        for (uint i = start_index; i < end_index; ++i)
         {
             if(States::full_state_to_estimated_state[i] < STATE_SIZE)
                 update_indices_twist.push_back(i);
@@ -241,7 +250,8 @@ public:
         prepare_pose(&(msg->pose), transform_to_map, update_vector, sub_measurement,
                      sub_covariance, sub_innovation, state_to_measurement_mapping,
                      update_indices_pose, 0, update_size_pose);
-
+                     
+        if(valid_angular_velocity || valid_linear_velocity)
         prepare_twist(&(msg->twist), transform_to_base_link, update_vector, sub_measurement,
                       sub_covariance, sub_innovation, state_to_measurement_mapping,
                       update_indices_twist, update_size_pose, update_size_twist, false);
@@ -254,7 +264,6 @@ public:
                         sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
         handle_measurement(meas);
         DEBUG_W("\t\t--------------- Wrapper Odom_callback: OUT -------------------\n");
-
     }
 
     /**
@@ -272,22 +281,26 @@ public:
         const TransformationMatrix& transform_to_base_link)
     {
         DEBUG_W("\n\t\t--------------- Wrapper Imu_callback: IN -------------------\n");
+        if (!is_initialized()) 
+        {
+            DEBUG_W("Got IMU but not initialized. Ignoring");
+            return;
+        }
         bool* update_vector = m_config.m_sensor_configs[topic_name].m_update_vector;
+        DEBUG_W(msg->header.frame_id <<" ~~ Update_vector: " << utilities::printtt(update_vector, 1, STATE_SIZE)<< "\n");
 
         bool valid_orientation, valid_angular_velocity, valid_linear_acceleration;
         valid_orientation = std::abs(msg->orientation_covariance[0] + 1.0) > 1e-9;
         valid_angular_velocity = std::abs(msg->angular_velocity_covariance[0] + 1) > 1e-9;
         valid_linear_acceleration = std::abs(msg->linear_acceleration_covariance[0] + 1) > 1e-9;
 
-        if (true)
-        {
-            std::cout << "\n" << msg->header.frame_id <<" ~~ Update_vector: " << utilities::printtt(update_vector, 1,15)<< "\n";
-        }
 
         // 1. Create vector the same size as the submeasurement
         // - its elements are the corresponding parts of the state we are estimating
         // - the size of this index-vector enables initializing of the submeasurement matrixes
         // TO_DO: we are not ignoring nan & inf measurements
+
+        // a- update_indeces for the ORIENTATION in the POSE measurement
         size_t update_size_pose = 0;
         std::vector<uint> update_indices_pose;
         if (false)
@@ -300,6 +313,7 @@ public:
             update_size_pose = update_indices_pose.size();
         }
 
+        // b- update_indeces for the ANGULAR VELOCITIES in the TWIST measurement
         size_t update_size_twist = 0;
         std::vector<uint> update_indices_twist;
         if (valid_angular_velocity)
@@ -312,6 +326,7 @@ public:
             update_size_twist = update_indices_twist.size();
         }
 
+        // c- update_indeces for the LINEAR ACCELERATION
         size_t update_size_acceleration = 0;
         std::vector<uint> update_indices_acceleration;
         if (valid_linear_acceleration)
@@ -337,41 +352,39 @@ public:
         sub_u_indices.insert(sub_u_indices.end(), update_indices_acceleration.begin(), update_indices_acceleration.end());
         
         // 3. Fill the submeasurement matrixes
-        // prepare_pose(&(msg->pose), transform_to_world, update_vector, sub_measurement,
-        //              sub_covariance, sub_innovation, state_to_measurement_mapping,
-        //              update_indices_pose, 0, update_size_pose);
-        // Ignore rotational velocity if the first covariance value is -1
-
-        // if (valid_angular_velocity)
+        // a- fill the ORIENTATION part
+        // REQUIRES DISCUSSION
+        // if (valid_orientation)
         // {
         //     // create twist msg
         //     geometry_msgs::msg::PoseWithCovariance* posePtr = new geometry_msgs::msg::PoseWithCovariance();
-        //     twistPtr->pose.orientation = msg->orientation;
+        //     posePtr->pose.orientation = msg->orientation;
 
         //     // Copy the covariance
-        //     for (size_t i = 0; i < ORIENTATION_SIZE; i++)
+        //     for (size_t i = 0; i < POSITION_SIZE; i++)
         //     {
-        //         for (size_t j = 0; j < ORIENTATION_SIZE; j++)
+        //         for (size_t j = 0; j < POSITION_SIZE; j++)
         //         {
-        //             twistPtr->covariance[TWIST_SIZE * (i + ORIENTATION_SIZE) + (j + ORIENTATION_SIZE)] =
-        //             msg->angular_velocity_covariance[ORIENTATION_SIZE * i + j];
+        //             posePtr->covariance[POSE_SIZE*i + j] = 0.0;
+        //             posePtr->covariance[POSE_SIZE*(i + POSITION_SIZE) + j] = 0.0;
+        //             posePtr->covariance[POSE_SIZE*i + (j + POSITION_SIZE)] = 0.0;
+
+        //             posePtr->covariance[POSE_SIZE * (i + POSITION_SIZE) + (j + POSITION_SIZE)] =
+        //             msg->orientation_covariance[POSITION_SIZE * i + j];
         //         }
         //     }
-
-        //     std::cout << "Angular v:" << twistPtr->twist.angular.x << " "
-        //                               << twistPtr->twist.angular.y << " "
-        //                               << twistPtr->twist.angular.z << "\n";
-        //     prepare_twist(twistPtr, transform_to_base_link, update_vector, sub_measurement,
-        //                   sub_covariance, sub_innovation, state_to_measurement_mapping,
-        //                   update_indices_twist, update_size_pose, update_size_twist, true);
+        //     prepare_pose(posePtr, transform_to_world, update_vector, sub_measurement,
+        //                 sub_covariance, sub_innovation, state_to_measurement_mapping,
+        //                 update_indices_pose, 0, update_size_pose);
         // }
         // else
         // {
-        //     std::cout << "Received IMU message with -1 as its first covariance value for angular"
-        //               << "velocity. Ignoring angular velocity...\n";
+        //     DEBUG_W("Received IMU message with -1 as its first covariance value for orientation."
+        //               << " Ignoring the orientation...\n");
         // }
 
-
+        // b- fill the ANGULAR VELOCITY part
+        // - the idea is to create a twist message and to normally call prepare_twist
         if (valid_angular_velocity)
         {
             // create twist msg
@@ -383,29 +396,27 @@ public:
             {
                 for (size_t j = 0; j < ORIENTATION_SIZE; j++)
                 {
+                    twistPtr->covariance[TWIST_SIZE*i + j] = 0.0;
+                    twistPtr->covariance[TWIST_SIZE*(i + ORIENTATION_SIZE) + j] = 0.0;
+                    twistPtr->covariance[TWIST_SIZE*i + (j + ORIENTATION_SIZE)] = 0.0;
+
                     twistPtr->covariance[TWIST_SIZE * (i + ORIENTATION_SIZE) + (j + ORIENTATION_SIZE)] =
                     msg->angular_velocity_covariance[ORIENTATION_SIZE * i + j];
                 }
             }
-
-            std::cout << "Angular v:" << twistPtr->twist.angular.x << " "
-                                      << twistPtr->twist.angular.y << " "
-                                      << twistPtr->twist.angular.z << "\n";
             prepare_twist(twistPtr, transform_to_base_link, update_vector, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_twist, update_size_pose, update_size_twist, true);
         }
         else
         {
-            std::cout << "Received IMU message with -1 as its first covariance value for angular"
-                      << "velocity. Ignoring angular velocity...\n";
+            DEBUG_W("Received IMU message with -1 as its first covariance value for angular"
+                      << "velocity. Ignoring angular velocity...\n");
         }
 
+        // c- fill the LINEAR ACCELERATION part
         if (valid_linear_acceleration)
         {
-            std::cout << "Linear a:" <<  msg->linear_acceleration.x << " "
-                                      << msg->linear_acceleration.y << " "
-                                      << msg->linear_acceleration.z << "\n";
             prepare_acceleration(msg->linear_acceleration, msg->linear_acceleration_covariance,
                           transform_to_base_link, update_vector, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
@@ -413,8 +424,8 @@ public:
         }
         else
         {
-            std::cout << "Received IMU message with -1 as its first covariance value for linear"
-                      << "acceleration. Ignoring linear acceleration...\n";
+            DEBUG_W("Received IMU message with -1 as its first covariance value for linear"
+                      << "acceleration. Ignoring linear acceleration...\n");
         }
 
         // std::cout << "H\n";
@@ -425,8 +436,10 @@ public:
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
         Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
                         sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
+
+
         handle_measurement(meas);
-        DEBUG_W("\t\t--------------- Wrapper Odom_callback: OUT -------------------\n");
+        DEBUG_W("\t\t--------------- Wrapper Imu_callback: OUT -------------------\n");
     }
 
     /**
@@ -457,6 +470,7 @@ public:
 
         // 4. Create measurement vector (corresponds to the twist part)
         Vector6T measurement;
+        measurement.setZero(); // should not be impo
 
         // 1. Extract angular velocities
         // - consider update_vector
@@ -514,6 +528,8 @@ public:
         // 7. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
         uint meas_index = 0U;
         uint meas_index2 = 0U;
+        std::stringstream sss;
+        sss<<"INDEXES: "<< ix1 <<"\n";
         for ( uint i = 0; i < update_size; i++)
         {
             meas_index = update_indices[i] - POSE_SIZE;
@@ -522,9 +538,12 @@ public:
             for (uint j = 0; j < update_size; j++)
             {
                 meas_index2 = update_indices[j] - POSE_SIZE;
+                sss << "(" << meas_index << "," <<meas_index2 <<"->"<< covariance(meas_index, meas_index2)  <<") ";
                 sub_covariance(i + ix1, j + ix1) = covariance(meas_index, meas_index2);
             }
+            sss<<"\n";
         }
+            sss<<"\n";
 
         // 7. Fill state to measurement mapping and inovation
         for (uint i = 0; i < update_size; i++)
@@ -532,7 +551,10 @@ public:
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
 
-        DEBUG_W(" -> Noise twist:\n" << std::fixed << std::setprecision(4) << sub_covariance << "\n");
+        DEBUG_W(" -> ROT twist: "<<update_size<<"\n" << std::fixed << std::setprecision(4) << rot << "\n");
+        DEBUG_W(" -> Noise from twist msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg->covariance, 6, 6));
+        DEBUG_W(" -> Noise twist:\n" << std::fixed << std::setprecision(9) << sub_covariance << "\n");
+        DEBUG_W(" -> SubNoise twist\n" <<sss.str());
         DEBUG_W("\t\t--------------- Wrapper Prepare_Twist: OUT -------------------\n");
     }
 
@@ -562,6 +584,11 @@ public:
     {
         DEBUG_W("\n\t\t--------------- Wrapper Prepare_Pose: IN -------------------\n");
         DEBUG_W("\n");
+
+        bool ignore_orientation, ignore_position;
+        if(update_size == 0) return;
+        ignore_position = update_indices[0] >= POSITION_SIZE;
+        ignore_orientation = update_indices[update_size-1] < POSITION_SIZE;
         // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
         // - Handle bad (empty) quaternions and normalize
         QuaternionT orientation;
@@ -570,6 +597,11 @@ public:
         {
             DEBUG_W("Invalid orientation quaternion. Orientation is set to all 0!\n");
             orientation = {1.0, 0.0, 0.0, 0.0};
+        }
+        else if (ignore_orientation)
+        {
+            DEBUG_W("Orientation is being ignored according to update_vector!\n");
+            orientation = {1.0, 0.0, 0.0, 0.0}; 
         }
         else
         {
@@ -598,7 +630,6 @@ public:
                 orientation.normalize();
             }
         }
-
         // 2. Write Pose as Transformation Matrix for easy transformations
         // - create pose transformation matrix which saves  |R R R T|
         // - the orientation in form of a (R)otation-matrix |R R R T|
@@ -607,17 +638,21 @@ public:
         // consider update_vector
         Matrix4T pose_transf;
         pose_transf.setIdentity();
-        pose_transf.template block<3,3>(0,0) = orientation.toRotationMatrix();
+        if(!ignore_orientation)
+        pose_transf.template block<3,3>(0,0) = orientation.toRotationMatrix(); // orientation part
+
+        if(!ignore_position)
         pose_transf.template block<3,1>(0,3) = Eigen::Vector3d{
             msg->pose.position.x * (int)update_vector[STATE_X],
             msg->pose.position.y * (int)update_vector[STATE_Y],
-            msg->pose.position.z * (int)update_vector[STATE_Z]};
+            msg->pose.position.z * (int)update_vector[STATE_Z]}; // position part
 
         // 3. Transform pose to fusion frame
         pose_transf = transform * pose_transf;
         DEBUG_W( " -> Pose transformed:\n" << pose_transf << "\n");
         // 4. Compute measurement vector
         Vector6T measurement;
+        measurement.setZero();
         measurement.template head<3>() = pose_transf.template block<3,1>(0,3);
         measurement.template tail<3>() = pose_transf.template block<3,3>(0,0).eulerAngles(0,1,2);
 
@@ -709,7 +744,7 @@ public:
 
         Vector3T gravity_acc;
         gravity_acc << 0.0 , 0.0 , 9.8;
-        gravity_acc = rot.inverse() * gravity_acc;
+        gravity_acc = rot.transpose() * gravity_acc; // R^T = R^^1 for rotation matrixes (transpose instead of inverse)
         measurement -= gravity_acc;
 
         measurement = rot * measurement;
@@ -735,9 +770,10 @@ public:
             if (States::full_state_to_estimated_state[update_indices[i]]<15)
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
-        
-        DEBUG_W(" -> Noise acceleration:\n" << std::fixed << std::setprecision(4) << covariance << "\n");
-        DEBUG_W("\t\t--------------- Wrapper Prepare_Pose: OUT -------------------\n");
+
+        DEBUG_W(" -> Noise from acceleration msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
+        DEBUG_W(" -> Noise acceleration:\n" << std::fixed << std::setprecision(4) << sub_covariance << "\n");
+        DEBUG_W("\t\t--------------- Wrapper Prepare_Acceleration: OUT -------------------\n");
     }
 
     /**
@@ -790,10 +826,8 @@ public:
                 DEBUG_W(" -> Noise temp:\n");
                 DEBUG_W(std::fixed << std::setprecision(4) <<  measurement.R << "\n");
             }
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.innovation.transpose() << "\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.z.transpose() << "\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n");
 
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n");
             // 1. temporal update
             auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
             DEBUG_W("\n--------------- Wrapper: Temporal update, dt = "<< dt << " ---------------\n");
@@ -803,9 +837,9 @@ public:
             {
                 m_time_keeper.update_after_temporal_update(dt);
                 
-                DEBUG_W(std::fixed << std::setprecision(4) << " -> State temp: " << get_state().transpose() << "\n");
                 if(debug > 0) DEBUG_W(" -> Covar temp: \n");
                 if(debug > 0) DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
+                DEBUG_W(std::fixed << std::setprecision(4) << " -> State temp: " << get_state().transpose() << "\n");
             }
             // 2. observation update
             if (m_filter.observation_update(measurement))
@@ -813,6 +847,8 @@ public:
                 m_time_keeper.update_with_measurement(measurement.m_time_stamp, time_now);
 
                 DEBUG_W("\n--------------- Wrapper: Observation update! ---------------\n");
+                DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.innovation.transpose() << "\n");
+                DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.z.transpose() << "\n");
                 DEBUG_W(std::fixed << std::setprecision(4) << " -> State obsv: " << get_state().transpose() << "\n");
                 if(debug > 0) DEBUG_W(" -> Covar obsv: \n");
                 if(debug > 0) DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
