@@ -18,6 +18,9 @@
 #include <geometry_msgs/TwistWithCovariance.h>
 
 // #include <tf2/buffer_core.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_eigen/tf2_eigen.h>
@@ -64,6 +67,7 @@ class FilterNode
 
         // state publisher
          ros::Publisher m_position_publisher;
+         ros::Publisher m_imu_publisher;
 
         // tf2
         tf2_ros::Buffer m_tf_buffer;
@@ -80,7 +84,7 @@ class FilterNode
         // time vs data triggered options
         bool m_data_triggered;
         double m_publish_frequency;
-
+        bool m_enu_published;
 
     public:
         /**
@@ -88,7 +92,7 @@ class FilterNode
          * @param[in] nh - the main node handler needed for subscriptions and other ros related stuff
          * @param[in] nh_param - node handler needed for parameter reading
          */
-        FilterNode(ros::NodeHandle& nh, ros::NodeHandle& nh_param): m_nh(nh), m_nh_param(nh_param), m_tf_listener(m_tf_buffer)
+        FilterNode(ros::NodeHandle& nh, ros::NodeHandle& nh_param): m_nh(nh), m_nh_param(nh_param), m_tf_listener(m_tf_buffer),m_enu_published(false)
         {}
 
         /**
@@ -106,6 +110,7 @@ class FilterNode
 
             // 2. initialize publisher
             m_position_publisher = m_nh.advertise<OdomMsg>("odometry/filtered", 20);
+            m_imu_publisher = m_nh.advertise<OdomMsg>("pose/filtered", 20);
 
             // 3.a. initialize odom subscribers
             int odom_nr_;
@@ -122,7 +127,7 @@ class FilterNode
                 boost::bind(&FilterNode::odom_callback, this, _1, odom_topic)));
             }
             
-            // 3.b. initialize odom subscribers
+            // 3.b. initialize imu subscribers
             int imu_nr_;
             m_nh_param.param("imu_nr", imu_nr_, 0);
 
@@ -150,7 +155,7 @@ class FilterNode
                         m_map_frame_id == m_output_baselink_frame_id,
                         "Invalid frame configuration! The values for map_frame, odom_frame, "
                         "and base_link_frame must be unique. If using a base_link_frame_output values, it "
-                        "must not match the map_frame or odom_frame.");                     
+                        "must not match the map_frame or odom_frame.");
         }
     
         /**
@@ -215,23 +220,43 @@ class FilterNode
          */
         void imu_callback(const ImuMsg::ConstPtr& msg, std::string topic_name)
         {
-            TransformationMatrix transform_to_world;
+            // std::stringstream ss;
+            // ss << "IMU MSG:\n" << *msg << "\n";
+            // std::cout <<ss.str();
+
+            TransformationMatrix transform_world_enu;
             TransformationMatrix transform_to_base_link;
 
             // 1. get transformations from world and base_link to the sensor frame
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
-            geometry_msgs::TransformStamped transform_stamped;
+            geometry_msgs::TransformStamped transform_stamped1;
+            geometry_msgs::TransformStamped transform_stamped2;
             try
             {
-                // a. baselink frame to sensor frame for the velocity and acceleratation part of the imu msg
+                // -- publish enu frame the first time
+                if(!m_enu_published)
+                {
+                    transform_stamped1 = m_tf_buffer.lookupTransform(m_map_frame_id, msgFrame ,ros::Time(0), ros::Duration(1.0));
+                    transform_world_enu = tf2::transformToEigen(transform_stamped1);
+                    std::cout << "PUBLISHING ENU FRAME\n";
+                    publish_enu_frame(transform_world_enu, msg);
+                    m_enu_published = true;
+                    return;
+                }
+
+                // a. map frame to enu coordinate system in which the orientations of the IMU sensor are given
+                transform_stamped1 = m_tf_buffer.lookupTransform(m_map_frame_id, "enu" ,ros::Time(0), ros::Duration(1.0));
+                transform_world_enu = tf2::transformToEigen(transform_stamped1);
+
+                // b. baselink frame to imu sensor frame for the velocity and acceleratation part of the imu msg
                 if (m_baselink_frame_id == msgFrame)
                 {
                     transform_to_base_link.setIdentity();
                 }
                 else
                 {
-                    transform_stamped = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgFrame ,ros::Time(0), ros::Duration(1.0));
-                    transform_to_base_link = tf2::transformToEigen(transform_stamped);
+                    transform_stamped2 = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgFrame, ros::Time(0), ros::Duration(1.0));
+                    transform_to_base_link = tf2::transformToEigen(transform_stamped2);
                 }
             }
             catch (tf2::TransformException &ex)
@@ -240,18 +265,20 @@ class FilterNode
                 ros::Duration(1.0).sleep();
                 return;
             }
-
-            // // get msg in our local msg form.
+            
+            // VISUALIZE IMU
+            visualize_imu(msg, msgFrame);
+            
+            // get msg in our local msg form.
             ImuMsgLocFusLib msg_loc;
             to_local_imu_msg(msg, msg_loc);
           
-            // // 2. call filter's imu_callback
-            // // ros_info_msg(msg_loc);
-            // std::cout << "MSG FRAME ID: " << msgFrame << "\n";
-            m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_to_world, transform_to_base_link);
+            // 2. call filter's imu_callback
+            // ros_info_msg(msg_loc);
+            m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_world_enu, transform_to_base_link);
 
-            // // 3. publish updated base_link frame
-            // publish_current_state();
+            // 3. publish updated base_link frame
+            publish_current_state();
         }
 
         void pose_callback(const PoseWithCovStampedMsg::ConstPtr& msg)
@@ -412,6 +439,90 @@ class FilterNode
 
             std::cout << "Measurement: " << ss.str() << "\n";
         }
+
+        /**
+         * @brief FilterNode: Helper function to publish an odom msg from the imu for visualization
+         * @param[in] msg - reference to the IMU msg to be printed
+         * @param[in] msgFrame - transformation frame of the IMU sensor
+         */
+        void visualize_imu(const ImuMsg::ConstPtr& msg, std::string msgFrame)
+        {
+            // ------------------------------- Visualize IMU ------------------------------------ //
+            tf2::Quaternion quat_map_enu, quat_enu_imu_meas, quat_bl_imu;
+            geometry_msgs::Quaternion q_map_enu = m_tf_buffer.lookupTransform(m_map_frame_id, "enu", ros::Time(0), ros::Duration(1.0)).transform.rotation;
+            geometry_msgs::Quaternion q_bl_imu = m_tf_buffer.lookupTransform(m_baselink_frame_id , msgFrame, ros::Time(0), ros::Duration(1.0)).transform.rotation;
+            tf2::convert(q_map_enu , quat_map_enu);
+            tf2::convert(msg->orientation , quat_enu_imu_meas);
+            tf2::convert(q_bl_imu , quat_bl_imu);
+
+            quat_enu_imu_meas = quat_map_enu * quat_enu_imu_meas * quat_bl_imu.inverse();
+            quat_enu_imu_meas.normalize();
+
+            geometry_msgs::PoseWithCovariance* posePtr = new geometry_msgs::PoseWithCovariance();
+            posePtr->pose.orientation = tf2::toMsg(quat_enu_imu_meas);
+
+            Eigen::Quaterniond q;
+            Eigen::fromMsg(posePtr->pose.orientation, q);
+            std::cout << "RIGHT1: " << q.toRotationMatrix().eulerAngles(0, 1, 2).transpose() << "\n";
+            std::cout << "RIGHT2: " << q.vec().transpose() << " "  << q.w() << "\n";
+
+            // Copy the covariance
+            for (size_t i = 0; i < 3; i++)
+            {
+                for (size_t j = 0; j < 3; j++)
+                {
+                    posePtr->covariance[6*i + j] = 0.0;
+                    posePtr->covariance[6*(i + 3) + j] = 0.0;
+                    posePtr->covariance[6*i + (j + 3)] = 0.0;
+                    posePtr->covariance[6 * (i + 3) + (j + 3)] =
+                    msg->orientation_covariance[3 * i + j];
+                }
+            }
+            OdomMsgLocFusLib msg_loc_tempo;
+            msg_loc_tempo = m_filter_wrapper.get_state_odom();
+            posePtr->pose.position.x = msg_loc_tempo.pose.pose.position.x;
+            posePtr->pose.position.y = msg_loc_tempo.pose.pose.position.y;
+            posePtr->pose.position.z = msg_loc_tempo.pose.pose.position.z;
+
+            OdomMsg msg_pub;
+            msg_pub.header.stamp = ros::Time::now();
+            msg_pub.header.frame_id = m_map_frame_id;
+            msg_pub.child_frame_id = m_baselink_frame_id;
+            msg_pub.pose = *posePtr;
+            m_imu_publisher.publish(msg_pub);
+            // ------------------------------- Visualize IMU ------------------------------------ //
+        }
+        
+
+        /**
+         * @brief FilterNode: Helper function to calculate T_map_enu from the first IMU measurement.
+         *        It is used to represent orientations from IMU in map frame: x_map = T_map_enu * x_enu
+         * @param[in] msg - reference to the IMU msg to be printed
+         * @param[in] msgFrame - transformation frame of the IMU sensor
+         */
+        void publish_enu_frame(TransformationMatrix trans_world_imu, const ImuMsg::ConstPtr& msg)
+        {
+            Eigen::Quaterniond q;
+            Eigen::fromMsg(msg->orientation, q);
+            std::cout << "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEMIKEL: " << q.x() <<", "<< q.y() <<", "  << q.z() <<"\n";
+            trans_world_imu = trans_world_imu * q.inverse();
+            q = trans_world_imu.rotation();
+            std::cout << "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEMIKEL: " << q.x() <<", "<< q.y() <<", "  << q.z() <<"\n";
+            // publish frame
+            geometry_msgs::TransformStamped transformStamped;
+            transformStamped.header = msg->header;
+            transformStamped.header.frame_id = m_map_frame_id;
+            transformStamped.child_frame_id = "enu";
+            transformStamped.transform.translation.x = 1;
+            transformStamped.transform.translation.y = 1;
+            transformStamped.transform.translation.z = 1;
+            transformStamped.transform.rotation.x = q.x();
+            transformStamped.transform.rotation.y = q.y();
+            transformStamped.transform.rotation.z = q.z();
+            transformStamped.transform.rotation.w = q.w();
+            m_tf_broadcaster.sendTransform(transformStamped);
+        }
+
 
 };
 
