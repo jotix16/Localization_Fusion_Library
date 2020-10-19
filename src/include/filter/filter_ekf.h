@@ -91,7 +91,7 @@ public:
 
         // get jacobian matrix
         StateMatrix jacobian;
-		this->m_motion_model.compute_jacobian_and_predict(jacobian,this->m_state, dt);
+		this->m_motion_model.compute_jacobian_and_predict(jacobian, this->m_state, dt);
 
         // wrap angles of state
         for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
@@ -102,7 +102,7 @@ public:
         }
         
         // update the covariance: P = J * P * J' + Q
-        this->m_covariance = jacobian *this->m_covariance * jacobian.transpose();
+        this->m_covariance = jacobian * this->m_covariance * jacobian.transpose();
         // this->m_covariance.noalias() += dt*this->m_process_noise;
         this->m_covariance.noalias() += this->m_process_noise;
 
@@ -148,7 +148,7 @@ public:
         Matrix K(this->num_state, m.z.rows());
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
-        DEBUG(std::fixed << std::setprecision(4) << "ph_t:\n" << ph_t << "\n");
+        DEBUG(std::fixed << std::setprecision(9) << "ph_t:\n" << ph_t << "\n");
 
         this->m_state.noalias() += K * innovation;
 
