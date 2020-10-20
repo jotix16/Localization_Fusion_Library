@@ -188,7 +188,11 @@ struct FilterConfig{
     {
         reset(path);
     }
-    
+
+    /**
+     * @brief Parses the filter parameters and all of its sensors.
+     * @param[in] path - Path to the .json file normally in the folder config/.
+     */
     void reset(const char* path)
     {
         // Create stream and check if valid

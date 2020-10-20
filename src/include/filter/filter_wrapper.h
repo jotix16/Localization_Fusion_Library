@@ -34,6 +34,8 @@
 #include <filter/filter_ekf.h>
 #include <measurement/measurement_time_keeper.h>
 #include <measurement/measurement.h>
+#include <sensors/odom.h>
+#include <sensors/imu.h>
 
 #include <geometry_msgs/msg/Vector3.h>
 #include <geometry_msgs/msg/PoseWithCovariance.h>
@@ -140,41 +142,6 @@ public:
             {
                 std::cout<<"RosFilter::loadParams() - unable to create debug output file" << debugOutFile
                                 << ". Error was " << e.what() << "\n";
-            }
-        }
-    }
-
-    /**
-     * @brief FilterWrapper: Helper function that copies a squared matrix from array to eigen matrix
-     * @param[out] destination - Eigen 6x6 matrix that has to be filled
-     * @param[in] source - source array
-     */
-    // from array to Matrix, used when reading from msg
-    template<uint dim = 6>
-    void copy_covariance(Matrix6T& destination, const std::array<double, dim*dim>& source)
-    {
-        for (uint i = 0; i < dim; i++)
-        {
-            for (uint j = 0; j < dim; j++)
-            {
-                destination(i,j) = source[i*dim + j];
-            }
-        }
-    }
-
-    /**
-     * @brief FilterWrapper: Helper function that copies a squared from matrix to array used for the msgs.
-     * @param[in] destination - destination array which should be filled
-     * @param[in] index - source matrix 
-     */
-    template<uint dim = 6>
-    void copy_covariance(std::array<double, dim*dim>& destination, const Matrix6T& source)
-    {
-        for (uint i = 0; i < dim; i++)
-        {
-            for (uint j = 0; j < dim; j++)
-            {
-                destination[i*dim+ j](i,j) = source(i,j);
             }
         }
     }
@@ -500,8 +467,13 @@ public:
         // 5. Compute measurement covariance
         Matrix6T covariance;
         covariance.setZero();
-        copy_covariance<TWIST_SIZE>(covariance, msg->covariance);
-
+        for (uint i = 0; i < TWIST_SIZE; i++)
+        {
+            for (uint j = 0; j < TWIST_SIZE; j++)
+            {
+                covariance(i,j) = msg->covariance[i*TWIST_SIZE + j];
+            }
+        }
         // 6. Rotate Covariance to fusion frame
         Matrix6T rot6d;
         rot6d.setZero();
@@ -650,7 +622,13 @@ public:
         // 6. Compute measurement covariance
         Matrix6T covariance;
         covariance.setZero();
-        copy_covariance<POSE_SIZE>(covariance, msg->covariance);
+        for (uint i = 0; i < TWIST_SIZE; i++)
+        {
+            for (uint j = 0; j < TWIST_SIZE; j++)
+            {
+                covariance(i,j) = msg->covariance[i*TWIST_SIZE + j];
+            }
+        }
         covariance = rot6d * covariance * rot6d.transpose();
 
         // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector

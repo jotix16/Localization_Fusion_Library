@@ -58,7 +58,7 @@ public:
         m_t_last_temporal_update = measurement_time_stamp;
         m_t_last_observation_update = measurement_time_stamp;
         if(debug) std::cout << "---------------Measurement Time Keeper: dt_global: " << m_dt_to_global 
-                            << "last_temp: " <<m_t_last_temporal_update<<" -------------------\n";
+                            << ", last_temp: " <<m_t_last_temporal_update<<" -------------------\n";
         m_inizialized = true;
     }
 

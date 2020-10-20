@@ -38,7 +38,7 @@ template<class MotionModelT>
 class FilterBase
 {
 public:
-    static constexpr int num_state = MotionModelT::number_states;
+    static constexpr uint num_state = MotionModelT::number_states;
     using T = typename MotionModelT::ValueType;
     using Measurement = typename measurement::Measurement<num_state, T>;
     using States = typename MotionModelT::States;
