@@ -31,6 +31,7 @@
 
 #include <utilities/filter_utilities.h>
 #include <motion_model/motion_model.h>
+#include <sensors/sensor_base.h>
 
 #include <geometry_msgs/msg/Vector3.h>
 #include <geometry_msgs/msg/PoseWithCovariance.h>
@@ -40,54 +41,52 @@
 namespace iav{ namespace state_predictor { namespace sensors {
 
 template<typename T, typename States>
-class Imu
+class Imu : public SensorBase<T, States>
 {
 public:
-    static constexpr int num_state = States::STATE_SIZE_M;
+    using SensorBaseT   = SensorBase<T, States>;
+    using Measurement   = typename SensorBaseT::Measurement;
+    using StateVector   = typename SensorBaseT::StateVector;
+    using MappingMatrix = typename SensorBaseT::MappingMatrix;
+    using Vector        = typename SensorBaseT::Vector;
+    using Matrix        = typename SensorBaseT::Matrix;
+    using Matrix6T      = typename SensorBaseT::Matrix6T;
+    using Matrix4T      = typename SensorBaseT::Matrix4T;
+    using Vector6T      = typename SensorBaseT::Vector6T;
+    using Vector3T      = typename SensorBaseT::Vector3T;
+    using Matrix3T      = typename SensorBaseT::Matrix3T;
 
-    using Measurement = typename measurement::Measurement<num_state, T>;
+    using TransformationMatrix = typename SensorBaseT::TransformationMatrix;
+    using QuaternionT          = typename SensorBaseT::QuaternionT;
+    using AngleAxisT           = typename SensorBaseT::AngleAxisT;
 
-    using StateVector =   typename Eigen::Matrix<T, num_state, 1>;
-    using MappingMatrix = typename Eigen::Matrix<T, Eigen::Dynamic, num_state>;
-    using Vector =        typename Eigen::Matrix<T, Eigen::Dynamic, 1>;
-    using Matrix =        typename Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-    using Matrix3T =      typename Eigen::Matrix<T, 3, 3>;
-    using Matrix6T =      typename Eigen::Matrix<T, 6, 6>;
-    using Matrix4T =      typename Eigen::Matrix<T, 4, 4>;
-    using Vector6T =      typename Eigen::Matrix<T, 6, 1>;
-    using Vector3T =      typename Eigen::Matrix<T, 3, 1>;
 
-    using TransformationMatrix = typename Eigen::Transform<T, 3, Eigen::TransformTraits::Isometry>;
-    using QuaternionT = typename Eigen::Quaternion<T>;
-    using AngleAxisT = typename Eigen::AngleAxis<T>;
+private:
+    using SensorBaseT::num_state;
+    // sensor config
+    using SensorBaseT::m_topic_name;
+    using SensorBaseT::m_update_vector;
+    using SensorBaseT::m_mahalanobis_threshold;
 
-    private:
-    bool m_debug;
-    std::ostream* m_debug_stream;
+    // debugging
+    using SensorBaseT::m_debug;
+    using SensorBaseT::m_debug_stream;
 
-    public:
-    Imu(): m_debug(true)
-    { }
+public:
+    using SensorBaseT::SensorBase; // inherite constructor
+    Imu(){}; // default constructor
 
-    void setDebug(std::ostream* out_stream)
-    {
-            m_debug_stream = out_stream;
-            DEBUG("\t\t\t-----------------------------------------\n");
-            DEBUG("\t\t\t----- /SensorImu::Imu is on!" << " ------\n");
-            DEBUG("\t\t\t-----------------------------------------\n");
-    }
 
     /**
      * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
-     * by considering transforming them in the fusing frame, considering the update_vector to ignore parts
+     * by considering transforming them in the fusing frame, considering the m_update_vector to ignore parts
      * of the measurements and capturing matrixes with faulty values.
      * @param[in] msg - pointer to the imu msg of the measurement
      * @param[in] transform_to_world - transf from sensor frame of msg to world frame where orientation is fused
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
      */
-    void imu_callback(
+    Measurement imu_callback(
         const StateVector& state,
-        bool* update_vector,
         sensor_msgs::msg::Imu* msg,
         const TransformationMatrix& transform_to_world,
         const TransformationMatrix& transform_to_base_link)
@@ -99,7 +98,7 @@ public:
         //     DEBUG("Got IMU but not initialized. Ignoring");
         //     return;
         // }
-        DEBUG(msg->header.frame_id <<" ~~ Update_vector: " << utilities::printtt(update_vector, 1, STATE_SIZE)<< "\n");
+        DEBUG(msg->header.frame_id <<" ~~ m_update_vector: " << utilities::printtt(m_update_vector, 1, STATE_SIZE)<< "\n");
 
         bool valid_orientation, valid_angular_velocity, valid_linear_acceleration;
         valid_orientation = std::abs(msg->orientation_covariance[0] + 1.0) > 1e-9;
@@ -169,7 +168,7 @@ public:
         if (valid_orientation)
         {
             prepare_imu_orientation(state, msg->orientation, msg->orientation_covariance,
-                          transform_to_world, transform_to_base_link, update_vector, sub_measurement,
+                          transform_to_world, transform_to_base_link, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_orientation, 0, update_size_orientation);
         }
@@ -200,7 +199,7 @@ public:
                     msg->angular_velocity_covariance[ORIENTATION_SIZE * i + j];
                 }
             }
-            prepare_twist(state, twistPtr, transform_to_base_link, update_vector, sub_measurement,
+            prepare_twist(state, twistPtr, transform_to_base_link, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_twist, update_size_orientation, update_size_twist, true);
         }
@@ -213,8 +212,8 @@ public:
         // c- fill the LINEAR ACCELERATION part
         if (valid_linear_acceleration)
         {
-            prepare_acceleration(msg->linear_acceleration, msg->linear_acceleration_covariance,
-                          transform_to_base_link, update_vector, sub_measurement,
+            prepare_acceleration(state, msg->linear_acceleration, msg->linear_acceleration_covariance,
+                          transform_to_base_link, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_acceleration, update_size_orientation + update_size_twist, update_size_acceleration);
         }
@@ -224,25 +223,20 @@ public:
                       << "acceleration. Ignoring linear acceleration...\n");
         }
 
-        // std::cout << "H\n";
-        // std::cout << state_to_measurement_mapping <<"\n";
-        // 4. Send measurement to be handled
+        // 4. Create measurement to be handled
         // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
         T mahalanobis_thresh = 400;
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
         Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
                         sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
-
-
-        handle_measurement(meas);
         DEBUG("\t\t--------------- Wrapper Imu_callback: OUT -------------------\n");
+        return meas;
     }
 
     /**
      * @brief FilterWrapper: Prepares a Twist msg and fills the corresponding part of the measurement
      * @param[in] msg - pointer to msg to be prepared
      * @param[in] transform - transformation matrix to the frame of fusion(base_link frame)
-     * @param[in] update_vector - vector that specifies which parts of the measurement should be considered
      * @param[inout] sub_measurement - measurement vector to be filled
      * @param[inout] sub_covariance - covariance matrix to be filled
      * @param[inout] sub_innovation - innovation vector to be filled
@@ -255,7 +249,6 @@ public:
         const StateVector& state,
         geometry_msgs::msg::TwistWithCovariance* msg, 
         const TransformationMatrix& transform,
-        bool* update_vector,
         Vector& sub_measurement,
         Matrix& sub_covariance, 
         Vector& sub_innovation, 
@@ -270,12 +263,12 @@ public:
         measurement.setZero(); // should not be impo
 
         // 1. Extract angular velocities
-        // - consider update_vector
+        // - consider m_update_vector
         Vector3T angular_vel;
         angular_vel <<
-            msg->twist.angular.x * (int)update_vector[STATE_V_ROLL],
-            msg->twist.angular.y * (int)update_vector[STATE_V_PITCH],
-            msg->twist.angular.z * (int)update_vector[STATE_V_YAW];
+            msg->twist.angular.x * (int)m_update_vector[STATE_V_ROLL],
+            msg->twist.angular.y * (int)m_update_vector[STATE_V_PITCH],
+            msg->twist.angular.z * (int)m_update_vector[STATE_V_YAW];
         // - Transform measurement to fusion frame
         auto rot = transform.rotation();
         angular_vel = rot * angular_vel;
@@ -284,12 +277,12 @@ public:
         if(!is_imu)
         {
             // 2. Extract linear velocities if it is not imu
-            // - consider update_vector
+            // - consider m_update_vector
             Vector3T linear_vel; 
             linear_vel <<
-                msg->twist.linear.x * (int)update_vector[STATE_V_X],
-                msg->twist.linear.y * (int)update_vector[STATE_V_Y],
-                msg->twist.linear.z * (int)update_vector[STATE_V_Z];
+                msg->twist.linear.x * (int)m_update_vector[STATE_V_X],
+                msg->twist.linear.y * (int)m_update_vector[STATE_V_Y],
+                msg->twist.linear.z * (int)m_update_vector[STATE_V_Z];
             // - Extract angular velocities from the estimated state
             // - needed to add the effect of angular velocities to the linear ones(look below).
             Vector3T angular_vel_state;
@@ -364,7 +357,6 @@ public:
      * @brief FilterWrapper: Prepares a Pose msg and fills the corresponding part of the measurement
      * @param[in] msg - pointer to msg to be prepared
      * @param[in] transform - transformation matrix to the frame of fusion(world frame)
-     * @param[in] update_vector - vector that specifies which parts of the measurement should be considered
      * @param[inout] sub_measurement - measurement vector to be filled
      * @param[inout] sub_covariance - covariance matrix to be filled
      * @param[inout] sub_innovation - innovation vector to be filled
@@ -378,7 +370,6 @@ public:
         geometry_msgs::msg::Vector3& meas_msg,
         std::array<double, 9> covariance_array, 
         const TransformationMatrix& transform,
-        bool* update_vector,
         Vector& sub_measurement,
         Matrix& sub_covariance, 
         Vector& sub_innovation, 
@@ -400,9 +391,9 @@ public:
                 covariance(i, j) = covariance_array[i + j*3];
             }
         }
-        measurement[0] = meas_msg.x * (int)update_vector[STATE_A_X];
-        measurement[1] = meas_msg.y * (int)update_vector[STATE_A_Y];
-        measurement[2] = meas_msg.z * (int)update_vector[STATE_A_Z]; // remove_grav --- wrong
+        measurement[0] = meas_msg.x * (int)m_update_vector[STATE_A_X];
+        measurement[1] = meas_msg.y * (int)m_update_vector[STATE_A_Y];
+        measurement[2] = meas_msg.z * (int)m_update_vector[STATE_A_Z]; // remove_grav --- wrong
 
 
         // std::cout << "G: " << measurement[2]<< "\n";
@@ -449,7 +440,6 @@ public:
      * @param[in] msg - pointer to msg to be prepared
      * @param[in] transform_map_enu - transformation matrix T_map_enu (gives enu in map_frame)
      * @param[in] transform_bl_imu - transformation matrix T_bl_imu (gives imu in base_link frame)
-     * @param[in] update_vector - vector that specifies which parts of the measurement should be considered
      * @param[inout] sub_measurement - measurement vector to be filled
      * @param[inout] sub_covariance - covariance matrix to be filled
      * @param[inout] sub_innovation - innovation vector to be filled
@@ -464,7 +454,6 @@ public:
         std::array<double, 9> covariance_array, 
         const TransformationMatrix& transform_map_enu,
         const TransformationMatrix& transform_bl_imu,
-        bool* update_vector,
         Vector& sub_measurement,
         Matrix& sub_covariance, 
         Vector& sub_innovation, 
@@ -475,7 +464,7 @@ public:
         DEBUG("\n\t\t--------------- Wrapper Prepare_Orientation: IN -------------------\n");
         DEBUG("\n");
 
-        // 1. Read orientation and consider update_vector
+        // 1. Read orientation and consider m_update_vector
         // - Handle bad (empty) quaternions and normalize
         QuaternionT orientation;
         orientation =  {meas_msg.w,
@@ -488,13 +477,13 @@ public:
             orientation.normalize();
         }
 
-        // - consider update_vector
+        // - consider m_update_vector
         // -- extract roll pitch yaw 
         auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
-        // -- ignore roll pitch yaw according to update_vector 
-        rpy[0] *= (int)update_vector[STATE_ROLL];
-        rpy[1] *= (int)update_vector[STATE_PITCH];
-        rpy[2] *= (int)update_vector[STATE_YAW];
+        // -- ignore roll pitch yaw according to m_update_vector 
+        rpy[0] *= (int)m_update_vector[STATE_ROLL];
+        rpy[1] *= (int)m_update_vector[STATE_PITCH];
+        rpy[2] *= (int)m_update_vector[STATE_YAW];
         orientation = AngleAxisT(rpy[0], Vector3T::UnitX())
                     * AngleAxisT(rpy[1], Vector3T::UnitY())
                     * AngleAxisT(rpy[2], Vector3T::UnitZ());
@@ -557,7 +546,7 @@ public:
 
 };
 
-using ImuD = Imu<double, motion_model::Ctrv2D>;
+using ImuD = Imu<double, motion_model::Ctrv2D::States>;
 
 } // end namespace sensors 
 } // end namespace state_predictor
