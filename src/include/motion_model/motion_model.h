@@ -37,13 +37,12 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	/**
 	* @brief Type trait base class -> called primary template class
 	*/
-	template<int num_states, typename T = double>
+	template<uint num_states, typename T = double>
 	class MotionModel
 	{
 	public:		
-		static constexpr int number_states = num_states;
+		static constexpr uint number_states = num_states;
 		using ValueType = T;
-		// using number_states = num_states;
 		using StateVector = Eigen::Matrix<T, num_states, 1>;
 		using StateMatrix = Eigen::Matrix<T, num_states, num_states>;
 	};
@@ -81,7 +80,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 		};  // struct States
 
-	public:	
+	public:
+		static constexpr uint num_states = MotionModel<8, T>::number_states;
 		using StateVector = typename MotionModel<8, T>::StateVector;
 		using StateMatrix = typename MotionModel<8, T>::StateMatrix;
 		
@@ -219,6 +219,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		};  // struct States
 
 	public:
+		static constexpr uint num_states = MotionModel<6, T>::number_states;
 		using StateVector = typename MotionModel<6, T>::StateVector;
 		using StateMatrix = typename MotionModel<6, T>::StateMatrix;
 
@@ -342,7 +343,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			
 		};  // struct States
 
-	public:		
+	public:
+		static constexpr uint num_states = MotionModel<15, T>::number_states;
 		using StateVector = typename MotionModel<15, T>::StateVector;
 		using StateMatrix = typename MotionModel<15, T>::StateMatrix;
 		
@@ -619,12 +621,19 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	MotionModelCtra2D<T>::States::full_state_to_estimated_state;
 
 	template<typename T>
+	constexpr uint MotionModelCtra2D<T>::num_states;
+
+	template<typename T>
 	constexpr typename MotionModelCtrv2D<T>::States::Array
 	MotionModelCtrv2D<T>::States::full_state_to_estimated_state;
+	template<typename T>
+	constexpr uint MotionModelCtrv2D<T>::num_states;
 
 	template<typename T>
 	constexpr typename MotionModelCtra3D<T>::States::Array
 	MotionModelCtra3D<T>::States::full_state_to_estimated_state;
+	template<typename T>
+	constexpr uint MotionModelCtra3D<T>::num_states;
 
 	using Ctrv2D = MotionModelCtrv2D<double>;
 	using Ctra2D = MotionModelCtra2D<double>;

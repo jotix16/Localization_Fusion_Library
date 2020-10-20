@@ -52,12 +52,14 @@ public:
     using Matrix = typename FilterBaseT::Matrix;
     using Vector = typename FilterBaseT::Vector;
     using States = typename FilterBaseT::States;
+    static constexpr uint num_state = FilterBaseT::num_state;
 
 public:
+    int debug = 1;
+
     /**
      * @brief FilterBase: Default constructor
      */
-    int debug = 1;
     FilterEkf(){};
 
     /**
@@ -76,9 +78,10 @@ public:
         // DEBUG("--------------- FilterEKF Mahalanobis: hph_t_r_inv: ---------------\n" << hph_t_r_inv << "\n");
         // DEBUG("--------------- FilterEKF Mahalanobis: Eigenvalues: ---------------\n " << eigensolver.eigenvalues().real().transpose() << "\n\n");
         
+        DEBUG("--------------- FilterEKF Mahalanobis: ")
+        DEBUG("threshold: " << threshold << " value: " << sq_measurement_mahalanobis << " value2: " << innovation.transpose() * hph_t_r_inv * innovation << " ---------------\n");
         if(sq_measurement_mahalanobis > threshold) 
         {
-            DEBUG("--------------- FilterEKF Mahalanobis:" << "threshold: " << threshold << " value: " << sq_measurement_mahalanobis << " ---------------\n");
             return false;
         }
         return true;
@@ -117,10 +120,10 @@ public:
         // Check if initialized
         if(!this->m_initialized)
         {
-            if(debug > 0) DEBUG("\n---------------FilterEKF: Filter not initialized ---------------\n");
+            DEBUG("\n---------------FilterEKF: Filter not initialized ---------------\n");
             return false;
         }
-        if(debug > 0) DEBUG("H matrix: \n" << m.H << "\n");
+        // DEBUG("H matrix: \n" << m.H << "\n");
         Matrix ph_t = this->m_covariance * m.H.transpose();
         Matrix hph_t_r_inv = (m.H * ph_t + m.R).inverse();
 
@@ -145,10 +148,10 @@ public:
             return false;
         }
 
-        Matrix K(this->num_state, m.z.rows());
+        Matrix K(num_state, m.z.rows());
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
-        DEBUG(std::fixed << std::setprecision(9) << "ph_t:\n" << ph_t << "\n");
+        // DEBUG(std::fixed << std::setprecision(9) << "ph_t:\n" << ph_t << "\n");
 
         this->m_state.noalias() += K * innovation;
 
@@ -178,6 +181,10 @@ public:
         return true;
     }
 };
+
+// define used static variable
+template<class MotionModelT>
+constexpr uint FilterEkf<MotionModelT>::num_state;
 
 // explicit template initialization
 using Ctrv_EKF2D = FilterEkf<motion_model::Ctrv2D>;
