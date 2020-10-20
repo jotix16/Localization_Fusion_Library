@@ -23,43 +23,8 @@ set(${NAME_ROOT}_PATCH_VERSION 0)
 set(${NAME_ROOT}_VERSION "${${NAME_ROOT}_MAJOR_VERSION}.${${NAME_ROOT}_MINOR_VERSION}.${${NAME_ROOT}_PATCH_VERSION}")
 
 project(${NAME_ROOT} VERSION ${${NAME_ROOT}_VERSION})
-
-# ######################### R O S #################################
-# #################################################################
-# find_package(catkin REQUIRED COMPONENTS
-#   roscpp
-#   rospy
-#   std_msgs
-#   message_generation
-# )
-
-
-# ################################################
-# ## Declare ROS messages, services and actions ##
-# ################################################
-# # add_message_files(
-# # 	 FILES
-# #  )
-
-# ## Generate added messages and services with any dependencies listed here
-# #  generate_messages(
-# #    DEPENDENCIES
-# #    std_msgs
-# #  )
-
-# catkin_package(
-#   CATKIN_DEPENDS message_runtime
-# )
-
-# include_directories(
-#   ${catkin_INCLUDE_DIRS}
-# )
-# #################################################################
-# ######################### R O S #################################
-
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_EXAMPLES "Build examples, will link matplotlib. Therefore you will need a valid Python2 installation." ON)
-
 
 # Add CMake module paths
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/scripts/cmake CACHE PATH "Path for utility functions")
@@ -79,6 +44,7 @@ add_definitions(-D${NAME_ROOT}_VERSION=${${NAME_ROOT}_VERSION})
 add_definitions(-D${NAME_ROOT}_MAJOR_VERSION=${${NAME_ROOT}_MAJOR_VERSION})
 add_definitions(-D${NAME_ROOT}_MINOR_VERSION=${${NAME_ROOT}_MINOR_VERSION})
 add_definitions(-D${NAME_ROOT}_PATCH_VERSION=${${NAME_ROOT}_PATCH_VERSION})
+add_definitions(-DNODE_PATH="${PROJECT_SOURCE_DIR}")
 
 # Set basic paths
 set(${NAME_ROOT}_ROOT_PATH           ${CMAKE_CURRENT_LIST_DIR})
@@ -101,5 +67,3 @@ add_subdirectory(${${NAME_ROOT}_SRC_PATH})
 add_subdirectory(${${NAME_ROOT}_EXAMPLES_PATH})
 # add_subdirectory(${${NAME_ROOT}_TESTS_PATH})
 add_subdirectory(${${NAME_ROOT}_INTERFACES})
-add_subdirectory(${${NAME_ROOT}_ROS_SRC_PATH}) ## turn library in a package
-

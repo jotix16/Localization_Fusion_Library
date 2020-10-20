@@ -104,7 +104,7 @@ class FilterNode
         void init(std::string config_file)
         {
             // 1. initialize filter
-            std::string path = std::string(NODE_PATH) + std::string("/config/") + config_file;
+            std::string path = std::string(NODE_PATH) + std::string("/ros_src/config/") + config_file;
             ROS_INFO_STREAM( "Initialize FilterWrapper from path: " << path << "\n");
             m_filter_wrapper.reset(path.c_str());
 
@@ -275,10 +275,11 @@ class FilterNode
           
             // 2. call filter's imu_callback
             // ros_info_msg(msg_loc);
-            m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_world_enu, transform_to_base_link);
-
-            // 3. publish updated base_link frame
-            publish_current_state();
+            if(m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_world_enu, transform_to_base_link))
+            {
+                // 3. publish updated base_link frame
+                publish_current_state();
+            }
         }
 
         void pose_callback(const PoseWithCovStampedMsg::ConstPtr& msg)

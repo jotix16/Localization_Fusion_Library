@@ -154,7 +154,7 @@ public:
      * @param[in] transform_to_map - transf from sensor frame of msg to map frame where pose is fused
      * @param[in] transform_to_base_link - transf from sensor frame of msg to base_link frame where twist is fused
      */
-    void odom_callback(
+    bool odom_callback(
         const std::string& topic_name,
         nav_msgs::msg::Odometry* msg,
         const TransformationMatrix& transform_to_map,
@@ -231,6 +231,7 @@ public:
                         sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
         handle_measurement(meas);
         DEBUG_W("\t\t--------------- Wrapper Odom_callback: OUT -------------------\n");
+        return true;
     }
 
     /**
@@ -241,7 +242,7 @@ public:
      * @param[in] transform_to_world - transf from sensor frame of msg to world frame where orientation is fused
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
      */
-    void imu_callback(
+    bool imu_callback(
         const std::string& topic_name,
         sensor_msgs::msg::Imu* msg,
         const TransformationMatrix& transform_to_world,
@@ -251,7 +252,7 @@ public:
         if (!is_initialized()) 
         {
             DEBUG_W("Got IMU but not initialized. Ignoring");
-            return;
+            return false;
         }
         bool* update_vector = m_config.m_sensor_configs[topic_name].m_update_vector;
         DEBUG_W(msg->header.frame_id <<" ~~ Update_vector: " << utilities::printtt(update_vector, 1, STATE_SIZE)<< "\n");
@@ -391,6 +392,7 @@ public:
 
         handle_measurement(meas);
         DEBUG_W("\t\t--------------- Wrapper Imu_callback: OUT -------------------\n");
+        return true;
     }
 
     /**

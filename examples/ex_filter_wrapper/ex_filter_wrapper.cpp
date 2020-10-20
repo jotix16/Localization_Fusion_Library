@@ -37,9 +37,9 @@ int main(){
     // 2. Try out filterWrapper
 
     // initiate filterWrapper
-    const char * path = "config/filter_config.json";
-    // const char * path = "../../config/filter_config.json";
-    iav::state_predictor::filter::FilterCtrvEKF2D my_filter_wrapper(path);
+    std::string config_file = "filter_config.json";
+    std::string path = std::string(NODE_PATH) + std::string("/config/") + config_file;
+    iav::state_predictor::filter::FilterCtrvEKF2D my_filter_wrapper(path.c_str());
 
     nav_msgs::msg::Odometry msg;
     msg.header.frame_id = "odom_0";
