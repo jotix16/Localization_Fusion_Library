@@ -155,7 +155,7 @@ public:
         Vector sub_measurement = Vector::Zero(update_size); // z
         Vector sub_innovation = Vector::Zero(update_size); // z'-z 
         Matrix sub_covariance = Matrix::Zero(update_size, update_size);
-        MappingMatrix state_to_measurement_mapping = MappingMatrix::Zero(update_size, States::STATE_SIZE_M);
+        MappingMatrix state_to_measurement_mapping = MappingMatrix::Zero(update_size, num_state);
         std::vector<uint> sub_u_indices;
         sub_u_indices.reserve(update_size); // preallocate memory
         sub_u_indices.insert(sub_u_indices.end(), update_indices_orientation.begin(), update_indices_orientation.end());

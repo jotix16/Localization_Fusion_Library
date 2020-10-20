@@ -41,7 +41,6 @@ template<typename T, typename States>
 class Odom : public SensorBase<T, States>
 {
 public:
-    // static constexpr int num_state = States::STATE_SIZE_M;
     using SensorBaseT   = SensorBase<T, States>;
     using Measurement   = typename SensorBaseT::Measurement;
     using StateVector   = typename SensorBaseT::StateVector;
