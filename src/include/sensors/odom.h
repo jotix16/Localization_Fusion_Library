@@ -68,8 +68,12 @@ private:
     using SensorBaseT::m_debug_stream;
 
 public:
-    using SensorBaseT::SensorBase; // inherite constructor
-    Odom(){}; // default constructor
+    Odom(){};
+
+    Odom(const std::string topic_name, const bool* update_vector, 
+         const T mahalanobis_threshold, std::ostream* out_stream, bool debug)
+        : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug)
+        { }
 
     Measurement odom_callback(
         const StateVector& state,

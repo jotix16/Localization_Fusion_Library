@@ -105,7 +105,7 @@ public:
      * @return the state estimation vector
      */
     // not necessary const reference since problems with thread.
-    inline const StateVector& get_state() const
+    inline const StateVector get_state() const
     {
         return m_state;
     }

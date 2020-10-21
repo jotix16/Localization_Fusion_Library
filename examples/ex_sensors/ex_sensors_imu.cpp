@@ -7,9 +7,8 @@
 
 
 using namespace Eigen;
-using OdomD = iav::state_predictor::sensors::OdomD;
 using ImuD =  iav::state_predictor::sensors::ImuD;
-using StateVector   = typename OdomD::StateVector;
+using StateVector   = typename ImuD::StateVector;
 
 int main()
 {
@@ -40,8 +39,4 @@ int main()
     imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
     imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-
-
-
-
 }

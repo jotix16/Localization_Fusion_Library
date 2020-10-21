@@ -1,5 +1,6 @@
 #include<sensors/odom.h>
 #include<sensors/imu.h>
+#include<sensors/sensor_base.h>
 #include<iostream>
 #include<Eigen/Dense>
 
@@ -8,7 +9,6 @@
 
 using namespace Eigen;
 using OdomD = iav::state_predictor::sensors::OdomD;
-using ImuD =  iav::state_predictor::sensors::ImuD;
 using StateVector   = typename OdomD::StateVector;
 
 int main()
@@ -21,7 +21,6 @@ int main()
                                true,true,true};
     std::ostream* out_stream;
     OdomD odom("odom_topic", update_vector, 12.0, out_stream, false);
-
 
     StateVector state = StateVector::Zero();
     nav_msgs::msg::Odometry msg;

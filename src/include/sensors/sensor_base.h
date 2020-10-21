@@ -66,20 +66,23 @@ public:
 protected:
     // sensor config
     const std::string m_topic_name;
-    const bool* m_update_vector;
-    const T m_mahalanobis_threshold;
+    bool m_update_vector[STATE_SIZE];
+    T m_mahalanobis_threshold;
 
     // debugging
     bool m_debug;
     std::ostream* m_debug_stream;
 
 public:
-    SensorBase(const std::string topic_name, const bool* update_vector, const T mahalanobis_threshold, std::ostream* out_stream, bool debug): 
+    SensorBase(){};
+
+    SensorBase(const std::string topic_name, const bool* update_vector, 
+               const T mahalanobis_threshold, std::ostream* out_stream, bool debug): 
     m_debug(debug),
     m_topic_name(topic_name),
-    m_update_vector(update_vector),
     m_mahalanobis_threshold(mahalanobis_threshold)
-    { 
+    {
+        for(uint i=0; i<STATE_SIZE; ++i) m_update_vector[i] = update_vector[i];
         if(debug) setDebug(out_stream);
     }
 
@@ -95,6 +98,8 @@ public:
 
 template<typename T, typename States>
 constexpr uint SensorBase<T, States>::num_state;
+
+using SensorD = SensorBase<double, motion_model::Ctrv2D::States>;
 
 } // end namespace sensors 
 } // end namespace state_predictor

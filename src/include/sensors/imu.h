@@ -73,9 +73,12 @@ private:
     using SensorBaseT::m_debug_stream;
 
 public:
-    using SensorBaseT::SensorBase; // inherite constructor
     Imu(){}; // default constructor
 
+    Imu(const std::string topic_name, const bool* update_vector, 
+         const T mahalanobis_threshold, std::ostream* out_stream, bool debug)
+        : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug)
+        { }
 
     /**
      * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
@@ -231,6 +234,115 @@ public:
                         sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
         DEBUG("\t\t--------------- Wrapper Imu_callback: OUT -------------------\n");
         return meas;
+    }
+
+    /**
+     * @brief FilterWrapper: Prepares an orientation msg and fills the corresponding part of the measurement
+     * @param[in] msg - pointer to msg to be prepared
+     * @param[in] transform_map_enu - transformation matrix T_map_enu (gives enu in map_frame)
+     * @param[in] transform_bl_imu - transformation matrix T_bl_imu (gives imu in base_link frame)
+     * @param[inout] sub_measurement - measurement vector to be filled
+     * @param[inout] sub_covariance - covariance matrix to be filled
+     * @param[inout] sub_innovation - innovation vector to be filled
+     * @param[inout] state_measurement_mapping - state to measurement mapping matrix to be filled
+     * @param[inout] update_indices - holds the respective indexes of the measurement's component to the full state's components
+     * @param[in] ix1 - starting index from which the sub_measurement should be filled 
+     * @param[in] update_size - size of the measurement to be filled
+     */
+    void prepare_imu_orientation(
+        const StateVector& state,
+        geometry_msgs::msg::Quaternion& meas_msg,
+        std::array<double, 9> covariance_array, 
+        const TransformationMatrix& transform_map_enu,
+        const TransformationMatrix& transform_bl_imu,
+        Vector& sub_measurement,
+        Matrix& sub_covariance, 
+        Vector& sub_innovation, 
+        MappingMatrix& state_to_measurement_mapping,
+        const std::vector<uint>& update_indices,
+        uint ix1, size_t update_size)
+    {
+        DEBUG("\n\t\t--------------- Wrapper Prepare_Orientation: IN -------------------\n");
+        DEBUG("\n");
+
+        // 1. Read orientation and consider m_update_vector
+        // - Handle bad (empty) quaternions and normalize
+        QuaternionT orientation;
+        orientation =  {meas_msg.w,
+                        meas_msg.x,
+                        meas_msg.y,
+                        meas_msg.z};
+                        
+        if (orientation.norm()-1.0 > 0.01)
+        {
+            orientation.normalize();
+        }
+
+        // - consider m_update_vector
+        // -- extract roll pitch yaw 
+        auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
+        // -- ignore roll pitch yaw according to m_update_vector 
+        rpy[0] *= (int)m_update_vector[STATE_ROLL];
+        rpy[1] *= (int)m_update_vector[STATE_PITCH];
+        rpy[2] *= (int)m_update_vector[STATE_YAW];
+        orientation = AngleAxisT(rpy[0], Vector3T::UnitX())
+                    * AngleAxisT(rpy[1], Vector3T::UnitY())
+                    * AngleAxisT(rpy[2], Vector3T::UnitZ());
+        if (orientation.norm()-1.0 > 0.01)
+        {
+            orientation.normalize();
+        }
+
+        auto rot_meas = orientation.toRotationMatrix();
+        auto rot_map_enu = transform_map_enu.rotation();
+        auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
+
+        // - Transform measurement to fusion frame
+        rot_meas = rot_map_enu * rot_meas; // R_map_imu      
+        rot_meas = rot_meas * rot_imu_bl; // R_map_bl
+        
+        Vector3T measurement;
+        measurement = rot_meas.eulerAngles(0, 1, 2);
+        std::cout << "FUSE RPY: " << measurement.transpose() << "\n";
+        orientation = rot_meas;
+        std::cout << "FUSE QUAT: " << orientation.vec().transpose() << " " << orientation.w()<< "\n";
+
+        // Transform covariance, not sure for the second transformation
+        Matrix3T covariance;
+        for(uint i = 0; i<3; ++i)
+        {
+            for(uint j = 0; j<3; ++j)
+            {
+                covariance(i, j) = covariance_array[i + j*3];
+            }
+        }
+        covariance = rot_map_enu * covariance * rot_map_enu.transpose();
+        covariance = rot_imu_bl * covariance * rot_imu_bl.transpose(); // not sure if this is right
+
+        // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        auto offset = POSITION_SIZE;
+        for ( uint i = 0; i < update_size; i++)
+        {
+            sub_measurement(i + ix1) = measurement(update_indices[i] - offset);
+            sub_innovation(i + ix1) = sub_measurement(i + ix1) - state(States::full_state_to_estimated_state[update_indices[i]]);
+            for (uint j = 0; j < update_size; j++)
+            {
+                sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i] - offset, update_indices[j] - offset);
+            }
+                // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
+                // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
+        }
+
+        // 5. Fill state to measurement mapping and inovation
+        for (uint i = 0; i < update_size; i++)
+        {
+            if (States::full_state_to_estimated_state[update_indices[i]]<15)
+            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
+        }
+
+        DEBUG(" -> Noise from orientation msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
+        DEBUG(" -> Noise orientation:\n" << std::fixed << std::setprecision(4) << sub_covariance << "\n");
+        DEBUG("\t\t--------------- Wrapper Prepare_Orientation: OUT -------------------\n");
     }
 
     /**
@@ -433,115 +545,6 @@ public:
         DEBUG(" -> Noise from acceleration msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
         DEBUG(" -> Noise acceleration:\n" << std::fixed << std::setprecision(4) << sub_covariance << "\n");
         DEBUG("\t\t--------------- Wrapper Prepare_Acceleration: OUT -------------------\n");
-    }
-
-    /**
-     * @brief FilterWrapper: Prepares an orientation msg and fills the corresponding part of the measurement
-     * @param[in] msg - pointer to msg to be prepared
-     * @param[in] transform_map_enu - transformation matrix T_map_enu (gives enu in map_frame)
-     * @param[in] transform_bl_imu - transformation matrix T_bl_imu (gives imu in base_link frame)
-     * @param[inout] sub_measurement - measurement vector to be filled
-     * @param[inout] sub_covariance - covariance matrix to be filled
-     * @param[inout] sub_innovation - innovation vector to be filled
-     * @param[inout] state_measurement_mapping - state to measurement mapping matrix to be filled
-     * @param[inout] update_indices - holds the respective indexes of the measurement's component to the full state's components
-     * @param[in] ix1 - starting index from which the sub_measurement should be filled 
-     * @param[in] update_size - size of the measurement to be filled
-     */
-    void prepare_imu_orientation(
-        const StateVector& state,
-        geometry_msgs::msg::Quaternion& meas_msg,
-        std::array<double, 9> covariance_array, 
-        const TransformationMatrix& transform_map_enu,
-        const TransformationMatrix& transform_bl_imu,
-        Vector& sub_measurement,
-        Matrix& sub_covariance, 
-        Vector& sub_innovation, 
-        MappingMatrix& state_to_measurement_mapping,
-        const std::vector<uint>& update_indices,
-        uint ix1, size_t update_size)
-    {
-        DEBUG("\n\t\t--------------- Wrapper Prepare_Orientation: IN -------------------\n");
-        DEBUG("\n");
-
-        // 1. Read orientation and consider m_update_vector
-        // - Handle bad (empty) quaternions and normalize
-        QuaternionT orientation;
-        orientation =  {meas_msg.w,
-                        meas_msg.x,
-                        meas_msg.y,
-                        meas_msg.z};
-                        
-        if (orientation.norm()-1.0 > 0.01)
-        {
-            orientation.normalize();
-        }
-
-        // - consider m_update_vector
-        // -- extract roll pitch yaw 
-        auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
-        // -- ignore roll pitch yaw according to m_update_vector 
-        rpy[0] *= (int)m_update_vector[STATE_ROLL];
-        rpy[1] *= (int)m_update_vector[STATE_PITCH];
-        rpy[2] *= (int)m_update_vector[STATE_YAW];
-        orientation = AngleAxisT(rpy[0], Vector3T::UnitX())
-                    * AngleAxisT(rpy[1], Vector3T::UnitY())
-                    * AngleAxisT(rpy[2], Vector3T::UnitZ());
-        if (orientation.norm()-1.0 > 0.01)
-        {
-            orientation.normalize();
-        }
-
-        auto rot_meas = orientation.toRotationMatrix();
-        auto rot_map_enu = transform_map_enu.rotation();
-        auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
-
-        // - Transform measurement to fusion frame
-        rot_meas = rot_map_enu * rot_meas; // R_map_imu      
-        rot_meas = rot_meas * rot_imu_bl; // R_map_bl
-        
-        Vector3T measurement;
-        measurement = rot_meas.eulerAngles(0, 1, 2);
-        std::cout << "FUSE RPY: " << measurement.transpose() << "\n";
-        orientation = rot_meas;
-        std::cout << "FUSE QUAT: " << orientation.vec().transpose() << " " << orientation.w()<< "\n";
-
-        // Transform covariance, not sure for the second transformation
-        Matrix3T covariance;
-        for(uint i = 0; i<3; ++i)
-        {
-            for(uint j = 0; j<3; ++j)
-            {
-                covariance(i, j) = covariance_array[i + j*3];
-            }
-        }
-        covariance = rot_map_enu * covariance * rot_map_enu.transpose();
-        covariance = rot_imu_bl * covariance * rot_imu_bl.transpose(); // not sure if this is right
-
-        // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
-        auto offset = POSITION_SIZE;
-        for ( uint i = 0; i < update_size; i++)
-        {
-            sub_measurement(i + ix1) = measurement(update_indices[i] - offset);
-            sub_innovation(i + ix1) = sub_measurement(i + ix1) - state(States::full_state_to_estimated_state[update_indices[i]]);
-            for (uint j = 0; j < update_size; j++)
-            {
-                sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i] - offset, update_indices[j] - offset);
-            }
-                // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
-                // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
-        }
-
-        // 5. Fill state to measurement mapping and inovation
-        for (uint i = 0; i < update_size; i++)
-        {
-            if (States::full_state_to_estimated_state[update_indices[i]]<15)
-            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
-        }
-
-        DEBUG(" -> Noise from orientation msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
-        DEBUG(" -> Noise orientation:\n" << std::fixed << std::setprecision(4) << sub_covariance << "\n");
-        DEBUG("\t\t--------------- Wrapper Prepare_Orientation: OUT -------------------\n");
     }
 
 };

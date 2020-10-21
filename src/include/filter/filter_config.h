@@ -62,7 +62,9 @@ void printt(T* arr, int a, int b){
 struct SensorConfig{
     using Document = rapidjson::Document;
     public:
+    uint m_type;
     bool m_update_vector[STATE_SIZE];
+    double m_mahal_thresh;
     double m_pose_mahalanobis_thresh[POSE_SIZE];    
     double m_acc_mahalanobis_thresh[ACCELERATION_SIZE];
     double m_speed_mahalanobis_thresh[TWIST_SIZE];
@@ -79,10 +81,12 @@ struct SensorConfig{
      * @param[in] type - One of the four types{0:"odom_", 1:"pose_", 2:"twist_", 3:"imu_"}
      * @return SensorConfig object
      */
-    SensorConfig(const Document& doc, const char* sensor_name, const int type)
+    SensorConfig(const Document& doc, const char* sensor_name, const uint type)
     {
         // make sure that components that are not part of each type of measurements
         // are 0s.
+        m_type = type;
+        m_mahal_thresh = 5.0; //TO_DO:
         for (int i = 0; i < STATE_SIZE; i++)
         {
             if(type == 0)
@@ -221,7 +225,7 @@ struct FilterConfig{
 
         // Parse Sensors parameters
         const char *sensor_types[4] = {"odom_", "pose_", "twist_", "imu_"};
-        for (int i = 0; i < 4; i++)
+        for (uint i = 0; i < 4; i++)
         {
             std::string sensor_type = sensor_types[i];
             for (int  j = 0; j < doc["sensor_inputs"][i].GetInt(); j++)
