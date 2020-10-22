@@ -106,7 +106,7 @@ class FilterNode
             // 1. initialize filter
             std::string path = std::string(NODE_PATH) + std::string("/ros_src/config/") + config_file;
             ROS_INFO_STREAM( "Initialize FilterWrapper from path: " << path << "\n");
-            m_filter_wrapper.reset(path.c_str());
+            m_filter_wrapper.reset_config(path.c_str());
 
             // 2. initialize publisher
             m_position_publisher = m_nh.advertise<OdomMsg>("odometry/filtered", 20);
