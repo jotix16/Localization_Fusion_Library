@@ -24,15 +24,9 @@
 
 #pragma once
 
-#include <iomanip>
-
-#include <vector>
-#include <Eigen/Eigen>
-
-#include <utilities/filter_utilities.h>
-#include <motion_model/motion_model.h>
 #include <sensors/sensor_base.h>
-
+#include <geometry_msgs/msg/PoseWithCovariance.h>
+#include <geometry_msgs/msg/TwistWithCovariance.h>
 #include <nav_msgs/msg/Odometry.h>
 
 namespace iav{ namespace state_predictor { namespace sensors {
