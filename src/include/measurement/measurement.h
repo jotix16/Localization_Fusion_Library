@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include<iostream>
+#include<iomanip>
 #include <string>
 #include <array>
 
@@ -81,13 +83,12 @@ public:
  * @param[in] sensor_id - Sensor id from where the measurement came.
  * @param[in] mahalanobis_thresh - Mahalanobis threshold for the measurement.
  */
-    Measurement(const tTime time_stamp, const Vector& measurement, const Matrix& covariance,
-                const Vector& innovation, const MappingMatrix map_matrix, 
-                const std::vector<uint> update_indices, const std::string& sensor_id, const T& mahalanobis_thresh):
+    Measurement(const tTime& time_stamp, const Vector& measurement, const Matrix& covariance,
+                const Vector& innovation, const MappingMatrix& map_matrix, 
+                const std::vector<uint>& update_indices, const std::string& sensor_id, const T& mahalanobis_thresh):
                 m_time_stamp{time_stamp}, m_sensor_id{sensor_id}, z{measurement},
                 R{covariance}, H{map_matrix}, m_update_indices{update_indices},
                 innovation{innovation}, m_mahalanobis_thresh{mahalanobis_thresh}
-
     { }
 
 /**
@@ -107,7 +108,19 @@ public:
  * @return State to measurement mapping matrix.
  */
     inline const MappingMatrix get_mapping() { return H; }
-  
+
+    std::string print()
+    {
+        std::ostringstream out;
+        out << "SUBMEASUREMENT ->time: " << m_time_stamp << ", ->frame: " <<m_sensor_id<< ", ->mahal_thresh: " <<m_mahalanobis_thresh << "\n";
+        out << " ----> Update indices: "; for(auto i: m_update_indices) out << i <<" "; out << "\n";
+        out << " ----> Submeasurement:\n"  << std::fixed << std::setprecision(4) << z.transpose() << "\n";
+        out << " ----> Subinnovation:\n"  << std::fixed << std::setprecision(4) << innovation.transpose() << "\n";
+        out << " ----> Submapping H:\n"  << std::fixed << std::setprecision(0) << H << "\n";
+        out << " ----> Subnoise R:\n"  << std::fixed << std::setprecision(4) << R << "\n";
+        return out.str();
+    }
+
 /**
  * @brief Measurement: Defines the operator < as friend of the class. In order to be able to compare measurements.
  * @param[in] m1 - First measurement

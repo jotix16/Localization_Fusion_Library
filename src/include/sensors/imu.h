@@ -94,7 +94,7 @@ public:
         const TransformationMatrix& transform_to_world,
         const TransformationMatrix& transform_to_base_link)
     {
-        DEBUG("\n\t\t--------------- Wrapper Imu_callback: IN -------------------\n");
+        DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Imu_callback: IN -------------------\n");
         //TO_DO:s
         // if (!is_initialized()) 
         // {
@@ -182,28 +182,10 @@ public:
         }
 
         // b- fill the ANGULAR VELOCITY part
-        // - the idea is to create a twist message and to normally call prepare_twist
         if (valid_angular_velocity)
         {
-            // create twist msg
-            geometry_msgs::msg::TwistWithCovariance* twistPtr = new geometry_msgs::msg::TwistWithCovariance();
-            twistPtr->twist.angular = msg->angular_velocity;
-
-            // Copy the covariance
-            for (size_t i = 0; i < ORIENTATION_SIZE; i++)
-            {
-                for (size_t j = 0; j < ORIENTATION_SIZE; j++)
-                {
-                    twistPtr->covariance[TWIST_SIZE*i + j] = 0.0;
-                    twistPtr->covariance[TWIST_SIZE*(i + ORIENTATION_SIZE) + j] = 0.0;
-                    twistPtr->covariance[TWIST_SIZE*i + (j + ORIENTATION_SIZE)] = 0.0;
-
-                    twistPtr->covariance[TWIST_SIZE * (i + ORIENTATION_SIZE) + (j + ORIENTATION_SIZE)] =
-                    msg->angular_velocity_covariance[ORIENTATION_SIZE * i + j];
-                }
-            }
-            prepare_twist(state, twistPtr, transform_to_base_link, sub_measurement,
-                          sub_covariance, sub_innovation, state_to_measurement_mapping,
+            prepare_angular_velocity(state, msg->angular_velocity, msg->angular_velocity_covariance, transform_to_base_link,
+                          sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_twist, update_size_orientation, update_size_twist, true);
         }
         else
@@ -232,7 +214,9 @@ public:
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
         Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
                         sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
-        DEBUG("\t\t--------------- Wrapper Imu_callback: OUT -------------------\n");
+
+        DEBUG(" -> IMU " << meas.print());
+        DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Imu_callback: OUT -------------------\n");
         return meas;
     }
 
@@ -262,7 +246,7 @@ public:
         const std::vector<uint>& update_indices,
         uint ix1, size_t update_size)
     {
-        DEBUG("\n\t\t--------------- Wrapper Prepare_Orientation: IN -------------------\n");
+        DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Orientation: IN -------------------\n");
         DEBUG("\n");
 
         // 1. Read orientation and consider m_update_vector
@@ -340,9 +324,8 @@ public:
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
 
-        DEBUG(" -> Noise from orientation msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
-        DEBUG(" -> Noise orientation:\n" << std::fixed << std::setprecision(4) << sub_covariance << "\n");
-        DEBUG("\t\t--------------- Wrapper Prepare_Orientation: OUT -------------------\n");
+        DEBUG(" -> Noise from orientation msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));        
+        DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Orientation: OUT -------------------\n");
     }
 
     /**
@@ -357,9 +340,10 @@ public:
      * @param[in] ix1 - starting index from which the sub_measurement should be filled 
      * @param[in] update_size - size of the measurement to be filled
      */
-    void prepare_twist(
+    void prepare_angular_velocity(
         const StateVector& state,
-        geometry_msgs::msg::TwistWithCovariance* msg, 
+        geometry_msgs::msg::Vector3& meas_msg,
+        std::array<double, 9> covariance_array, 
         const TransformationMatrix& transform,
         Vector& sub_measurement,
         Matrix& sub_covariance, 
@@ -368,89 +352,46 @@ public:
         const std::vector<uint>& update_indices,
         size_t ix1, size_t update_size, bool is_imu)
     {
-        DEBUG("\n\t\t--------------- Wrapper Prepare_Twist: IN -------------------\n");
-
-        // 4. Create measurement vector (corresponds to the twist part)
-        Vector6T measurement;
-        measurement.setZero(); // should not be impo
+        DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Angular_Velocity: IN -------------------\n");
 
         // 1. Extract angular velocities
         // - consider m_update_vector
         Vector3T angular_vel;
         angular_vel <<
-            msg->twist.angular.x * (int)m_update_vector[STATE_V_ROLL],
-            msg->twist.angular.y * (int)m_update_vector[STATE_V_PITCH],
-            msg->twist.angular.z * (int)m_update_vector[STATE_V_YAW];
+            meas_msg.x * (int)m_update_vector[STATE_V_ROLL],
+            meas_msg.y * (int)m_update_vector[STATE_V_PITCH],
+            meas_msg.z * (int)m_update_vector[STATE_V_YAW];
         // - Transform measurement to fusion frame
         auto rot = transform.rotation();
         angular_vel = rot * angular_vel;
-        measurement.template tail<3>() = angular_vel;
 
-        if(!is_imu)
-        {
-            // 2. Extract linear velocities if it is not imu
-            // - consider m_update_vector
-            Vector3T linear_vel; 
-            linear_vel <<
-                msg->twist.linear.x * (int)m_update_vector[STATE_V_X],
-                msg->twist.linear.y * (int)m_update_vector[STATE_V_Y],
-                msg->twist.linear.z * (int)m_update_vector[STATE_V_Z];
-            // - Extract angular velocities from the estimated state
-            // - needed to add the effect of angular velocities to the linear ones(look below).
-            Vector3T angular_vel_state;
-            uint vroll_ix = States::full_state_to_estimated_state[STATE_V_ROLL];
-            uint vpitch_ix = States::full_state_to_estimated_state[STATE_V_PITCH];
-            uint vyaw_ix = States::full_state_to_estimated_state[STATE_V_YAW];
-
-            angular_vel_state(0) = vroll_ix < STATE_SIZE ? state(vroll_ix) : 0.0;
-            angular_vel_state(1) = vpitch_ix < STATE_SIZE ? state(vpitch_ix) : 0.0;
-            angular_vel_state(2) = vyaw_ix < STATE_SIZE ? state(vyaw_ix) : 0.0;
-            // - Transform measurement to fusion frame
-            auto origin = transform.translation();
-            linear_vel = rot * linear_vel + origin.cross(angular_vel_state); // add effects of angular velocitioes
-                                                                            // v = rot*v + origin(x)w
-            // DEBUG("Origin\n" << origin.transpose() << "\n");
-            // DEBUG("Angular veloc\n" << angular_vel_state.transpose() << "\n");
-            // DEBUG("Effects of angular veloc\n" << origin.cross(angular_vel_state).transpose() << "\n");
-            measurement.template head<3>() = linear_vel;
-        }
-
-        // 5. Compute measurement covariance
-        Matrix6T covariance;
+        // 2. Compute measurement covariance
+        Matrix3T covariance;
         covariance.setZero();
-        for (uint i = 0; i < TWIST_SIZE; i++)
+        for (uint i = 0; i < ORIENTATION_SIZE; i++)
         {
-            for (uint j = 0; j < TWIST_SIZE; j++)
+            for (uint j = 0; j < ORIENTATION_SIZE; j++)
             {
-                covariance(i,j) = msg->covariance[i*TWIST_SIZE + j];
+                covariance(i,j) = covariance_array[i*ORIENTATION_SIZE + j];
             }
         }
-        // 6. Rotate Covariance to fusion frame
-        Matrix6T rot6d;
-        rot6d.setZero();
-        rot6d.template block<3,3>(0,0) = rot;
-        rot6d.template block<3,3>(3,3) = rot;
-        covariance = rot6d * covariance * rot6d.transpose();
+        // -. Rotate Covariance to fusion frame
+        covariance = rot * covariance * rot.transpose();
 
-        // 7. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        // 3. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
         uint meas_index = 0U;
         uint meas_index2 = 0U;
-        std::stringstream sss;
-        sss<<"INDEXES: "<< ix1 <<"\n";
         for ( uint i = 0; i < update_size; i++)
         {
-            meas_index = update_indices[i] - POSE_SIZE;
-            sub_measurement(i + ix1) = measurement(meas_index);
-            sub_innovation(i + ix1) = measurement(meas_index) - state(States::full_state_to_estimated_state[update_indices[i]]);
+            meas_index = update_indices[i] - POSE_SIZE - POSITION_SIZE;
+            sub_measurement(i + ix1) = angular_vel(meas_index);
+            sub_innovation(i + ix1) = angular_vel(meas_index) - state(States::full_state_to_estimated_state[update_indices[i]]);
             for (uint j = 0; j < update_size; j++)
             {
-                meas_index2 = update_indices[j] - POSE_SIZE;
-                sss << "(" << meas_index << "," <<meas_index2 <<"->"<< covariance(meas_index, meas_index2)  <<") ";
+                meas_index2 = update_indices[j] - POSE_SIZE - POSITION_SIZE;
                 sub_covariance(i + ix1, j + ix1) = covariance(meas_index, meas_index2);
             }
-            sss<<"\n";
         }
-            sss<<"\n";
 
         // 7. Fill state to measurement mapping and inovation
         for (uint i = 0; i < update_size; i++)
@@ -458,11 +399,9 @@ public:
             state_to_sub_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
 
-        DEBUG(" -> ROT twist: "<<update_size<<"\n" << std::fixed << std::setprecision(4) << rot << "\n");
-        DEBUG(" -> Noise from twist msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg->covariance, 6, 6));
-        DEBUG(" -> Noise twist:\n" << std::fixed << std::setprecision(9) << sub_covariance << "\n");
-        DEBUG(" -> SubNoise twist\n" <<sss.str());
-        DEBUG("\t\t--------------- Wrapper Prepare_Twist: OUT -------------------\n");
+        DEBUG(" -> ROT angular_velocity: "<<update_size<<"\n" << std::fixed << std::setprecision(4) << rot << "\n");
+        DEBUG(" -> Noise from angular_velocity msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
+        DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Angular_Velocity: OUT -------------------\n");
     }
 
     /**
@@ -489,7 +428,7 @@ public:
         const std::vector<uint>& update_indices,
         uint ix1, size_t update_size)
     {
-        DEBUG("\n\t\t--------------- Wrapper Prepare_Acceleration: IN -------------------\n");
+        DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Acceleration: IN -------------------\n");
         DEBUG("\n");
         // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
         // - Handle bad (empty) quaternions and normalize
@@ -543,8 +482,7 @@ public:
         }
 
         DEBUG(" -> Noise from acceleration msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
-        DEBUG(" -> Noise acceleration:\n" << std::fixed << std::setprecision(4) << sub_covariance << "\n");
-        DEBUG("\t\t--------------- Wrapper Prepare_Acceleration: OUT -------------------\n");
+        DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Acceleration: OUT -------------------\n");
     }
 
 };
