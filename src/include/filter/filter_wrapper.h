@@ -43,6 +43,7 @@
 #include <geometry_msgs/msg/TwistWithCovariance.h>
 #include <nav_msgs/msg/Odometry.h>
 #include <sensor_msgs/msg/Imu.h>
+
 #include <mutex>
 #include <thread>
 
@@ -383,7 +384,7 @@ public:
      * @brief FilterWrapper: Function that creates an Odometry msg with data from the estimated state.
      * @return Odometry msg from the state. Not known values are set to 0
      */
-    nav_msgs::msg::Odometry get_state_odom()
+    nav_msgs::msg::Odometry get_state_odom(bool debug=true)
     {
         const StateVector &state = m_filter.get_state();
         const StateMatrix &cov_mat = m_filter.get_covariance();
@@ -462,6 +463,7 @@ public:
         }
 
         // 8. Debugg information
+        if(!debug) return msg;
         DEBUG_W("\n******************** State msg to be published: ********************\n")
         DEBUG_W("pose: "
                 << msg.pose.pose.position.x << " "

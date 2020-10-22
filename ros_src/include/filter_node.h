@@ -480,7 +480,7 @@ class FilterNode
                 }
             }
             OdomMsgLocFusLib msg_loc_tempo;
-            msg_loc_tempo = m_filter_wrapper.get_state_odom();
+            msg_loc_tempo = m_filter_wrapper.get_state_odom(false);
             posePtr->pose.position.x = msg_loc_tempo.pose.pose.position.x;
             posePtr->pose.position.y = msg_loc_tempo.pose.pose.position.y;
             posePtr->pose.position.z = msg_loc_tempo.pose.pose.position.z;
