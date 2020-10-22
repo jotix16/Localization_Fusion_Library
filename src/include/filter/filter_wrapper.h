@@ -176,6 +176,11 @@ public:
     bool imu_callback(
         const std::string& topic_name,
         sensor_msgs::msg::Imu* msg,
+        const TransformationMatrix& transform_to_base_link)
+    {
+       Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_to_base_link);
+       handle_measurement(m);
+    }
         const TransformationMatrix& transform_to_world,
         const TransformationMatrix& transform_to_base_link)
     {

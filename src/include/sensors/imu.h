@@ -63,13 +63,37 @@ private:
     using SensorBaseT::m_debug;
     using SensorBaseT::m_debug_stream;
 
+    bool m_init_orientation;
+    TransformationMatrix m_R_map_enu;
+
 public:
     Imu(){}; // default constructor
 
     Imu(const std::string topic_name, const bool* update_vector, 
          const T mahalanobis_threshold, std::ostream* out_stream, bool debug)
-        : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug)
+        : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug), m_init_orientation(false)
         { }
+
+
+    void init(const StateVector& state,
+         sensor_msgs::msg::Imu* msg,
+         const TransformationMatrix& transform_to_base_link)
+    {
+        QuaternionT q_enu_imu;
+        q_enu_imu =  {msg->orientation.w,
+              msg->orientation.x,
+              msg->orientation.y,
+              msg->orientation.z};
+        // R_map_bl
+        m_R_map_enu = AngleAxisT(state[States::full_state_to_estimated_state[STATE_ROLL]], Vector3T::UnitX())
+                    * AngleAxisT(state[States::full_state_to_estimated_state[STATE_PITCH]], Vector3T::UnitY())
+                    * AngleAxisT(state[States::full_state_to_estimated_state[STATE_YAW]], Vector3T::UnitZ());
+        // R_map_enu = R_map_bl * R_bl_imu * R_enu_imu^-1
+        m_R_map_enu = m_R_map_enu * transform_to_base_link * q_enu_imu.inverse();
+        q_enu_imu = m_R_map_enu.rotation();
+        std::cout << "INIT ORIENTATIOOOOOON: " << q_enu_imu.x() <<", "<< q_enu_imu.y() <<", "  << q_enu_imu.z() <<"\n";
+        m_init_orientation = true;
+    }
 
     /**
      * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
@@ -82,7 +106,6 @@ public:
     Measurement imu_callback(
         const StateVector& state,
         sensor_msgs::msg::Imu* msg,
-        const TransformationMatrix& transform_to_world,
         const TransformationMatrix& transform_to_base_link)
     {
         DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Imu_callback: IN -------------------\n");
@@ -110,12 +133,19 @@ public:
         std::vector<uint> update_indices_orientation;
         if (valid_orientation)
         {
-            for (uint i = POSITION_SIZE; i < POSE_SIZE; ++i)
+            if(m_init_orientation)
             {
-                if(States::full_state_to_estimated_state[i] < STATE_SIZE)
-                    update_indices_orientation.push_back(i);
+                for (uint i = POSITION_SIZE; i < POSE_SIZE; ++i)
+                {
+                    if(States::full_state_to_estimated_state[i] < STATE_SIZE)
+                        update_indices_orientation.push_back(i);
+                }
+                update_size_orientation = update_indices_orientation.size();
             }
-            update_size_orientation = update_indices_orientation.size();
+            else
+            {
+                init(state, msg, transform_to_base_link);
+            }
         }
 
         // b- update_indeces for the ANGULAR VELOCITIES in the TWIST measurement
@@ -162,7 +192,7 @@ public:
         if (valid_orientation)
         {
             prepare_imu_orientation(state, msg->orientation, msg->orientation_covariance,
-                          transform_to_world, transform_to_base_link, sub_measurement,
+                          transform_to_base_link, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_orientation, 0, update_size_orientation);
         }
@@ -228,7 +258,6 @@ public:
         const StateVector& state,
         geometry_msgs::msg::Quaternion& meas_msg,
         std::array<double, 9> covariance_array, 
-        const TransformationMatrix& transform_map_enu,
         const TransformationMatrix& transform_bl_imu,
         Vector& sub_measurement,
         Matrix& sub_covariance, 
@@ -269,7 +298,7 @@ public:
         }
 
         auto rot_meas = orientation.toRotationMatrix();
-        auto rot_map_enu = transform_map_enu.rotation();
+        auto rot_map_enu = m_R_map_enu.rotation();
         auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
 
         // - Transform measurement to fusion frame

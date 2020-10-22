@@ -239,30 +239,13 @@ class FilterNode
             // ss << "IMU MSG:\n" << *msg << "\n";
             // std::cout <<ss.str();
 
-            TransformationMatrix transform_world_enu;
             TransformationMatrix transform_to_base_link;
 
-            // 1. get transformations from world and base_link to the sensor frame
+            // 1. get transformations from base_link to the sensor frame
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
-            geometry_msgs::TransformStamped transform_stamped1;
-            geometry_msgs::TransformStamped transform_stamped2;
+            geometry_msgs::TransformStamped transform_stamped;
             try
             {
-                // -- publish enu frame the first time
-                if(!m_enu_published)
-                {
-                    transform_stamped1 = m_tf_buffer.lookupTransform(m_map_frame_id, msgFrame ,ros::Time(0), ros::Duration(1.0));
-                    transform_world_enu = tf2::transformToEigen(transform_stamped1);
-                    std::cout << "PUBLISHING ENU FRAME\n";
-                    publish_enu_frame(transform_world_enu, msg);
-                    m_enu_published = true;
-                    return;
-                }
-
-                // a. map frame to enu coordinate system in which the orientations of the IMU sensor are given
-                transform_stamped1 = m_tf_buffer.lookupTransform(m_map_frame_id, "enu" ,ros::Time(0), ros::Duration(1.0));
-                transform_world_enu = tf2::transformToEigen(transform_stamped1);
-
                 // b. baselink frame to imu sensor frame for the velocity and acceleratation part of the imu msg
                 if (m_baselink_frame_id == msgFrame)
                 {
@@ -270,8 +253,8 @@ class FilterNode
                 }
                 else
                 {
-                    transform_stamped2 = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgFrame, ros::Time(0), ros::Duration(1.0));
-                    transform_to_base_link = tf2::transformToEigen(transform_stamped2);
+                    transform_stamped = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgFrame, ros::Time(0), ros::Duration(1.0));
+                    transform_to_base_link = tf2::transformToEigen(transform_stamped);
                 }
             }
             catch (tf2::TransformException &ex)
@@ -282,7 +265,7 @@ class FilterNode
             }
             
             // VISUALIZE IMU
-            visualize_imu(msg, msgFrame);
+            // visualize_imu(msg, msgFrame);
             
             // get msg in our local msg form.
             ImuMsgLocFusLib msg_loc;
@@ -290,7 +273,7 @@ class FilterNode
           
             // 2. call filter's imu_callback
             // ros_info_msg(msg_loc);
-            if(m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_world_enu, transform_to_base_link))
+            if(m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_to_base_link))
             {
                 // 3. publish updated base_link frame
                 publish_current_state();
