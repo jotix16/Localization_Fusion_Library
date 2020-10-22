@@ -4,11 +4,8 @@
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-
-
 #include <nav_msgs/msg/Odometry.h>
 #include <nav_msgs/Odometry.h>
-#include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
@@ -16,21 +13,22 @@
 #include <geometry_msgs/AccelWithCovarianceStamped.h>
 #include <geometry_msgs/PoseWithCovariance.h>
 #include <geometry_msgs/TwistWithCovariance.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <sensor_msgs/Imu.h>
+#include <sensor_msgs/NavSatFix.h>
 
 // #include <tf2/buffer_core.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_eigen/tf2_eigen.h>
 
-#include <geometry_msgs/TransformStamped.h>
+#include <Eigen/Eigen>
 
 #include <filter/filter_wrapper.h>
 #include <utilities/filter_utilities.h>
 
-#include <Eigen/Eigen>
 
 using FilterWrapper = iav::state_predictor::filter::FilterCtrvEKF2D;
 
@@ -44,6 +42,8 @@ class FilterNode
         using OdomMsgLocFusLib = nav_msgs::msg::Odometry;
         using ImuMsg = sensor_msgs::Imu;
         using ImuMsgLocFusLib = sensor_msgs::msg::Imu;
+        using GpsMsg = sensor_msgs::NavSatFix;
+        // using GpsMsgLocFusLib = sensor_msgs::msg::NavSatFix;
 
         using PoseWithCovStampedMsg = geometry_msgs::PoseWithCovarianceStamped;
         using TwistWithCovStampedMsg = geometry_msgs::TwistWithCovarianceStamped;
@@ -140,6 +140,21 @@ class FilterNode
                 ROS_INFO_STREAM("Subscribing to: " << imu_topic);
                 m_imu_sub_topics.push_back(m_nh.subscribe<ImuMsg>(imu_topic, 10, 
                 boost::bind(&FilterNode::imu_callback, this, _1, imu_topic)));
+            }
+
+            // 3.c. initialize gps subscribers
+            int gps_nr_;
+            m_nh_param.param("gps_nr", imu_nr_, 0);
+
+            for(int i=0; i < gps_nr_; i++)
+            {
+                std::stringstream ss;
+                ss << "gps" << i ;
+                std::string gps_topic;
+                m_nh_param.getParam(ss.str(), gps_topic);
+                ROS_INFO_STREAM("Subscribing to: " << gps_topic);
+                m_gps_sub_topics.push_back(m_nh.subscribe<GpsMsg>(gps_topic, 10, 
+                boost::bind(&FilterNode::gps_callback, this, _1, gps_topic)));
             }
 
             // 4. set the frames
@@ -281,6 +296,31 @@ class FilterNode
                 publish_current_state();
             }
         }
+
+        void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg, std::string topic_name)
+        {
+            // std_msgs/Header header
+            // sensor_msgs/NavSatStatus status // satellite fix status information
+            // float64 latitude // [degrees]. Positive is north of equator; negative is south.
+            // float64 longitude // [degrees]. Positive is east of prime meridian; negative is west.
+            // float64 altitude // Altitude [m]. Positive is above the WGS 84 ellipsoid. (quiet NaN if no altitude is available).
+            // float64[9] position_covariance // defined relative to a tangential plane through the reported position. 
+                                              // The components are East, North, and Up (ENU), in row-major order
+            // uint8 position_covariance_type // uint8 COVARIANCE_TYPE_UNKNOWN=0
+                                              // uint8 COVARIANCE_TYPE_APPROXIMATED=1
+                                              // uint8 COVARIANCE_TYPE_DIAGONAL_KNOWN=2
+                                              // uint8 COVARIANCE_TYPE_KNOWN=3
+
+            // Make sure the GPS data is usable
+            bool good_gps = (msg->status.status != sensor_msgs::NavSatStatus::STATUS_NO_FIX &&
+                             !std::isnan(msg->altitude) &&
+                             !std::isnan(msg->latitude) &&
+                             !std::isnan(msg->longitude));
+
+
+        }
+
+
 
         void pose_callback(const PoseWithCovStampedMsg::ConstPtr& msg)
         {
