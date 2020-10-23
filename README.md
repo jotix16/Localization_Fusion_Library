@@ -148,7 +148,7 @@ With the help of [this](https://www.digitalocean.com/community/tutorials/how-to-
 ## How to make Windows Terminal behave like Terminator from Ubuntu
 Open Windows Terminal and press Ctrl+, and copy the setting in [profile.json](https://gitlab.iavgroup.local/-/snippets/177)
 
-1. Split vertically: **Ctrl**+**Shift**+**B**
-2. Split horizontally: **Ctrl**+**Shift**+**3**
+1. Split vertically: **Ctrl**+**Shift**+**O**
+2. Split horizontally: **Ctrl**+**Shift**+**E**
 3. Close split: **Ctrl**+**W**
 4. Move around splits: **Alt** + **up**/**down**/**left**/**right**
