@@ -282,25 +282,41 @@ class FilterNode
 
         void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg, std::string topic_name)
         {
-            // std_msgs/Header header
-            // sensor_msgs/NavSatStatus status // satellite fix status information
-            // float64 latitude // [degrees]. Positive is north of equator; negative is south.
-            // float64 longitude // [degrees]. Positive is east of prime meridian; negative is west.
-            // float64 altitude // Altitude [m]. Positive is above the WGS 84 ellipsoid. (quiet NaN if no altitude is available).
-            // float64[9] position_covariance // defined relative to a tangential plane through the reported position. 
-                                              // The components are East, North, and Up (ENU), in row-major order
-            // uint8 position_covariance_type // uint8 COVARIANCE_TYPE_UNKNOWN=0
-                                              // uint8 COVARIANCE_TYPE_APPROXIMATED=1
-                                              // uint8 COVARIANCE_TYPE_DIAGONAL_KNOWN=2
-                                              // uint8 COVARIANCE_TYPE_KNOWN=3
+            // 1. get transformations from base_link to the sensor frame
+            TransformationMatrix transform_to_base_link;
+            std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
+            geometry_msgs::TransformStamped transform_stamped;
+            try
+            {
+                // b. baselink frame to gps sensor frame for the velocity and acceleratation part of the gps msg
+                if (m_baselink_frame_id == msgFrame)
+                {
+                    transform_to_base_link.setIdentity();
+                }
+                else
+                {
+                    transform_stamped = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgFrame, ros::Time(0), ros::Duration(1.0));
+                    transform_to_base_link = tf2::transformToEigen(transform_stamped);
+                }
+            }
+            catch (tf2::TransformException &ex)
+            {
+                ROS_INFO("%s",ex.what());
+                ros::Duration(1.0).sleep();
+                return;
+            }
 
-            // Make sure the GPS data is usable
-            bool good_gps = (msg->status.status != sensor_msgs::NavSatStatus::STATUS_NO_FIX &&
-                             !std::isnan(msg->altitude) &&
-                             !std::isnan(msg->latitude) &&
-                             !std::isnan(msg->longitude));
-
-
+            // 2. get msg in our local msg form.
+            // GpsMsgLocFusLib msg_loc;
+            // to_local_gps_msg(msg, msg_loc);
+          
+            // 3. call filter's gps_callback
+            // ros_info_msg(msg_loc);
+            // if(m_filter_wrapper.gps_callback(topic_name, &msg_loc, transform_to_base_link))
+            // {
+            //     // 3. publish updated base_link frame
+            //     publish_current_state();
+            // }
         }
 
 

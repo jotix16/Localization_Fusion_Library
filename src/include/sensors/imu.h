@@ -85,9 +85,17 @@ public:
               msg->orientation.y,
               msg->orientation.z};
         // R_map_bl
-        m_R_map_enu = AngleAxisT(state[States::full_state_to_estimated_state[STATE_ROLL]], Vector3T::UnitX())
-                    * AngleAxisT(state[States::full_state_to_estimated_state[STATE_PITCH]], Vector3T::UnitY())
-                    * AngleAxisT(state[States::full_state_to_estimated_state[STATE_YAW]], Vector3T::UnitZ());
+        constexpr uint roll_ix = States::full_state_to_estimated_state[STATE_ROLL],
+                       pitch_ix = States::full_state_to_estimated_state[STATE_PITCH],
+                       yaw_ix = States::full_state_to_estimated_state[STATE_YAW];
+
+        T roll = roll_ix < STATE_SIZE ? state[roll_ix] : 0,
+          pitch = pitch_ix < STATE_SIZE ? state[pitch_ix] : 0,
+          yaw = yaw_ix < STATE_SIZE ? state[yaw_ix] : 0;
+
+        m_R_map_enu = AngleAxisT(roll, Vector3T::UnitX())
+                    * AngleAxisT(pitch, Vector3T::UnitY())
+                    * AngleAxisT(yaw, Vector3T::UnitZ());
         // R_map_enu = R_map_bl * R_bl_imu * R_enu_imu^-1
         m_R_map_enu = m_R_map_enu * transform_to_base_link * q_enu_imu.inverse();
         q_enu_imu = m_R_map_enu.rotation();
@@ -505,6 +513,15 @@ public:
         DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Acceleration: OUT -------------------\n");
     }
 
+    TransformationMatrix get_R_map_enu()
+    {
+        return m_R_map_enu;
+    }
+
+    bool ready()
+    {
+        return m_init_orientation;
+    }
 };
 
 using ImuD = Imu<double, motion_model::Ctrv2D::States>;

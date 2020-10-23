@@ -37,6 +37,7 @@
 #include <measurement/measurement.h>
 #include <sensors/odom.h>
 #include <sensors/imu.h>
+#include <sensors/gps.h>
 
 #include <geometry_msgs/msg/Vector3.h>
 #include <geometry_msgs/msg/PoseWithCovariance.h>
@@ -67,6 +68,7 @@ public:
     using StateMatrix   = typename FilterT::StateMatrix;
     using OdomT = typename sensors::Odom<T,States>;
     using ImuT  = typename sensors::Imu<T,States>;
+    using GpsT  = typename sensors::Gps<T,States>;
 
     using AngleAxisT            = typename Eigen::AngleAxis<T>;
     using QuaternionT           = typename Eigen::Quaternion<T>;
@@ -82,6 +84,7 @@ private:
     // hash maps with sensor objects
     std::unordered_map<std::string, OdomT> m_odom_sensors_hmap;
     std::unordered_map<std::string, ImuT> m_imu_sensors_hmap;
+    std::unordered_map<std::string, GpsT> m_gps_sensors_hmap;
 
     // debuging variables
     std::ofstream m_debug_stream;
@@ -147,9 +150,10 @@ public:
     }
 
     /**
-     * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
+     * @brief FilterWrapper: Callback for receiving all odom msgs. It processes all comming messages
      * by considering transforming them in the fusing frame, considering the update_vector to ignore parts
      * of the measurements and capturing matrixes with faulty values.
+     * @param[in] topic_name - topic name of the odom sensor
      * @param[in] msg - pointer to the odom msg of the measurement
      * @param[in] transform_to_map - transf from sensor frame of msg to map frame where pose is fused
      * @param[in] transform_to_base_link - transf from sensor frame of msg to base_link frame where twist is fused
@@ -158,7 +162,7 @@ public:
     bool odom_callback(
         const std::string& topic_name,
         nav_msgs::msg::Odometry* msg,
-        const TransformationMatrix& transform_to_map,
+        const TransformationMatrix& transform_to_map, // can get from the state for the futer toward ros independence
         const TransformationMatrix& transform_to_base_link)
     {
        Measurement m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg, transform_to_map, transform_to_base_link);
@@ -166,11 +170,11 @@ public:
     }
 
     /**
-     * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
+     * @brief FilterWrapper: Callback for receiving all imu msgs. It processes all comming messages
      * by considering transforming them in the fusing frame, considering the update_vector to ignore parts
      * of the measurements and capturing matrixes with faulty values.
+     * @param[in] topic_name - topic name of the imu sensor
      * @param[in] msg - pointer to the imu msg of the measurement
-     * @param[in] transform_to_world - transf from sensor frame of msg to world frame where orientation is fused
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
      */
     bool imu_callback(
@@ -178,18 +182,64 @@ public:
         sensor_msgs::msg::Imu* msg,
         const TransformationMatrix& transform_to_base_link)
     {
-       Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_to_base_link);
-       handle_measurement(m);
+        Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_to_base_link);
+        handle_measurement(m);
     }
-        const TransformationMatrix& transform_to_world,
+
+    /**
+     * @brief FilterWrapper: Callback for receiving all gps msgs. It processes all comming messages
+     * by considering transforming them in the fusing frame, considering the update_vector to ignore parts
+     * of the measurements and capturing matrixes with faulty values.
+     * @param[in] topic_name - topic name of the gps sensor
+     * @param[in] msg - pointer to the gps msg of the measurement
+     * @param[in] transform_to_base_link - transf from sensor frame to base_link frame
+     */
+    //TO_DO: have to use local msg or get full info from msg in filter_node
+    bool gps_callback(
+        const std::string& topic_name,
+        T latitude, T longitude, T hae_altitude,
         const TransformationMatrix& transform_to_base_link)
     {
-       Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_to_world, transform_to_base_link);
+        // std_msgs/Header header
+        // sensor_msgs/NavSatStatus status // satellite fix status information
+        // float64 latitude // [degrees]. Positive is north of equator; negative is south.
+        // float64 longitude // [degrees]. Positive is east of prime meridian; negative is west.
+        // float64 altitude // Altitude [m]. Positive is above the WGS 84 ellipsoid. (quiet NaN if no altitude is available).
+        // float64[9] position_covariance // defined relative to a tangential plane through the reported position. 
+                                            // The components are East, North, and Up (ENU), in row-major order
+        // uint8 position_covariance_type // uint8 COVARIANCE_TYPE_UNKNOWN=0
+                                            // uint8 COVARIANCE_TYPE_APPROXIMATED=1
+                                            // uint8 COVARIANCE_TYPE_DIAGONAL_KNOWN=2
+                                            // uint8 COVARIANCE_TYPE_KNOWN=3
+
+        // Make sure the GPS data is usable
+        bool good_gps = (msg->status.status != sensor_msgs::NavSatStatus::STATUS_NO_FIX &&
+                            !std::isnan(msg->altitude) &&
+                            !std::isnan(msg->latitude) &&
+                            !std::isnan(msg->longitude));
+
+        if(!is_initialized()) return false; // the filter is not yet initialized.
+        if(!m_gps_sensors_hmap[topic_name].initialized())
+        {
+            // find one initialized imu and take its R_map_enu
+            for(auto imu:m_imu_sensors_hmap)
+            {
+                if(imu.second.ready())
+                {
+                    auto R_map_enu = imu.second.get_R_map_enu();
+                    m_gps_sensors_hmap[topic_name].initialize(get_state(), R_map_enu, latitude, longitude, hae_altitude, transform_to_base_link);
+                    return false; // didn't went through but just initialized.
+                }
+            }
+            return false; // no imu initialized yet so we have to wait.
+        }
+        //TO_DO: have to use local msg instead of latitude, longitude, hae_altitude
+       Measurement m = m_gps_sensors_hmap[topic_name].gps_callback(get_state(), latitude, longitude, hae_altitude, transform_to_base_link);
        handle_measurement(m);
     }
 
     /**
-     * @brief FilterWrapper: this function differentiates the data_triggered and time_triggered option.
+     * @brief FilterWrapper: this function differentiates the data_triggered from the time_triggered option.
      *        it calls process_measurement immediately if data triggered and puts the measurement in the buffer otherwise .
      * @param[in] measurement - measurement to be handled
      * @return true if handling was sucessful
@@ -376,6 +426,10 @@ public:
             case 3:
               m_imu_sensors_hmap.emplace(x.first,
                     ImuT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug));
+              break;
+            case 4:
+              m_gps_sensors_hmap.emplace(x.first,
+                    GpsT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug));
               break;
             default:
                 // code block
