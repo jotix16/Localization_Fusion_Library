@@ -47,7 +47,7 @@ class FilterNode
 
         using PoseWithCovStampedMsg = geometry_msgs::PoseWithCovarianceStamped;
         using TwistWithCovStampedMsg = geometry_msgs::TwistWithCovarianceStamped;
-        
+
         using HeaderMsg = std_msgs::msg::Header;
         using TransformStamped = geometry_msgs::TransformStamped;
         using TransformationMatrix = typename Eigen::Transform<double, 3, Eigen::TransformTraits::Isometry>;
@@ -96,7 +96,7 @@ class FilterNode
         {}
 
         /**
-         * @brief FilterNode: Function that inizializes the FilterWrapper from the .json config file and the 
+         * @brief FilterNode: Function that inizializes the FilterWrapper from the .json config file and the
          * ros node parameters from the launch file. In addition to that it initializes the subscribers/publishers
          * and sets the initial frame transformations.
          * @param[in] config_path - path to .json configuration file
@@ -123,10 +123,10 @@ class FilterNode
                 std::string odom_topic;
                 m_nh_param.getParam(ss.str(), odom_topic);
                 ROS_INFO_STREAM("Subscribing to: " << odom_topic);
-                m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_topic, 10, 
+                m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_topic, 10,
                 boost::bind(&FilterNode::odom_callback, this, _1, odom_topic)));
             }
-            
+
             // 3.b. initialize imu subscribers
             int imu_nr_;
             m_nh_param.param("imu_nr", imu_nr_, 0);
@@ -138,7 +138,7 @@ class FilterNode
                 std::string imu_topic;
                 m_nh_param.getParam(ss.str(), imu_topic);
                 ROS_INFO_STREAM("Subscribing to: " << imu_topic);
-                m_imu_sub_topics.push_back(m_nh.subscribe<ImuMsg>(imu_topic, 10, 
+                m_imu_sub_topics.push_back(m_nh.subscribe<ImuMsg>(imu_topic, 10,
                 boost::bind(&FilterNode::imu_callback, this, _1, imu_topic)));
             }
 
@@ -153,7 +153,7 @@ class FilterNode
                 std::string gps_topic;
                 m_nh_param.getParam(ss.str(), gps_topic);
                 ROS_INFO_STREAM("Subscribing to: " << gps_topic);
-                m_gps_sub_topics.push_back(m_nh.subscribe<GpsMsg>(gps_topic, 10, 
+                m_gps_sub_topics.push_back(m_nh.subscribe<GpsMsg>(gps_topic, 10,
                 boost::bind(&FilterNode::gps_callback, this, _1, gps_topic)));
             }
 
@@ -172,7 +172,7 @@ class FilterNode
                         "and base_link_frame must be unique. If using a base_link_frame_output values, it "
                         "must not match the map_frame or odom_frame.");
         }
-    
+
         /**
          * @brief FilterNode: Callback for receiving all odom msgs. It extracts transformation matrixes
          * to the fusing frames and calls the corresponding callback from filter_wrapper.
@@ -199,7 +199,7 @@ class FilterNode
                 {
                     transform_to_base_link.setIdentity();
                 }
-                else 
+                else
                 {
                     // b. base_link frame to sensor frame for the twist part of msg
                     transformStamped2 = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgChildFrame, ros::Time(0), ros::Duration(1.0));
@@ -216,7 +216,7 @@ class FilterNode
             // get msg in our local msg form.
             OdomMsgLocFusLib msg_loc;
             to_local_odom_msg(msg, msg_loc);
-          
+
             // 2. call filter's odom_callback
             // ros_info_msg(msg_loc);
             std::cout << "CHILD FRANE ID: " << msgChildFrame << "\n";
@@ -263,14 +263,14 @@ class FilterNode
                 ros::Duration(1.0).sleep();
                 return;
             }
-            
+
             // VISUALIZE IMU
             // visualize_imu(msg, msgFrame);
-            
+
             // get msg in our local msg form.
             ImuMsgLocFusLib msg_loc;
             to_local_imu_msg(msg, msg_loc);
-          
+
             // 2. call filter's imu_callback
             // ros_info_msg(msg_loc);
             if(m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_to_base_link))
@@ -309,7 +309,7 @@ class FilterNode
             // 2. get msg in our local msg form.
             // GpsMsgLocFusLib msg_loc;
             // to_local_gps_msg(msg, msg_loc);
-          
+
             // 3. call filter's gps_callback
             // ros_info_msg(msg_loc);
             // if(m_filter_wrapper.gps_callback(topic_name, &msg_loc, transform_to_base_link))
@@ -374,8 +374,8 @@ class FilterNode
             msg_loc.pose.pose.position.z = msg->pose.pose.position.z;
             for (int i = 0; i < 36; i++)
             {
-                msg_loc.pose.covariance[i] = msg->pose.covariance[i]; 
-                msg_loc.twist.covariance[i] = msg->twist.covariance[i]; 
+                msg_loc.pose.covariance[i] = msg->pose.covariance[i];
+                msg_loc.twist.covariance[i] = msg->twist.covariance[i];
             }
             msg_loc.pose.pose.orientation.x = msg->pose.pose.orientation.x;
             msg_loc.pose.pose.orientation.y = msg->pose.pose.orientation.y;
@@ -417,7 +417,7 @@ class FilterNode
             msg_loc.angular_velocity.z = msg->angular_velocity.z;
             for (int i = 0; i < 9; i++)
             {
-                msg_loc.angular_velocity_covariance[i] = msg->angular_velocity_covariance[i]; 
+                msg_loc.angular_velocity_covariance[i] = msg->angular_velocity_covariance[i];
             }
 
             // linear acceleration
@@ -426,7 +426,7 @@ class FilterNode
             msg_loc.linear_acceleration.z = msg->linear_acceleration.z;
             for (int i = 0; i < 9; i++)
             {
-                msg_loc.linear_acceleration_covariance[i] = msg->linear_acceleration_covariance[i]; 
+                msg_loc.linear_acceleration_covariance[i] = msg->linear_acceleration_covariance[i];
             }
         }
 
@@ -445,8 +445,8 @@ class FilterNode
             msg.pose.pose.position.z = msg_loc.pose.pose.position.z;
             for (int i = 0; i < 36; i++)
             {
-                msg.pose.covariance[i] =  msg_loc.pose.covariance[i]; 
-                msg.twist.covariance[i] = msg_loc.twist.covariance[i]; 
+                msg.pose.covariance[i] =  msg_loc.pose.covariance[i];
+                msg.twist.covariance[i] = msg_loc.twist.covariance[i];
             }
             msg.pose.pose.orientation.x = msg_loc.pose.pose.orientation.x;
             msg.pose.pose.orientation.y = msg_loc.pose.pose.orientation.y;
@@ -532,7 +532,7 @@ class FilterNode
             m_imu_publisher.publish(msg_pub);
             // ------------------------------- Visualize IMU ------------------------------------ //
         }
-        
+
 
         /**
          * @brief FilterNode: Helper function to calculate T_map_enu from the first IMU measurement.

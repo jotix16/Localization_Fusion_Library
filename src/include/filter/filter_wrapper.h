@@ -89,11 +89,11 @@ private:
     // debuging variables
     std::ofstream m_debug_stream;
     bool m_debug;
-    std::mutex m_callback_mutex; 
+    std::mutex m_callback_mutex;
 
 public:
     FilterWrapper() = default;
-    
+
     /**
      * @brief Constructor that inizializes configuration related parameters and time-keeping
      * @param[in] config_path - path to .json configuration file
@@ -158,7 +158,7 @@ public:
      * @param[in] transform_to_map - transf from sensor frame of msg to map frame where pose is fused
      * @param[in] transform_to_base_link - transf from sensor frame of msg to base_link frame where twist is fused
      */
-    
+
     bool odom_callback(
         const std::string& topic_name,
         nav_msgs::msg::Odometry* msg,
@@ -205,7 +205,7 @@ public:
         // float64 latitude // [degrees]. Positive is north of equator; negative is south.
         // float64 longitude // [degrees]. Positive is east of prime meridian; negative is west.
         // float64 altitude // Altitude [m]. Positive is above the WGS 84 ellipsoid. (quiet NaN if no altitude is available).
-        // float64[9] position_covariance // defined relative to a tangential plane through the reported position. 
+        // float64[9] position_covariance // defined relative to a tangential plane through the reported position.
                                             // The components are East, North, and Up (ENU), in row-major order
         // uint8 position_covariance_type // uint8 COVARIANCE_TYPE_UNKNOWN=0
                                             // uint8 COVARIANCE_TYPE_APPROXIMATED=1
@@ -213,10 +213,10 @@ public:
                                             // uint8 COVARIANCE_TYPE_KNOWN=3
 
         // Make sure the GPS data is usable
-        bool good_gps = (msg->status.status != sensor_msgs::NavSatStatus::STATUS_NO_FIX &&
-                            !std::isnan(msg->altitude) &&
-                            !std::isnan(msg->latitude) &&
-                            !std::isnan(msg->longitude));
+        // bool good_gps = (msg->status.status != sensor_msgs::NavSatStatus::STATUS_NO_FIX &&
+        //                     !std::isnan(msg->altitude) &&
+        //                     !std::isnan(msg->latitude) &&
+        //                     !std::isnan(msg->longitude));
 
         if(!is_initialized()) return false; // the filter is not yet initialized.
         if(!m_gps_sensors_hmap[topic_name].initialized())
@@ -292,7 +292,7 @@ public:
             if (m_filter.temporal_update(dt))
             {
                 m_time_keeper.update_after_temporal_update(dt);
-                
+
                 DEBUG_W(" -> Covar temp: \n");
                 DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
                 DEBUG_W(std::fixed << std::setprecision(4) << " -> State temp: " << get_state().transpose() << "\n");
@@ -374,7 +374,7 @@ public:
         DEBUG_W("Initial State Covariance\n"<< std::setprecision(9));
         for (auto i:States::full_state_to_estimated_state)
         {
-            
+
             if(i < STATE_SIZE)
             {
                 ind_temp2 = 0;
@@ -482,7 +482,7 @@ public:
         msg.twist.twist.linear.x = ix < 15 ? m_filter.at(ix) : 0.0;
         msg.twist.twist.linear.y = iy < 15 ? m_filter.at(iy) : 0.0;
         msg.twist.twist.linear.z = iz < 15 ? m_filter.at(iz) : 0.0;
-        
+
         // 4. Angular Twist
         ix = States::full_state_to_estimated_state[STATE_V_ROLL];
         iy = States::full_state_to_estimated_state[STATE_V_PITCH];
@@ -514,7 +514,7 @@ public:
             for(int j = 0; j < TWIST_SIZE; j++)
             {
                 iy = States::full_state_to_estimated_state[j+POSE_SIZE];
-                if ( iy > 14 || ix > 14) 
+                if ( iy > 14 || ix > 14)
                 msg.twist.covariance[i + j*TWIST_SIZE] = 1e-9;
                 else
                 msg.twist.covariance[i + j*TWIST_SIZE] = cov_mat(ix , iy);
@@ -550,9 +550,9 @@ public:
 
     /**
      * @brief FilterWrapper: Function that returns the latest timestamp the state changed
-     * @return Latest timestamp the state changed which is the 
+     * @return Latest timestamp the state changed which is the
      * max( temporal_update_timestamp, observation_update_timestamp).
-     */ 
+     */
     tTime get_last_measurement_time()
     {
         return m_time_keeper.latest_timestamp();
@@ -565,6 +565,6 @@ using FilterCtrvEKF2D = FilterWrapper<Ctrv_EKF2D>;
 using FilterCtraEKF2D = FilterWrapper<Ctra_EKF2D>;
 using FilterCtraEKF3D = FilterWrapper<Ctra_EKF3D>;
 
-} // end namespace filter 
+} // end namespace filter
 } // end namespace state_predictor
 } // end namespace iav

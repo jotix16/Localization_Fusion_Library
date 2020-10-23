@@ -69,7 +69,7 @@ private:
 public:
     Imu(){}; // default constructor
 
-    Imu(const std::string topic_name, const bool* update_vector, 
+    Imu(const std::string topic_name, const bool* update_vector,
          const T mahalanobis_threshold, std::ostream* out_stream, bool debug)
         : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug), m_init_orientation(false)
         { }
@@ -118,7 +118,7 @@ public:
     {
         DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Imu_callback: IN -------------------\n");
         //TO_DO:s
-        // if (!is_initialized()) 
+        // if (!is_initialized())
         // {
         //     DEBUG("Got IMU but not initialized. Ignoring");
         //     return;
@@ -183,9 +183,9 @@ public:
         }
 
         // 2. Initialize submeasurement related variables
-        size_t update_size = update_size_orientation + update_size_twist + update_size_acceleration; 
+        size_t update_size = update_size_orientation + update_size_twist + update_size_acceleration;
         Vector sub_measurement = Vector::Zero(update_size); // z
-        Vector sub_innovation = Vector::Zero(update_size); // z'-z 
+        Vector sub_innovation = Vector::Zero(update_size); // z'-z
         Matrix sub_covariance = Matrix::Zero(update_size, update_size);
         MappingMatrix state_to_measurement_mapping = MappingMatrix::Zero(update_size, num_state);
         std::vector<uint> sub_u_indices;
@@ -193,7 +193,7 @@ public:
         sub_u_indices.insert(sub_u_indices.end(), update_indices_orientation.begin(), update_indices_orientation.end());
         sub_u_indices.insert(sub_u_indices.end(), update_indices_twist.begin(), update_indices_twist.end());
         sub_u_indices.insert(sub_u_indices.end(), update_indices_acceleration.begin(), update_indices_acceleration.end());
-        
+
         // 3. Fill the submeasurement matrixes
         // a- fill the ORIENTATION part
         // REQUIRES DISCUSSION on how to transform the covariance matrix
@@ -259,17 +259,17 @@ public:
      * @param[inout] sub_innovation - innovation vector to be filled
      * @param[inout] state_measurement_mapping - state to measurement mapping matrix to be filled
      * @param[inout] update_indices - holds the respective indexes of the measurement's component to the full state's components
-     * @param[in] ix1 - starting index from which the sub_measurement should be filled 
+     * @param[in] ix1 - starting index from which the sub_measurement should be filled
      * @param[in] update_size - size of the measurement to be filled
      */
     void prepare_imu_orientation(
         const StateVector& state,
         geometry_msgs::msg::Quaternion& meas_msg,
-        std::array<double, 9> covariance_array, 
+        std::array<double, 9> covariance_array,
         const TransformationMatrix& transform_bl_imu,
         Vector& sub_measurement,
-        Matrix& sub_covariance, 
-        Vector& sub_innovation, 
+        Matrix& sub_covariance,
+        Vector& sub_innovation,
         MappingMatrix& state_to_measurement_mapping,
         const std::vector<uint>& update_indices,
         uint ix1, size_t update_size)
@@ -284,16 +284,16 @@ public:
                         meas_msg.x,
                         meas_msg.y,
                         meas_msg.z};
-                        
+
         if (orientation.norm()-1.0 > 0.01)
         {
             orientation.normalize();
         }
 
         // - consider m_update_vector
-        // -- extract roll pitch yaw 
+        // -- extract roll pitch yaw
         auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
-        // -- ignore roll pitch yaw according to m_update_vector 
+        // -- ignore roll pitch yaw according to m_update_vector
         rpy[0] *= (int)m_update_vector[STATE_ROLL];
         rpy[1] *= (int)m_update_vector[STATE_PITCH];
         rpy[2] *= (int)m_update_vector[STATE_YAW];
@@ -310,9 +310,9 @@ public:
         auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
 
         // - Transform measurement to fusion frame
-        rot_meas = rot_map_enu * rot_meas; // R_map_imu      
+        rot_meas = rot_map_enu * rot_meas; // R_map_imu
         rot_meas = rot_meas * rot_imu_bl; // R_map_bl
-        
+
         Vector3T measurement;
         measurement = rot_meas.eulerAngles(0, 1, 2);
         std::cout << "FUSE RPY: " << measurement.transpose() << "\n";
@@ -352,7 +352,7 @@ public:
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
 
-        DEBUG(" -> Noise from orientation msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));        
+        DEBUG(" -> Noise from orientation msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
         DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Orientation: OUT -------------------\n");
     }
 
@@ -365,17 +365,17 @@ public:
      * @param[inout] sub_innovation - innovation vector to be filled
      * @param[inout] state_measurement_mapping - state to measurement mapping matrix to be filled
      * @param[inout] update_indices - holds the respective indexes of the measurement's component to the full state's components
-     * @param[in] ix1 - starting index from which the sub_measurement should be filled 
+     * @param[in] ix1 - starting index from which the sub_measurement should be filled
      * @param[in] update_size - size of the measurement to be filled
      */
     void prepare_angular_velocity(
         const StateVector& state,
         geometry_msgs::msg::Vector3& meas_msg,
-        std::array<double, 9> covariance_array, 
+        std::array<double, 9> covariance_array,
         const TransformationMatrix& transform,
         Vector& sub_measurement,
-        Matrix& sub_covariance, 
-        Vector& sub_innovation, 
+        Matrix& sub_covariance,
+        Vector& sub_innovation,
         MappingMatrix& state_to_sub_measurement_mapping,
         const std::vector<uint>& update_indices,
         size_t ix1, size_t update_size, bool is_imu)
@@ -441,17 +441,17 @@ public:
      * @param[inout] sub_innovation - innovation vector to be filled
      * @param[inout] state_measurement_mapping - state to measurement mapping matrix to be filled
      * @param[inout] update_indices - holds the respective indexes of the measurement's component to the full state's components
-     * @param[in] ix1 - starting index from which the sub_measurement should be filled 
+     * @param[in] ix1 - starting index from which the sub_measurement should be filled
      * @param[in] update_size - size of the measurement to be filled
      */
     void prepare_acceleration(
         const StateVector& state,
         geometry_msgs::msg::Vector3& meas_msg,
-        std::array<double, 9> covariance_array, 
+        std::array<double, 9> covariance_array,
         const TransformationMatrix& transform,
         Vector& sub_measurement,
-        Matrix& sub_covariance, 
-        Vector& sub_innovation, 
+        Matrix& sub_covariance,
+        Vector& sub_innovation,
         MappingMatrix& state_to_measurement_mapping,
         const std::vector<uint>& update_indices,
         uint ix1, size_t update_size)
@@ -526,6 +526,6 @@ public:
 
 using ImuD = Imu<double, motion_model::Ctrv2D::States>;
 
-} // end namespace sensors 
+} // end namespace sensors
 } // end namespace state_predictor
 } // end namespace iav

@@ -76,11 +76,11 @@ private:
 public:
     Gps(){}; // default constructor
 
-    Gps(const std::string topic_name, const bool* update_vector, 
+    Gps(const std::string topic_name, const bool* update_vector,
          const T mahalanobis_threshold, std::ostream* out_stream, bool debug)
         : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug)
         { }
-    
+
     inline bool ready() const
     {
         return m_initialized;
@@ -102,8 +102,8 @@ public:
         T roll = roll_ix < STATE_SIZE ? state[roll_ix] : 0,
           pitch = pitch_ix < STATE_SIZE ? state[pitch_ix] : 0,
           yaw = yaw_ix < STATE_SIZE ? state[yaw_ix] : 0;
-        T_map_bl = AngleAxisT(roll, Vector3T::UnitX()) 
-                         * AngleAxisT(pitch, Vector3T::UnitY()) 
+        T_map_bl = AngleAxisT(roll, Vector3T::UnitX())
+                         * AngleAxisT(pitch, Vector3T::UnitY())
                          * AngleAxisT(yaw, Vector3T::UnitZ());
         std::cout << "R_map_bl\n" << T_map_bl.rotation() <<"\n";
 
@@ -153,10 +153,10 @@ public:
         m_gps_local_cartesian.Forward(latitude, longitude, hae_altitude,
                                       measurement[0], measurement[1], measurement[2]);
 
-        // 2. transform gps position in map frame P_map_gps 
+        // 2. transform gps position in map frame P_map_gps
         std::cout << "WOW we got " << measurement.transpose() << "\n";
         measurement = m_T_map_utm * measurement;
-        
+
         // 3. create transformation matrix T_map_bl
         TransformationMatrix T_map_bl;
         // 3a- R_map_bl rotation part
@@ -166,8 +166,8 @@ public:
         T roll = roll_ix < STATE_SIZE ? state[roll_ix] : 0,
           pitch = pitch_ix < STATE_SIZE ? state[pitch_ix] : 0,
           yaw = yaw_ix < STATE_SIZE ? state[yaw_ix] : 0;
-        T_map_bl = AngleAxisT(roll, Vector3T::UnitX()) 
-                         * AngleAxisT(pitch, Vector3T::UnitY()) 
+        T_map_bl = AngleAxisT(roll, Vector3T::UnitX())
+                         * AngleAxisT(pitch, Vector3T::UnitY())
                          * AngleAxisT(yaw, Vector3T::UnitZ());
 
         // 3b- P_map_bl translation part
@@ -193,13 +193,13 @@ public:
         // tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
         // Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
         //                 sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
-        // DEBUG(" -> GPS " << meas.print());                
+        // DEBUG(" -> GPS " << meas.print());
         DEBUG("\n\t\t--------------- Gps[" << m_topic_name<< "] Gps_callback: OUT -------------------\n");
     }
 };
 
 using GpsD = Gps<double, motion_model::Ctra2D::States>;
 
-} // end namespace sensors 
+} // end namespace sensors
 } // end namespace state_predictor
 } // end namespace iav
