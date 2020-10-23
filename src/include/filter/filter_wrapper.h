@@ -150,9 +150,10 @@ public:
     }
 
     /**
-     * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
+     * @brief FilterWrapper: Callback for receiving all odom msgs. It processes all comming messages
      * by considering transforming them in the fusing frame, considering the update_vector to ignore parts
      * of the measurements and capturing matrixes with faulty values.
+     * @param[in] topic_name - topic name of the odom sensor
      * @param[in] msg - pointer to the odom msg of the measurement
      * @param[in] transform_to_map - transf from sensor frame of msg to map frame where pose is fused
      * @param[in] transform_to_base_link - transf from sensor frame of msg to base_link frame where twist is fused
@@ -161,7 +162,7 @@ public:
     bool odom_callback(
         const std::string& topic_name,
         nav_msgs::msg::Odometry* msg,
-        const TransformationMatrix& transform_to_map,
+        const TransformationMatrix& transform_to_map, // can get from the state for the futer toward ros independence
         const TransformationMatrix& transform_to_base_link)
     {
        Measurement m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg, transform_to_map, transform_to_base_link);
@@ -238,7 +239,7 @@ public:
     }
 
     /**
-     * @brief FilterWrapper: this function differentiates the data_triggered and time_triggered option.
+     * @brief FilterWrapper: this function differentiates the data_triggered from the time_triggered option.
      *        it calls process_measurement immediately if data triggered and puts the measurement in the buffer otherwise .
      * @param[in] measurement - measurement to be handled
      * @return true if handling was sucessful
