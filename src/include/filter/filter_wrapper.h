@@ -166,11 +166,11 @@ public:
     }
 
     /**
-     * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
+     * @brief FilterWrapper: Callback for receiving all imu msgs. It processes all comming messages
      * by considering transforming them in the fusing frame, considering the update_vector to ignore parts
      * of the measurements and capturing matrixes with faulty values.
+     * @param[in] topic_name - topic name of the imu sensor
      * @param[in] msg - pointer to the imu msg of the measurement
-     * @param[in] transform_to_world - transf from sensor frame of msg to world frame where orientation is fused
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
      */
     bool imu_callback(
@@ -178,8 +178,8 @@ public:
         sensor_msgs::msg::Imu* msg,
         const TransformationMatrix& transform_to_base_link)
     {
-       Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_to_base_link);
-       handle_measurement(m);
+        Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_to_base_link);
+        handle_measurement(m);
     }
         const TransformationMatrix& transform_to_world,
         const TransformationMatrix& transform_to_base_link)
