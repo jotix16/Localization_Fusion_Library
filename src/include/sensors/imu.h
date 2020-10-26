@@ -313,11 +313,13 @@ public:
         rot_meas = rot_map_enu * rot_meas; // R_map_imu
         rot_meas = rot_meas * rot_imu_bl; // R_map_bl
 
-        Vector3T measurement;
-        measurement = rot_meas.eulerAngles(0, 1, 2);
-        std::cout << "FUSE RPY: " << measurement.transpose() << "\n";
         orientation = rot_meas;
-        std::cout << "FUSE QUAT: " << orientation.vec().transpose() << " " << orientation.w()<< "\n";
+        // Vector3T measurement = rot_meas.eulerAngles(0, 1, 2);
+        // TO_DO: use our quaternion to rpy instead ??
+        Vector3T measurement = this->to_euler(orientation);
+
+        std::cout << "FUSE RPY: " << measurement.transpose() << "\n";
+        std::cout << "FUSE RPY2: " << this->to_euler(orientation).transpose() << "\n";
 
         // Transform covariance, not sure for the second transformation
         Matrix3T covariance;

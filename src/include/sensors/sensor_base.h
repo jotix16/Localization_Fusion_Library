@@ -88,6 +88,21 @@ public:
             DEBUG("\t\t\t-----------------------------------------\n");
     }
 
+    Vector3T to_euler(QuaternionT& orientation)
+    {
+        Vector3T vec;
+        T sinr = 2 * (orientation.w()*orientation.x() + orientation.y()*orientation.z());
+        T cosr = 1 - 2 * (orientation.x()*orientation.x() + orientation.y()*orientation.y());
+
+        T sinp = 2 * (orientation.w()*orientation.y() - orientation.z()*orientation.x());
+
+        T siny = 2 * (orientation.w()*orientation.z() + orientation.x()*orientation.y());
+        T cosy = 1 - 2 * (orientation.y()*orientation.y() + orientation.z()*orientation.z());
+        vec << atan2(sinr, cosr),
+               (fabs(sinp)>=1 ? copysign(M_PI/2.0, sinp) : asin(sinp) ),
+               atan2(siny, cosy);
+        return vec;
+    }
 };
 
 template<typename T, typename States>
