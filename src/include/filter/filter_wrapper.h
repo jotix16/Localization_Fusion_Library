@@ -182,8 +182,9 @@ public:
         sensor_msgs::msg::Imu* msg,
         const TransformationMatrix& transform_to_base_link)
     {
+        if (!is_initialized()) return false;
         Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_to_base_link);
-        handle_measurement(m);
+        return handle_measurement(m);
     }
 
     /**
@@ -371,7 +372,6 @@ public:
         uint ind_temp1 = 0;
         uint ind_temp2 = 0;
         DEBUG_W("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
-        DEBUG_W("Initial State Covariance\n"<< std::setprecision(9));
         for (auto i:States::full_state_to_estimated_state)
         {
 
@@ -383,12 +383,10 @@ public:
                     if(j < STATE_SIZE)
                     {
                         init_cov(i, j) = m_config.m_init_estimation_covariance(ind_temp1,ind_temp2);
-                        DEBUG_W(m_config.m_init_estimation_covariance(ind_temp1,ind_temp2) << " ");
                         process_noise(i, j) = m_config.m_process_noise(ind_temp1,ind_temp2);
                     }
                     ++ind_temp2;
                 }
-                DEBUG_W("\n");
             }
             ++ind_temp1;
         }
