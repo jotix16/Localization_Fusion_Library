@@ -183,7 +183,7 @@ public:
         // - and position as (T)ranslation-vector.          |R R R T|
         //                                                  |0 0 0 1|
         // consider m_update_vector
-        Matrix4T pose_transf;
+        TransformationMatrix pose_transf;
         pose_transf.setIdentity();
 
         // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
@@ -210,6 +210,8 @@ public:
             // - consider m_update_vector
             // -- extract roll pitch yaw 
             auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
+            // TO_DO: use our quaternion to rpy instead ??
+            // auto rpy = this->to_euler(orientation);
             // -- ignore roll pitch yaw according to m_update_vector 
             rpy[0] *= (int)m_update_vector[STATE_ROLL];
             rpy[1] *= (int)m_update_vector[STATE_PITCH];
@@ -222,13 +224,13 @@ public:
             {
                 orientation.normalize();
             }
-            pose_transf.template block<3,3>(0,0) = orientation.toRotationMatrix(); // orientation part
+            pose_transf = orientation.toRotationMatrix(); // orientation part
         }
         else DEBUG("Orientation is being ignored according to m_update_vector!\n");
 
         if(valid_position)
         {
-            pose_transf.template block<3,1>(0,3) = Eigen::Vector3d{
+            pose_transf.translation() = Vector3T{
                 msg->pose.position.x * (int)m_update_vector[STATE_X],
                 msg->pose.position.y * (int)m_update_vector[STATE_Y],
                 msg->pose.position.z * (int)m_update_vector[STATE_Z]}; // position part
@@ -237,12 +239,16 @@ public:
 
         // 3. Transform pose to fusion frame
         pose_transf = transform * pose_transf;
-        DEBUG( " -> Pose transformed:\n" << pose_transf << "\n");
+        // DEBUG( " -> Pose transformed:\n" << pose_transf << "\n");
         // 4. Compute measurement vector
         Vector6T measurement;
         measurement.setZero();
-        measurement.template head<3>() = pose_transf.template block<3,1>(0,3);
-        measurement.template tail<3>() = pose_transf.template block<3,3>(0,0).eulerAngles(0,1,2);
+        measurement.template head<3>() = pose_transf.translation();
+        measurement.template tail<3>() = pose_transf.rotation().eulerAngles(0,1,2);
+
+        // TO_DO: use our quaternion to rpy instead ??
+        // orientation = pose_transf.rotation();
+        // measurement.template tail<3>() = this->to_euler(orientation);
 
         // 5. Rotate Covariance to fusion frame
         Matrix6T rot6d;
@@ -333,7 +339,7 @@ public:
         }
         else DEBUG("Angular velocities are being ignored according to m_update_vector!\n");
 
-        if(valid_angular_velocity)
+        if(valid_linear_velocity)
         {
             // 3. Extract linear velocities
             // - consider m_update_vector
