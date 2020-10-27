@@ -186,7 +186,7 @@ dyaw/dyaw = dt*0*vpitch + dt*0*vyaw
 For an easier understanding, the transformations that occur to the velocities and accelerations are rotations which in the general(3D) case can be described by the rotation matrix:
 
 
-![](images/rotation_matrix.PNG)
+![](../images/rotation_matrix.PNG)
 
 
 where alpha=yaw, beta=pitch and gamma=roll.
