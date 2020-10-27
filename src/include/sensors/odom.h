@@ -64,7 +64,7 @@ private:
 public:
     Odom(){};
 
-    Odom(const std::string topic_name, const bool* update_vector, 
+    Odom(const std::string topic_name, const bool* update_vector,
          const T mahalanobis_threshold, std::ostream* out_stream, bool debug)
         : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug)
         { }
@@ -116,9 +116,9 @@ public:
         size_t update_size_twist = update_indices_twist.size();
 
         // 2. Initialize submeasurement related variables
-        size_t update_size = update_size_pose + update_size_twist; 
+        size_t update_size = update_size_pose + update_size_twist;
         Vector sub_measurement = Vector::Zero(update_size); // z
-        Vector sub_innovation = Vector::Zero(update_size); // z'-z 
+        Vector sub_innovation = Vector::Zero(update_size); // z'-z
         Matrix sub_covariance = Matrix::Zero(update_size, update_size);
         MappingMatrix state_to_measurement_mapping = MappingMatrix::Zero(update_size, num_state);
         std::vector<uint> sub_u_indices;
@@ -133,7 +133,7 @@ public:
                     sub_covariance, sub_innovation, state_to_measurement_mapping,
                     update_indices_pose, 0, update_size_pose,
                     valid_position, valid_orientation);
-                    
+
         if(valid_angular_velocity || valid_linear_velocity)
         prepare_twist(state, &(msg->twist), transform_to_base_link, sub_measurement,
                     sub_covariance, sub_innovation, state_to_measurement_mapping,
@@ -158,16 +158,16 @@ public:
      * @param[inout] sub_innovation - innovation vector to be filled
      * @param[inout] state_measurement_mapping - state to measurement mapping matrix to be filled
      * @param[inout] update_indices - holds the respective indexes of the measurement's component to the full state's components
-     * @param[in] ix1 - starting index from which the sub_measurement should be filled 
+     * @param[in] ix1 - starting index from which the sub_measurement should be filled
      * @param[in] update_size - size of the measurement to be filled
      */
     void prepare_pose(
         const StateVector& state,
-        geometry_msgs::msg::PoseWithCovariance* msg, 
+        geometry_msgs::msg::PoseWithCovariance* msg,
         const TransformationMatrix& transform,
         Vector& sub_measurement,
-        Matrix& sub_covariance, 
-        Vector& sub_innovation, 
+        Matrix& sub_covariance,
+        Vector& sub_innovation,
         MappingMatrix& state_to_sub_measurement_mapping,
         const std::vector<uint>& update_indices,
         uint ix1, size_t update_size,
@@ -208,11 +208,11 @@ public:
             }
 
             // - consider m_update_vector
-            // -- extract roll pitch yaw 
+            // -- extract roll pitch yaw
             auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
             // TO_DO: use our quaternion to rpy instead ??
             // auto rpy = this->to_euler(orientation);
-            // -- ignore roll pitch yaw according to m_update_vector 
+            // -- ignore roll pitch yaw according to m_update_vector
             rpy[0] *= (int)m_update_vector[STATE_ROLL];
             rpy[1] *= (int)m_update_vector[STATE_PITCH];
             rpy[2] *= (int)m_update_vector[STATE_YAW];
@@ -288,7 +288,7 @@ public:
             if (States::full_state_to_estimated_state[update_indices[i]]<15)
             state_to_sub_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
-        
+
         DEBUG(" -> Noise pose:\n" << std::fixed << std::setprecision(4) << sub_covariance  << "\n");
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Prepare_Pose: OUT -------------------\n");
     }
@@ -302,16 +302,16 @@ public:
      * @param[inout] sub_innovation - innovation vector to be filled
      * @param[inout] state_measurement_mapping - state to measurement mapping matrix to be filled
      * @param[inout] update_indices - holds the respective indexes of the measurement's component to the full state's components
-     * @param[in] ix1 - starting index from which the sub_measurement should be filled 
+     * @param[in] ix1 - starting index from which the sub_measurement should be filled
      * @param[in] update_size - size of the measurement to be filled
      */
     void prepare_twist(
         const StateVector& state,
-        geometry_msgs::msg::TwistWithCovariance* msg, 
+        geometry_msgs::msg::TwistWithCovariance* msg,
         const TransformationMatrix& transform,
         Vector& sub_measurement,
-        Matrix& sub_covariance, 
-        Vector& sub_innovation, 
+        Matrix& sub_covariance,
+        Vector& sub_innovation,
         MappingMatrix& state_to_sub_measurement_mapping,
         const std::vector<uint>& update_indices,
         size_t ix1, size_t update_size,
@@ -343,7 +343,7 @@ public:
         {
             // 3. Extract linear velocities
             // - consider m_update_vector
-            Vector3T linear_vel; 
+            Vector3T linear_vel;
             linear_vel <<
                 msg->twist.linear.x * (int)m_update_vector[STATE_V_X],
                 msg->twist.linear.y * (int)m_update_vector[STATE_V_Y],
@@ -416,6 +416,6 @@ public:
 
 using OdomD = Odom<double, motion_model::Ctrv2D::States>;
 
-} // end namespace sensors 
+} // end namespace sensors
 } // end namespace state_predictor
 } // end namespace iav

@@ -77,10 +77,11 @@ public:
         // eigensolver.compute(hph_t_r_inv);
         // DEBUG("--------------- FilterEKF Mahalanobis: hph_t_r_inv: ---------------\n" << hph_t_r_inv << "\n");
         // DEBUG("--------------- FilterEKF Mahalanobis: Eigenvalues: ---------------\n " << eigensolver.eigenvalues().real().transpose() << "\n\n");
-        
+
         DEBUG("--------------- FilterEKF Mahalanobis: ")
-        DEBUG("threshold: " << threshold << " value: " << sq_measurement_mahalanobis << " value2: " << innovation.transpose() * hph_t_r_inv * innovation << " ---------------\n");
-        if(sq_measurement_mahalanobis > threshold) 
+        DEBUG("threshold: " << threshold << " value: " << sq_measurement_mahalanobis
+            << " value2: " << innovation.transpose() * hph_t_r_inv * innovation << " ---------------\n");
+        if(sq_measurement_mahalanobis > threshold)
         {
             return false;
         }
@@ -103,7 +104,7 @@ public:
            this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
            if(debug > 1) DEBUG("--------------- FilterEKF after clamp, yaw: " << this->m_state[i] <<"\n");
         }
-        
+
         // update the covariance: P = J * P * J' + Q
         this->m_covariance = jacobian * this->m_covariance * jacobian.transpose();
         // this->m_covariance.noalias() += dt*this->m_process_noise;
@@ -113,10 +114,10 @@ public:
         return true;
     }
 
-    bool observation_update(const Measurement& m) 
+    bool observation_update(const Measurement& m)
     {
         DEBUG("\n\t\t--------------- FilterEKF Observation_Update: IN ---------------\n");
-        
+
         // Check if initialized
         if(!this->m_initialized)
         {
@@ -127,9 +128,9 @@ public:
         Matrix ph_t = this->m_covariance * m.H.transpose();
         Matrix hph_t_r_inv = (m.H * ph_t + m.R).inverse();
 
-        // Compute innovation 
+        // Compute innovation
         // avoid calculating innovation directly like
-        // innov = z - Hx, instead calculate it with a loop and update_indices 
+        // innov = z - Hx, instead calculate it with a loop and update_indices
         // O(n) complexity instead of O(mn)
         // wrap angles of innovation
         uint meas_index = 0U;
@@ -165,7 +166,7 @@ public:
         // same as P = P - K * H * P, but presents less of a problem in the
         // presense of floating point roundoff.
         // The Joseph Update has the form: P = (I - KH)P(I - KH)' + KRK'
-        // if covariance diagonal elements are near 0 or negative we give them a small value 
+        // if covariance diagonal elements are near 0 or negative we give them a small value
         StateMatrix I_K_H = this->m_identity;
         I_K_H.noalias() -= K * m.H;
         this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
@@ -191,6 +192,6 @@ using Ctrv_EKF2D = FilterEkf<motion_model::Ctrv2D>;
 using Ctra_EKF2D = FilterEkf<motion_model::Ctra2D>;
 using Ctra_EKF3D = FilterEkf<motion_model::Ctra3D>;
 
-} // end namespace filter 
+} // end namespace filter
 } // end namespace state_predictor
 } // end namespace iav

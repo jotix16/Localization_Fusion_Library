@@ -159,6 +159,6 @@ public:
      */
     virtual bool observation_update(const Measurement& measurement)=0;
 };
-} // end namespace filter 
+} // end namespace filter
 } // end namespace state_predictor
 } // end namespace iav

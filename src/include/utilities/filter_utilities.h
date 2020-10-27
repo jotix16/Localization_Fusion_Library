@@ -43,8 +43,8 @@ namespace iav{ namespace state_predictor {
   // using tTime = float32_t;
 
 		/**
-		 * @brief Struct that defines the WallTime. It starts a timer when FilterWrapper is initialized. 
-     * All global times are then returned relative to this time. 
+		 * @brief Struct that defines the WallTime. It starts a timer when FilterWrapper is initialized.
+     * All global times are then returned relative to this time.
 		 */
   struct Clock{
     using clock_t = std::chrono::high_resolution_clock;
@@ -65,7 +65,7 @@ namespace iav{ namespace state_predictor {
     }
   };
 
-  /** 
+  /**
    * Pose and twist messages' parameters
   */
   constexpr uint STATE_SIZE = 15;

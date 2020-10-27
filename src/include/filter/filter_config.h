@@ -173,7 +173,7 @@ struct FilterConfig{
     using FullStateMatrix = Eigen::Matrix<T, STATE_SIZE, STATE_SIZE>;
     using Document = rapidjson::Document;
     using IStreamWrapper = rapidjson::IStreamWrapper;
-    
+
     FullStateMatrix m_init_estimation_covariance;
     FullStateMatrix m_process_noise;
     std::map<std::string, struct SensorConfig> m_sensor_configs;
@@ -262,6 +262,6 @@ struct FilterConfig{
 
 using FilterConfig2D = FilterConfig<double>;
 
-} // end namespace motion_model 
+} // end namespace motion_model
 } // end namespace state_predictor
 } // end namespace iav

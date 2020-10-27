@@ -30,7 +30,7 @@
 #include <utilities/filter_utilities.h>
 
 
-//TO_DO: No AngleWrapping done yet, with the motivation that 
+//TO_DO: No AngleWrapping done yet, with the motivation that
 // 	 	 it is better done in KalmanWrapper after both observation_step and prediction_step
 namespace iav{ namespace state_predictor { namespace motion_model {
 
@@ -40,7 +40,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	template<uint num_states, typename T = double>
 	class MotionModel
 	{
-	public:		
+	public:
 		static constexpr uint number_states = num_states;
 		using ValueType = T;
 		using StateVector = Eigen::Matrix<T, num_states, 1>;
@@ -53,7 +53,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	template<typename T = double>
 	class MotionModelCtra2D : public MotionModel<8, T>
 	{
-	public:		
+	public:
 		/**
 		* @brief This state gives named handles for state indexing
 		*/
@@ -68,7 +68,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			static constexpr uint V_YAW = 5U;  ///< index of yaw velocity
 			static constexpr uint A_X = 6U;  ///< index of x acceleration
 			static constexpr uint A_Y = 7U;  ///< index of y acceleration
-			
+
 			static constexpr Array full_state_to_estimated_state = {0,1,15,15,15,2,3,4,15,15,15,5,6,7,15};
 
 			static constexpr uint STATE_SIZE_M = 8U;
@@ -84,7 +84,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		static constexpr uint num_states = MotionModel<8, T>::number_states;
 		using StateVector = typename MotionModel<8, T>::StateVector;
 		using StateMatrix = typename MotionModel<8, T>::StateMatrix;
-		
+
 		/**
 		 * @brief Ctra2D: Method that computes the Jacobian and performs a predict step
 		 *		  in the right order. It leverages the computed Jacobian to save some computations too.
@@ -276,12 +276,12 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			StateMatrix transform_matrix = jacobi;
 			transform_matrix(States::X, States::YAW) = 0;
 			transform_matrix(States::Y, States::YAW) = 0;
-			state = transform_matrix * state; 
+			state = transform_matrix * state;
 		}
 
 
 		 /** @brief Ctrv2D: Method that updates the current state with a given motion. It is called after
-		 * 		  compute_jacobian() in order to make sure that the state is not updated before 
+		 * 		  compute_jacobian() in order to make sure that the state is not updated before
 		 * 		  the Jacobian is computed. It is normally followed by an observation update.
 		 * @param[inout] jacobi - Matrix to save Jacobian into
 		 * @param[in] state - The actual state to be used to compute the Jacobian
@@ -310,7 +310,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	template<typename T = double>
 	class MotionModelCtra3D : public MotionModel<15, T>
 	{
-	public:		
+	public:
 		/**
 		* @brief This state gives named handles for state indexing
 		*/
@@ -340,14 +340,14 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			static constexpr uint POSITION_V_OFFSET_M = 6U;
 			static constexpr uint ORIENTATION_V_OFFSET_M = 9U;
 			static constexpr uint POSITION_A_OFFSET_M = 12U;
-			
+
 		};  // struct States
 
 	public:
 		static constexpr uint num_states = MotionModel<15, T>::number_states;
 		using StateVector = typename MotionModel<15, T>::StateVector;
 		using StateMatrix = typename MotionModel<15, T>::StateMatrix;
-		
+
 		/**
 		 * @brief Ctra3D: Method that computes the Jacobian and performs a predict step
 		 *		  in the right order. It leverages the computed Jacobian to save some computations too.
@@ -434,7 +434,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			jacobi(States::V_Y, States::A_Y) = dt;
 			jacobi(States::V_Z, States::A_Y) = dt;
 
-			//TO_DO 
+			//TO_DO
 			//The nonlinear part
 			T v_x = dt * state[States::V_X];
 			T v_y = dt * state[States::V_Y];
@@ -639,7 +639,6 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 	using Ctra2D = MotionModelCtra2D<double>;
 	using Ctra3D = MotionModelCtra3D<double>;
 
-} // end namespace motion_model 
+} // end namespace motion_model
 } // end namespace state_predictor
-} // end namespace iav 
-     
+} // end namespace iav

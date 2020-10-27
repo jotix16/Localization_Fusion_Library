@@ -32,7 +32,7 @@ namespace iav{ namespace state_predictor { namespace measurement{
  */
 class MeasurementTimeKeeper
 {
-private:		
+private:
     bool m_inizialized;
     // time (timestamp) when the last temporal update took place
     tTime m_t_last_temporal_update;
@@ -46,8 +46,8 @@ public:
     MeasurementTimeKeeper(): m_inizialized(false)
     {}
 
-/** 
- * @brief MeasurementTimeKeeper: 
+/**
+ * @brief MeasurementTimeKeeper:
  *        Synces last_temp_update and last_obs_update to the time_stamp of first measurement
  * @param[in] global_time_now - The global time from the WallTime when the measurement arrived.
  * @param[in] measurement_time_stamp - The time stamp of the measurement.
@@ -57,18 +57,18 @@ public:
         m_dt_to_global = global_time_now - measurement_time_stamp;
         m_t_last_temporal_update = measurement_time_stamp;
         m_t_last_observation_update = measurement_time_stamp;
-        if(debug) std::cout << "--------------- Measurement Time Keeper: dt_global: " << m_dt_to_global 
+        if(debug) std::cout << "--------------- Measurement Time Keeper: dt_global: " << m_dt_to_global
                             << ", last_temp: " <<m_t_last_temporal_update<<" -------------------\n";
         m_inizialized = true;
     }
 
 /**
- * @brief MeasurementTimeKeeper: Check if object of this class is initialized. 
+ * @brief MeasurementTimeKeeper: Check if object of this class is initialized.
  * @return true if the Object from MeasurementTimeKeeper is initialized, otherwise false.
  */
     inline bool is_initialized() const
     {
-       return m_inizialized; 
+       return m_inizialized;
     }
 
 /**
@@ -83,7 +83,7 @@ public:
 /**
  * @brief MeasurementTimeKeeper: Updates the time keeper after an observation update.
  * @param[in] time_stamp - The time stamp of the measurement processed.
- * @param[in] global_time - The wall time when the measurement arrived. 
+ * @param[in] global_time - The wall time when the measurement arrived.
  */
     void update_with_measurement(tTime time_stamp, tTime global_time)
     {

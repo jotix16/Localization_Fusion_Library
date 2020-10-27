@@ -96,10 +96,8 @@ public:
         m_R_map_enu = AngleAxisT(roll, Vector3T::UnitX())
                     * AngleAxisT(pitch, Vector3T::UnitY())
                     * AngleAxisT(yaw, Vector3T::UnitZ());
-        // R_map_enu = R_map_bl * R_bl_imu * R_enu_imu^-1
         m_R_map_enu = m_R_map_enu * transform_to_base_link * q_enu_imu.inverse();
-        q_enu_imu = m_R_map_enu.rotation();
-        std::cout << "INIT ORIENTATIOOOOOON: " << q_enu_imu.x() <<", "<< q_enu_imu.y() <<", "  << q_enu_imu.z() <<"\n";
+
         m_init_orientation = true;
     }
 
@@ -292,6 +290,12 @@ public:
         // - consider m_update_vector
         // -- extract roll pitch yaw
         auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
+
+        // TO_DO: use our quaternion to rpy instead ??
+        // auto rpy = this->to_euler(orientation);
+        // std::cout << "RPY1: " << rpy.transpose() << "\n";
+        // std::cout << "RPY2: " << this->to_euler(orientation).transpose() << "\n";
+
         // -- ignore roll pitch yaw according to m_update_vector
         rpy[0] *= (int)m_update_vector[STATE_ROLL];
         rpy[1] *= (int)m_update_vector[STATE_PITCH];
@@ -317,8 +321,8 @@ public:
         // TO_DO: use our quaternion to rpy instead ??
         Vector3T measurement = this->to_euler(orientation);
 
-        std::cout << "FUSE RPY: " << measurement.transpose() << "\n";
-        std::cout << "FUSE RPY2: " << this->to_euler(orientation).transpose() << "\n";
+        std::cout << "FUSE RPY(eigen): " << measurement.transpose() << "\n";
+        std::cout << "FUSE RPY2(custom): " << this->to_euler(orientation).transpose() << "\n";
 
         // Transform covariance, not sure for the second transformation
         Matrix3T covariance;

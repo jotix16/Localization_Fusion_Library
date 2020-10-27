@@ -70,8 +70,8 @@ protected:
 public:
     SensorBase(){};
 
-    SensorBase(const std::string topic_name, const bool* update_vector, 
-               const T mahalanobis_threshold, std::ostream* out_stream, bool debug): 
+    SensorBase(const std::string topic_name, const bool* update_vector,
+               const T mahalanobis_threshold, std::ostream* out_stream, bool debug):
     m_debug(debug),
     m_topic_name(topic_name),
     m_mahalanobis_threshold(mahalanobis_threshold)
@@ -110,6 +110,6 @@ constexpr uint SensorBase<T, States>::num_state;
 
 using SensorD = SensorBase<double, motion_model::Ctrv2D::States>;
 
-} // end namespace sensors 
+} // end namespace sensors
 } // end namespace state_predictor
 } // end namespace iav

@@ -39,10 +39,10 @@ namespace iav{ namespace state_predictor { namespace measurement{
  *        in order for them to be treated equally afterwards.
  */
 // forward declaration for compatibility with gcc in Linux
-template<uint num_state, typename T = double> 
+template<uint num_state, typename T = double>
 class Measurement;
 
-template<uint num_state, typename T> 
+template<uint num_state, typename T>
 bool operator< (Measurement<num_state, T> m1, Measurement<num_state, T> m2);
 // --------------------------------------------------------
 
@@ -61,7 +61,7 @@ public:
     std::string m_sensor_id;
     // Mahalanobis threshold for the measurement.
     T m_mahalanobis_thresh;
-    // Measurement vector to be considered 
+    // Measurement vector to be considered
     Vector z;
     // The precalculated innovation(spares computations, instead of H*x)
     Vector innovation;
@@ -76,7 +76,7 @@ public:
 /**
  * @brief Measurement: Constructor tha creates the measurement.
  * @param[in] time_stamp - Time stamp of the measurement
- * @param[in] measurement - Measurement vector to be considered 
+ * @param[in] measurement - Measurement vector to be considered
  * @param[in] covariance - Measurement covariance matrix
  * @param[in] innovation - The precalculated innovation(spares computations, instead of H*x)
  * @param[in] map_matrix - Maps the state to the measurement, in literature known as matrix H
@@ -84,7 +84,7 @@ public:
  * @param[in] mahalanobis_thresh - Mahalanobis threshold for the measurement.
  */
     Measurement(const tTime& time_stamp, const Vector& measurement, const Matrix& covariance,
-                const Vector& innovation, const MappingMatrix& map_matrix, 
+                const Vector& innovation, const MappingMatrix& map_matrix,
                 const std::vector<uint>& update_indices, const std::string& sensor_id, const T& mahalanobis_thresh):
                 m_time_stamp{time_stamp}, m_sensor_id{sensor_id}, z{measurement},
                 R{covariance}, H{map_matrix}, m_update_indices{update_indices},
