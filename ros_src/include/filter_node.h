@@ -1,10 +1,12 @@
+
+#pragma once
+
 #include <array>
 #include <string>
 #include <iostream>
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include <nav_msgs/msg/Odometry.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/TwistStamped.h>
@@ -43,7 +45,7 @@ class FilterNode
         using ImuMsg = sensor_msgs::Imu;
         using ImuMsgLocFusLib = sensor_msgs::msg::Imu;
         using GpsMsg = sensor_msgs::NavSatFix;
-        // using GpsMsgLocFusLib = sensor_msgs::msg::NavSatFix;
+        using GpsMsgLocFusLib = sensor_msgs::msg::NavSatFix;
 
         using PoseWithCovStampedMsg = geometry_msgs::PoseWithCovarianceStamped;
         using TwistWithCovStampedMsg = geometry_msgs::TwistWithCovarianceStamped;
@@ -280,7 +282,7 @@ class FilterNode
             }
         }
 
-        void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg, std::string topic_name)
+        void gps_callback(const GpsMsg::ConstPtr& msg, std::string topic_name)
         {
             // 1. get transformations from base_link to the sensor frame
             TransformationMatrix transform_to_base_link;
@@ -428,6 +430,33 @@ class FilterNode
             {
                 msg_loc.linear_acceleration_covariance[i] = msg->linear_acceleration_covariance[i];
             }
+        }
+        /**
+         * @brief FilterNode: Helper function to transform ros NavSatFix to idl(ros2)_NavSatFix
+         * @param[in] msg - reference to the ROS msg to be transformed
+         * @param[inout] msg_loc - reference to the msg[idl(ROS2)] to be filled and returned
+         */
+
+        void to_local_navsat_msg(const GpsMsg::ConstPtr& msg, GpsMsgLocFusLib &msg_loc)
+        {
+            // status
+            msg_loc.status.status = msg->status.status;
+            msg_loc.status.service = msg->status.service;
+
+            // header
+            msg_loc.header.frame_id = msg->header.frame_id;
+            msg_loc.header.stamp.sec = msg->header.stamp.sec;
+            msg_loc.header.stamp.nanosec = msg->header.stamp.nsec;
+
+            // position
+            msg_loc.latitude = msg->latitude;
+            msg_loc.longitude = msg->longitude;
+            msg_loc.altitude = msg->altitude;
+            for (int i = 0; i < 9; i++)
+            {
+                msg_loc.position_covariance[i] = msg->position_covariance[i];
+            }
+            msg_loc.position_covariance_type = msg->position_covariance_type;
         }
 
         /**

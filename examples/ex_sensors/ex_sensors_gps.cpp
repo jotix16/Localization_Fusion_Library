@@ -1,6 +1,8 @@
-#include<sensors/gps.h>
 #include<iostream>
 #include<Eigen/Dense>
+
+#include<sensors/gps.h>
+#include <sensor_msgs/msg/NavSatFix.h>
 
 using namespace Eigen;
 using GpsD =  iav::state_predictor::sensors::GpsD;
@@ -24,8 +26,14 @@ int main()
            hae_altitude=0.0;
 
     StateVector state = StateVector::Ones();
+
     gps.initialize(state, Eigen::Isometry3d::Identity(), latitude, longitude, hae_altitude, Eigen::Isometry3d::Identity());
     latitude=51.057564;
     longitude=13.746013;
-    gps.gps_callback(state, latitude, longitude, hae_altitude, Eigen::Isometry3d::Identity());
+    hae_altitude=1222.0;
+    sensor_msgs::msg::NavSatFix msg;
+    msg.altitude = hae_altitude;
+    msg.longitude = longitude;
+    msg.latitude = latitude;
+    gps.gps_callback(state, &msg, Eigen::Isometry3d::Identity());
 }

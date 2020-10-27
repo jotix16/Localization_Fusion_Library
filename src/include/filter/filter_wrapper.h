@@ -44,6 +44,7 @@
 #include <geometry_msgs/msg/TwistWithCovariance.h>
 #include <nav_msgs/msg/Odometry.h>
 #include <sensor_msgs/msg/Imu.h>
+#include <sensor_msgs/msg/NavSatFix.h>
 
 #include <mutex>
 #include <thread>
@@ -198,7 +199,7 @@ public:
     //TO_DO: have to use local msg or get full info from msg in filter_node
     bool gps_callback(
         const std::string& topic_name,
-        T latitude, T longitude, T hae_altitude,
+        sensor_msgs::msg::NavSatFix* msg,
         const TransformationMatrix& transform_to_base_link)
     {
         // std_msgs/Header header
@@ -214,12 +215,12 @@ public:
                                             // uint8 COVARIANCE_TYPE_KNOWN=3
 
         // Make sure the GPS data is usable
-        // bool good_gps = (msg->status.status != sensor_msgs::NavSatStatus::STATUS_NO_FIX &&
-        //                     !std::isnan(msg->altitude) &&
-        //                     !std::isnan(msg->latitude) &&
-        //                     !std::isnan(msg->longitude));
+        bool good_gps = (msg->status.status != sensor_msgs::msg::NavSatStatus__STATUS_NO_FIX &&
+                            !std::isnan(msg->altitude) &&
+                            !std::isnan(msg->latitude) &&
+                            !std::isnan(msg->longitude));
 
-        if(!is_initialized()) return false; // the filter is not yet initialized.
+        if(!is_initialized() || !good_gps) return false; // the filter is not yet initialized or bad gps reading.
         if(!m_gps_sensors_hmap[topic_name].initialized())
         {
             // find one initialized imu and take its R_map_enu
@@ -228,14 +229,14 @@ public:
                 if(imu.second.ready())
                 {
                     auto R_map_enu = imu.second.get_R_map_enu();
-                    m_gps_sensors_hmap[topic_name].initialize(get_state(), R_map_enu, latitude, longitude, hae_altitude, transform_to_base_link);
+                    m_gps_sensors_hmap[topic_name].initialize(get_state(), R_map_enu, msg->latitude, msg->longitude, msg->altitude, transform_to_base_link);
                     return false; // didn't went through but just initialized.
                 }
             }
             return false; // no imu initialized yet so we have to wait.
         }
         //TO_DO: have to use local msg instead of latitude, longitude, hae_altitude
-       Measurement m = m_gps_sensors_hmap[topic_name].gps_callback(get_state(), latitude, longitude, hae_altitude, transform_to_base_link);
+       Measurement m = m_gps_sensors_hmap[topic_name].gps_callback(get_state(), msg, transform_to_base_link);
        handle_measurement(m);
     }
 
