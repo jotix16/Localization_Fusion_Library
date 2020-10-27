@@ -74,10 +74,9 @@ public:
         : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug), m_init_orientation(false)
         { }
 
-
     void init(const StateVector& state,
          sensor_msgs::msg::Imu* msg,
-         const TransformationMatrix& transform_to_base_link)
+         const TransformationMatrix& T_bl_imu)
     {
         QuaternionT q_enu_imu;
         q_enu_imu =  {msg->orientation.w,
@@ -93,10 +92,13 @@ public:
           pitch = pitch_ix < STATE_SIZE ? state[pitch_ix] : 0,
           yaw = yaw_ix < STATE_SIZE ? state[yaw_ix] : 0;
 
-        m_R_map_enu = AngleAxisT(roll, Vector3T::UnitX())
-                    * AngleAxisT(pitch, Vector3T::UnitY())
-                    * AngleAxisT(yaw, Vector3T::UnitZ());
-        m_R_map_enu = m_R_map_enu * transform_to_base_link * q_enu_imu.inverse();
+        TransformationMatrix R_map_bl;
+        R_map_bl = AngleAxisT(roll, Vector3T::UnitX())
+                 * AngleAxisT(pitch, Vector3T::UnitY())
+                 * AngleAxisT(yaw, Vector3T::UnitZ());
+
+        // R_map_enu = R_map_bl * R_bl_imu * R_enu_imu^-1
+        m_R_map_enu = R_map_bl * T_bl_imu * q_enu_imu.inverse();
 
         m_init_orientation = true;
     }
@@ -312,7 +314,7 @@ public:
         auto rot_map_enu = m_R_map_enu.rotation();
         auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
 
-        // - Transform measurement to fusion frame
+        // 2. Transform measurement to fusion frame
         rot_meas = rot_map_enu * rot_meas; // R_map_imu
         rot_meas = rot_meas * rot_imu_bl; // R_map_bl
 
@@ -324,7 +326,7 @@ public:
         std::cout << "FUSE RPY(eigen): " << measurement.transpose() << "\n";
         std::cout << "FUSE RPY2(custom): " << this->to_euler(orientation).transpose() << "\n";
 
-        // Transform covariance, not sure for the second transformation
+        // 3. Transform covariance, not sure for the second transformation
         Matrix3T covariance;
         for(uint i = 0; i<3; ++i)
         {
@@ -336,7 +338,8 @@ public:
         covariance = rot_map_enu * covariance * rot_map_enu.transpose();
         covariance = rot_imu_bl * covariance * rot_imu_bl.transpose(); // not sure if this is right
 
-        // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        // 4. Fill sub_measurement vector and sub_covariance matrix, sub_inovation vector
+        //  - and state to measurement mapping
         auto offset = POSITION_SIZE;
         for ( uint i = 0; i < update_size; i++)
         {
@@ -346,15 +349,9 @@ public:
             {
                 sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i] - offset, update_indices[j] - offset);
             }
+            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
                 // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
                 // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
-        }
-
-        // 5. Fill state to measurement mapping and inovation
-        for (uint i = 0; i < update_size; i++)
-        {
-            if (States::full_state_to_estimated_state[update_indices[i]]<15)
-            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
 
         DEBUG(" -> Noise from orientation msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
@@ -411,7 +408,8 @@ public:
         // -. Rotate Covariance to fusion frame
         covariance = rot * covariance * rot.transpose();
 
-        // 3. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        // 3. Fill sub_measurement vector and sub_covariance matrix, sub_inovation vector
+        //  - and state to measurement mapping
         uint meas_index = 0U;
         uint meas_index2 = 0U;
         for ( uint i = 0; i < update_size; i++)
@@ -424,11 +422,6 @@ public:
                 meas_index2 = update_indices[j] - POSE_SIZE - POSITION_SIZE;
                 sub_covariance(i + ix1, j + ix1) = covariance(meas_index, meas_index2);
             }
-        }
-
-        // 7. Fill state to measurement mapping and inovation
-        for (uint i = 0; i < update_size; i++)
-        {
             state_to_sub_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
 
@@ -493,7 +486,8 @@ public:
         measurement = rot * measurement;
         covariance = rot * covariance * rot.transpose();
 
-        // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        // 4. Fill sub_measurement vector and sub_covariance matrix, sub_inovation vector
+        //  - and state to measurement mapping
         auto offset = POSE_SIZE + TWIST_SIZE;
         for ( uint i = 0; i < update_size; i++)
         {
@@ -503,15 +497,9 @@ public:
             {
                 sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i] - offset, update_indices[j] - offset);
             }
+            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
                 // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
                 // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
-        }
-
-        // 5. Fill state to measurement mapping and inovation
-        for (uint i = 0; i < update_size; i++)
-        {
-            if (States::full_state_to_estimated_state[update_indices[i]]<15)
-            state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
 
         DEBUG(" -> Noise from acceleration msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));

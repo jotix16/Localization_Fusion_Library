@@ -269,7 +269,8 @@ public:
         }
         covariance = rot6d * covariance * rot6d.transpose();
 
-        // 4. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        // 4. Fill sub_measurement vector and sub_covariance matrix, sub_inovation vector
+        //  - and state to measurement mapping
         for ( uint i = 0; i < update_size; i++)
         {
             sub_measurement(i + ix1) = measurement(update_indices[i]);
@@ -278,16 +279,11 @@ public:
             {
                 sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i], update_indices[j]);
             }
+            state_to_sub_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
                 // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
                 // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
         }
 
-        // 5. Fill state to measurement mapping and inovation
-        for (uint i = 0; i < update_size; i++)
-        {
-            if (States::full_state_to_estimated_state[update_indices[i]]<15)
-            state_to_sub_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
-        }
 
         DEBUG(" -> Noise pose:\n" << std::fixed << std::setprecision(4) << sub_covariance  << "\n");
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Prepare_Pose: OUT -------------------\n");
@@ -386,7 +382,8 @@ public:
         rot6d.template block<3,3>(3,3) = rot;
         covariance = rot6d * covariance * rot6d.transpose();
 
-        // 6. Fill sub_measurement vector and sub_covariance matrix and sub_inovation vector
+        // 6. Fill sub_measurement vector and sub_covariance matrix, sub_inovation vector
+        //  - and state to measurement mapping
         uint meas_index = 0U;
         uint meas_index2 = 0U;
         for ( uint i = 0; i < update_size; i++)
@@ -399,11 +396,6 @@ public:
                 meas_index2 = update_indices[j] - POSE_SIZE;
                 sub_covariance(i + ix1, j + ix1) = covariance(meas_index, meas_index2);
             }
-        }
-
-        // 7. Fill state to measurement mapping and inovation
-        for (uint i = 0; i < update_size; i++)
-        {
             state_to_sub_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
         }
 
