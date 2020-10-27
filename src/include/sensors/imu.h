@@ -239,10 +239,9 @@ public:
 
         // 4. Create measurement to be handled
         // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
-        T mahalanobis_thresh = 400;
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
         Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
-                        sub_u_indices, msg->header.frame_id, mahalanobis_thresh);
+                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold);
 
         DEBUG(" -> IMU " << meas.print());
         DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Imu_callback: OUT -------------------\n");

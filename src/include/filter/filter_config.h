@@ -65,9 +65,9 @@ struct SensorConfig{
     uint m_type;
     bool m_update_vector[STATE_SIZE];
     double m_mahal_thresh;
-    double m_pose_mahalanobis_thresh[POSE_SIZE];    
-    double m_acc_mahalanobis_thresh[ACCELERATION_SIZE];
-    double m_speed_mahalanobis_thresh[TWIST_SIZE];
+    double m_pose_mahalanobis_thresh[POSE_SIZE]; // momentally not used, maybe needed for future weighted mahalanobis approach
+    double m_acc_mahalanobis_thresh[ACCELERATION_SIZE]; // momentally not used, maybe needed for future weighted mahalanobis approach
+    double m_speed_mahalanobis_thresh[TWIST_SIZE]; // momentally not used, maybe needed for future weighted mahalanobis approach
 
     /**
      * @brief Default constructor
@@ -86,7 +86,7 @@ struct SensorConfig{
         // make sure that components that are not part of each type of measurements
         // are 0s.
         m_type = type;
-        m_mahal_thresh = 5.0; //TO_DO:
+        m_mahal_thresh = doc[sensor_name]["mahalanobis_thresh"].GetDouble();; //TO_DO:
         for (int i = 0; i < STATE_SIZE; i++)
         {
             if(type == 0)
