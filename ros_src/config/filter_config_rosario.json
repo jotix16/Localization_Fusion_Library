@@ -37,7 +37,7 @@
     "//SENSORS":" Here we define the SENSORS' parameters-",
     "//DOC":" Four types: 0:odom_, 1:pose_, 2:twist_, 3:imu",
 
-    "sensor_inputs" : [1, 0, 0, 0],
+    "sensor_inputs" : [1, 0, 0, 0, 0],
     "odom_0":{
         "topic_name": "/base_odometry/odom",
         "update_vector":[true, true, true,

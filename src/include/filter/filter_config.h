@@ -81,7 +81,7 @@ struct SensorConfig{
      * @brief Constructor that parses the sensor parameters.
      * @param[in] doc - Document that holds the informations to be parsed
      * @param[in] sensor_name - The name of the sensor, e.g. odom_1, imu_0 or ..
-     * @param[in] type - One of the four types{0:"odom_", 1:"pose_", 2:"twist_", 3:"imu_"}
+     * @param[in] type - One of the four types{0:"odom_", 1:"pose_", 2:"twist_", 3:"imu_", 4:"gps_"}
      * @return SensorConfig object
      */
     SensorConfig(const Document& doc, const char* sensor_name, const uint type)
@@ -125,10 +125,18 @@ struct SensorConfig{
                     continue;
                 }
             }
+            else if(type == 4)
+            {
+                if(i < POSITION_SIZE)
+                {
+                    m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
+                    continue;
+                }
+            }
             m_update_vector[i] = 0;
         }
 
-        if(type <= 1) // only for odom and pose
+        if(type == 0 || type == 1) // only for odom and pose
         {
             for (int i = 0; i < POSE_SIZE; i++)
             {
@@ -136,7 +144,7 @@ struct SensorConfig{
             }
         }
 
-        if(type > 1 || type == 0) // only for twist and imu
+        if(type == 0 || type == 2 || type == 3) // only for twist and imu
         {
             for (int i = 0; i < TWIST_SIZE; i++)
             {
@@ -144,7 +152,7 @@ struct SensorConfig{
             }
         }
 
-        if(type > 2) // only for imu
+        if(type == 3) // only for imu
         {
             for (int i = 0; i < ACCELERATION_SIZE; i++)
             {
@@ -228,8 +236,8 @@ struct FilterConfig{
         }
 
         // Parse Sensors parameters
-        const char *sensor_types[4] = {"odom_", "pose_", "twist_", "imu_"};
-        for (uint i = 0; i < 4; i++)
+        const char *sensor_types[5] = {"odom_", "pose_", "twist_", "imu_", "gps_"};
+        for (uint i = 0; i < 5; i++)
         {
             std::string sensor_type = sensor_types[i];
             for (int  j = 0; j < doc["sensor_inputs"][i].GetInt(); j++)
@@ -240,6 +248,7 @@ struct FilterConfig{
                 m_sensor_configs.emplace(topic, SensorConfig(doc, sensor_name.data(), i));
             }
         }
+        std::cout << "Finished adding sensors!" << std::endl;
 
     }
 

@@ -146,7 +146,7 @@ class FilterNode
 
             // 3.c. initialize gps subscribers
             int gps_nr_;
-            m_nh_param.param("gps_nr", imu_nr_, 0);
+            m_nh_param.param("gps_nr", gps_nr_, 0);
 
             for(int i=0; i < gps_nr_; i++)
             {
@@ -292,6 +292,10 @@ class FilterNode
 
         void gps_callback(const GpsMsg::ConstPtr& msg, std::string topic_name)
         {
+            // std::stringstream ss;
+            // ss << "GPS MSG:\n" << *msg << "\n";
+            // std::cout <<ss.str();
+
             // 1. get transformations from base_link to the sensor frame
             TransformationMatrix transform_to_base_link;
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
@@ -317,16 +321,15 @@ class FilterNode
             }
 
             // 2. get msg in our local msg form.
-            // GpsMsgLocFusLib msg_loc;
-            // to_local_gps_msg(msg, msg_loc);
+            GpsMsgLocFusLib msg_loc;
+            to_local_navsat_msg(msg, msg_loc);
 
             // 3. call filter's gps_callback
-            // ros_info_msg(msg_loc);
-            // if(m_filter_wrapper.gps_callback(topic_name, &msg_loc, transform_to_base_link))
-            // {
-            //     // 3. publish updated base_link frame
-            //     publish_current_state();
-            // }
+            if(m_filter_wrapper.gps_callback(topic_name, &msg_loc, transform_to_base_link))
+            {
+                // 3. publish updated base_link frame
+                publish_current_state();
+            }
         }
 
 
