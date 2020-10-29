@@ -424,7 +424,7 @@ public:
               break;
             case 3:
               m_imu_sensors_hmap.emplace(x.first,
-                    ImuT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug));
+                    ImuT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug, x.second.m_remove_gravity));
               break;
             case 4:
               m_gps_sensors_hmap.emplace(x.first,

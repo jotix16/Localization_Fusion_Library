@@ -19,7 +19,7 @@ int main()
                                true,true,true,
                                true,true,true};
     std::ostream* out_stream;
-    ImuD imu("imu_topic", update_vector, 12.0, out_stream, false);
+    ImuD imu("imu_topic", update_vector, 12.0, out_stream, false, false);
 
     StateVector state = StateVector::Zero();
     sensor_msgs::msg::Imu msg;

@@ -58,6 +58,7 @@ private:
     using SensorBaseT::m_topic_name;
     using SensorBaseT::m_update_vector;
     using SensorBaseT::m_mahalanobis_threshold;
+    bool m_remove_gravity;
 
     // debugging
     using SensorBaseT::m_debug;
@@ -70,8 +71,8 @@ public:
     Imu(){}; // default constructor
 
     Imu(const std::string topic_name, const bool* update_vector,
-         const T mahalanobis_threshold, std::ostream* out_stream, bool debug)
-        : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug), m_init_orientation(false)
+         const T mahalanobis_threshold, std::ostream* out_stream, bool debug, bool remove_gravity)
+        : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug), m_init_orientation(false), m_remove_gravity(remove_gravity)
         { }
 
     void init(const StateVector& state,
@@ -478,11 +479,13 @@ public:
         // - Transform measurement to fusion frame
         auto rot = transform.rotation();
 
-        Vector3T gravity_acc;
-        gravity_acc << 0.0 , 0.0 , 9.8;
-        gravity_acc = rot.transpose() * gravity_acc; // R^T = R^^1 for rotation matrixes (transpose instead of inverse)
-        measurement -= gravity_acc;
-
+        if (m_remove_gravity)
+        {
+            Vector3T gravity_acc;
+            gravity_acc << 0.0 , 0.0 , 9.8;
+            gravity_acc = rot.transpose() * gravity_acc; // R^T = R^^1 for rotation matrixes (transpose instead of inverse)
+            measurement -= gravity_acc;
+        }
         measurement = rot * measurement;
         covariance = rot * covariance * rot.transpose();
 

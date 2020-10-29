@@ -12,8 +12,9 @@
 
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find LocalizationFusionLibrary)/ros_src/rviz/config_file.rviz" />
     <node pkg="rosbag" type="play" name="rosbagplay" args="$(find LocalizationFusionLibrary)/test/test1.bag --clock -d 5 -s 0" required="true"/>
-    
+
     <node name="filter_node" pkg="LocalizationFusionLibrary" type="filter_ros_node" output="screen">
+      <param name="config" value="filter_config.json"/>
       <param name="frequency" value="30"/>
 
       <param name="map_frame" value="map"/>

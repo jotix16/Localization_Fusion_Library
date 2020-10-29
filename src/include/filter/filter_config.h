@@ -69,6 +69,9 @@ struct SensorConfig{
     double m_acc_mahalanobis_thresh[ACCELERATION_SIZE]; // momentally not used, maybe needed for future weighted mahalanobis approach
     double m_speed_mahalanobis_thresh[TWIST_SIZE]; // momentally not used, maybe needed for future weighted mahalanobis approach
 
+    // IMUS
+    bool m_remove_gravity;
+
     /**
      * @brief Default constructor
      */
@@ -115,6 +118,7 @@ struct SensorConfig{
             }
             else if(type == 3)
             {
+                m_remove_gravity = doc[sensor_name]["remove_gravity"].GetBool();
                 if(i >= POSITION_SIZE && i < POSITION_SIZE + 3 || i >= POSITION_SIZE + POSE_SIZE)
                 {
                     m_update_vector[i] = doc[sensor_name]["update_vector"][i].GetBool();
