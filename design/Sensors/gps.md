@@ -23,3 +23,11 @@ This transformation **T_map_utm** can then used to interpret all positions provi
 So no mater of the cases [(a)&(b)](https://github.com/cra-ros-pkg/robot_localization/issues/550#issuecomment-606466118)  where the vehicle starts with an offset angle from the ENU or the vehicle is in a GPS-denied area for some time, and get its first GPS reading when it is at some later pose in the map we should be able to still treat the problem the same.
 
 **Note**: as both orientation from IMU and position from GPS are absolute we could even average multiple estimations of **T_map_utm** in order to avoid any unwanted bias.
+
+## Configuration
+Instead of using the first GPS location and IMU-based heading for the local-frame origin, users can specify the
+origin (datum) using this parameter. The fields in the parameter represent latitude and longitude in decimal degrees,
+and heading in radians. As navsat_transform_node assumes an ENU standard, a 0 heading corresponds to east.
+```
+datum: [55.944904, -3.186693, 0.0]
+```

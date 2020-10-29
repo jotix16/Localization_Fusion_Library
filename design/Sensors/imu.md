@@ -53,3 +53,9 @@ QUATERNION2:  -0.00010735    0.0104444 -0.000125598 0.999945
 I know too that choosing the order of euler angles could avoid this discontinuity for specific scenarious. I am using the ordering as given by Eigen but nevertheless the mounting orientation of the IMU could be arbitrary, so can we really avoid the gimbal lock?..
 
 The question would then be:    **_Is there any way that we could have the quaternion as part of the state instead of RPY or should I let the Mahalanobi Gate ignore those abrupt changes?_**
+
+## Configuration
+As we assume an ENU standard, a 0 heading corresponds to east.
+```
+heading: 0.0
+```
