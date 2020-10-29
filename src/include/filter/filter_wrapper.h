@@ -181,10 +181,15 @@ public:
     bool imu_callback(
         const std::string& topic_name,
         sensor_msgs::msg::Imu* msg,
-        const TransformationMatrix& transform_to_base_link)
+        const TransformationMatrix& transform_base_link_imu,
+        const TransformationMatrix& transform_map_base_link)
     {
-        if (!is_initialized()) return false;
-        Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_to_base_link);
+        if (!is_initialized())
+        {
+            DEBUG_W("Got IMU but have to wait for odom first. Ignoring");
+            return false;
+        }
+        Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_base_link_imu, transform_map_base_link);
         return handle_measurement(m);
     }
 
@@ -221,7 +226,7 @@ public:
                             !std::isnan(msg->longitude));
 
         if(!is_initialized() || !good_gps) return false; // the filter is not yet initialized or bad gps reading.
-        if(!m_gps_sensors_hmap[topic_name].initialized())
+        if(!m_gps_sensors_hmap[topic_name].ready())
         {
             // find one initialized imu and take its R_map_enu
             for(auto imu:m_imu_sensors_hmap)

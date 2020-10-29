@@ -241,22 +241,30 @@ class FilterNode
             // ss << "IMU MSG:\n" << *msg << "\n";
             // std::cout <<ss.str();
 
-            TransformationMatrix transform_to_base_link;
+            TransformationMatrix transform_base_link_imu;
+            TransformationMatrix transform_map_base_link;
 
             // 1. get transformations from base_link to the sensor frame
             std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
+            geometry_msgs::TransformStamped transform_stamped1;
             geometry_msgs::TransformStamped transform_stamped;
             try
             {
+                // a. map_bl
+                transform_stamped1 = m_tf_buffer.lookupTransform(m_map_frame_id, m_baselink_frame_id, ros::Time(0), ros::Duration(1.0));
+                transform_map_base_link = tf2::transformToEigen(transform_stamped);
+
                 // b. baselink frame to imu sensor frame for the velocity and acceleratation part of the imu msg
                 if (m_baselink_frame_id == msgFrame)
                 {
-                    transform_to_base_link.setIdentity();
+                    transform_base_link_imu.setIdentity();
                 }
                 else
                 {
+                    // bl_imu
                     transform_stamped = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgFrame, ros::Time(0), ros::Duration(1.0));
-                    transform_to_base_link = tf2::transformToEigen(transform_stamped);
+                    transform_base_link_imu = tf2::transformToEigen(transform_stamped);
+
                 }
             }
             catch (tf2::TransformException &ex)
@@ -275,7 +283,7 @@ class FilterNode
 
             // 2. call filter's imu_callback
             // ros_info_msg(msg_loc);
-            if(m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_to_base_link))
+            if(m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_base_link_imu, transform_map_base_link))
             {
                 // 3. publish updated base_link frame
                 publish_current_state();

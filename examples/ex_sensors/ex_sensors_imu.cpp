@@ -33,10 +33,10 @@ int main()
        msg.angular_velocity_covariance[i+i*3]= 1e-9;
        msg.linear_acceleration_covariance[i+i*3]= 1e-9;
     }
-    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity());
+    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity(),Eigen::Isometry3d::Identity());
     msg.header.stamp.sec = 3331;
-    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity());
-    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity());
-    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity());
-    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity());
+    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    imu.imu_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
 }

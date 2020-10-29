@@ -77,31 +77,46 @@ public:
 
     void init(const StateVector& state,
          sensor_msgs::msg::Imu* msg,
-         const TransformationMatrix& T_bl_imu)
+         const TransformationMatrix& T_bl_imu,
+         const TransformationMatrix& T_map_bl)
     {
+        DEBUG("\n\t\t--------------- IMU[" << m_topic_name<< "] INITIALIZING: IN -------------------\n");
+
+        //--------------------- CAN GET THIS FROM OUR STATE TOO TOO!! ---------------------
+            // // R_map_bl
+            // constexpr uint roll_ix = States::full_state_to_estimated_state[STATE_ROLL],
+            //             pitch_ix = States::full_state_to_estimated_state[STATE_PITCH],
+            //             yaw_ix = States::full_state_to_estimated_state[STATE_YAW];
+
+            // T roll = roll_ix < STATE_SIZE ? state[roll_ix] : 0,
+            // pitch = pitch_ix < STATE_SIZE ? state[pitch_ix] : 0,
+            // yaw = yaw_ix < STATE_SIZE ? state[yaw_ix] : 0;
+
+            // TransformationMatrix T_map_bl;
+            // T_map_bl = AngleAxisT(roll, Vector3T::UnitX())
+            //         * AngleAxisT(pitch, Vector3T::UnitY())
+            //         * AngleAxisT(yaw, Vector3T::UnitZ());
+            // T_map_bl.translation() = Vector3T::Zero();
+        // --------------------- CREATE TRANSFORMATION ---------------------
+
         QuaternionT q_enu_imu;
         q_enu_imu =  {msg->orientation.w,
               msg->orientation.x,
               msg->orientation.y,
               msg->orientation.z};
-        // R_map_bl
-        constexpr uint roll_ix = States::full_state_to_estimated_state[STATE_ROLL],
-                       pitch_ix = States::full_state_to_estimated_state[STATE_PITCH],
-                       yaw_ix = States::full_state_to_estimated_state[STATE_YAW];
-
-        T roll = roll_ix < STATE_SIZE ? state[roll_ix] : 0,
-          pitch = pitch_ix < STATE_SIZE ? state[pitch_ix] : 0,
-          yaw = yaw_ix < STATE_SIZE ? state[yaw_ix] : 0;
-
-        TransformationMatrix R_map_bl;
-        R_map_bl = AngleAxisT(roll, Vector3T::UnitX())
-                 * AngleAxisT(pitch, Vector3T::UnitY())
-                 * AngleAxisT(yaw, Vector3T::UnitZ());
 
         // R_map_enu = R_map_bl * R_bl_imu * R_enu_imu^-1
-        m_R_map_enu = R_map_bl * T_bl_imu * q_enu_imu.inverse();
+        m_R_map_enu = T_map_bl.rotation() * T_bl_imu.rotation() * q_enu_imu.inverse();
+        m_R_map_enu.translation() = Vector3T::Zero();
 
         m_init_orientation = true;
+        q_enu_imu = m_R_map_enu.rotation(); //  q_enu_imu is holding q_map_bl, used only for debugging
+        DEBUG("R_MAP_BL:\n" << T_map_bl.rotation() << "\nP_MAP_BL: " << T_map_bl.translation().transpose() << "\n");
+        DEBUG("Initialized at\n"
+            << "--Rotation:\n" << m_R_map_enu.rotation() << std::endl
+            << "--Translation: " << m_R_map_enu.translation().transpose() << std::endl
+            << "--EULER: " << std::endl << this->to_euler(q_enu_imu).transpose() << std::endl);
+        DEBUG("\n\t\t--------------- IMU[" << m_topic_name<< "] INITIALIZING: OUT -------------------\n");
     }
 
     /**
@@ -115,21 +130,19 @@ public:
     Measurement imu_callback(
         const StateVector& state,
         sensor_msgs::msg::Imu* msg,
-        const TransformationMatrix& transform_to_base_link)
+        const TransformationMatrix& transform_base_link_imu,
+        const TransformationMatrix& transform_map_base_link)
     {
         DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Imu_callback: IN -------------------\n");
-        //TO_DO:s
-        // if (!is_initialized())
-        // {
-        //     DEBUG("Got IMU but not initialized. Ignoring");
-        //     return;
-        // }
         DEBUG(msg->header.frame_id <<" ~~ m_update_vector: " << utilities::printtt(m_update_vector, 1, STATE_SIZE)<< "\n");
 
         bool valid_orientation, valid_angular_velocity, valid_linear_acceleration;
-        valid_orientation = std::abs(msg->orientation_covariance[0] + 1.0) > 1e-9;
-        valid_angular_velocity = std::abs(msg->angular_velocity_covariance[0] + 1) > 1e-9;
-        valid_linear_acceleration = std::abs(msg->linear_acceleration_covariance[0] + 1) > 1e-9;
+        valid_orientation = std::abs(msg->orientation_covariance[0] + 1.0) > 1e-9
+                            && (m_update_vector[STATE_ROLL] || m_update_vector[STATE_PITCH] || m_update_vector[STATE_YAW]);
+        valid_angular_velocity = std::abs(msg->angular_velocity_covariance[0] + 1) > 1e-9
+                            && (m_update_vector[STATE_V_ROLL] || m_update_vector[STATE_V_PITCH] || m_update_vector[STATE_V_YAW]);
+        valid_linear_acceleration = std::abs(msg->linear_acceleration_covariance[0] + 1) > 1e-9
+                            && (m_update_vector[STATE_A_X] || m_update_vector[STATE_A_Y] || m_update_vector[STATE_A_Z]);
 
 
         // 1. Create vector the same size as the submeasurement
@@ -153,7 +166,7 @@ public:
             }
             else
             {
-                init(state, msg, transform_to_base_link);
+                init(state, msg, transform_base_link_imu, transform_map_base_link);
             }
         }
 
@@ -201,7 +214,7 @@ public:
         if (valid_orientation)
         {
             prepare_imu_orientation(state, msg->orientation, msg->orientation_covariance,
-                          transform_to_base_link, sub_measurement,
+                          transform_base_link_imu, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_orientation, 0, update_size_orientation);
         }
@@ -214,7 +227,7 @@ public:
         // b- fill the ANGULAR VELOCITY part
         if (valid_angular_velocity)
         {
-            prepare_angular_velocity(state, msg->angular_velocity, msg->angular_velocity_covariance, transform_to_base_link,
+            prepare_angular_velocity(state, msg->angular_velocity, msg->angular_velocity_covariance, transform_base_link_imu,
                           sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_twist, update_size_orientation, update_size_twist, true);
         }
@@ -228,7 +241,7 @@ public:
         if (valid_linear_acceleration)
         {
             prepare_acceleration(state, msg->linear_acceleration, msg->linear_acceleration_covariance,
-                          transform_to_base_link, sub_measurement,
+                          transform_base_link_imu, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_acceleration, update_size_orientation + update_size_twist, update_size_acceleration);
         }
@@ -276,7 +289,11 @@ public:
     {
         DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Orientation: IN -------------------\n");
         DEBUG("\n");
-
+        if(update_size == 0)
+        {
+            DEBUG("Got IMU orientation but just initialized and update_size=0. Ignoring");
+            return;
+        }
         // 1. Read orientation and consider m_update_vector
         // - Handle bad (empty) quaternions and normalize
         QuaternionT orientation;
@@ -296,13 +313,15 @@ public:
 
         // TO_DO: use our quaternion to rpy instead ??
         // auto rpy = this->to_euler(orientation);
-        // std::cout << "RPY1: " << rpy.transpose() << "\n";
-        // std::cout << "RPY2: " << this->to_euler(orientation).transpose() << "\n";
+        DEBUG("QUATER: " << orientation.vec().transpose() << " " << orientation.w() << "\n");
+        DEBUG("RPY1: " << rpy.transpose() << "\n");
+        DEBUG("RPY2: " << this->to_euler(orientation).transpose() << "\n");
 
         // -- ignore roll pitch yaw according to m_update_vector
         rpy[0] *= (int)m_update_vector[STATE_ROLL];
         rpy[1] *= (int)m_update_vector[STATE_PITCH];
         rpy[2] *= (int)m_update_vector[STATE_YAW];
+        DEBUG("ORIENTATION: " << rpy.transpose() << "\n");
         orientation = AngleAxisT(rpy[0], Vector3T::UnitX())
                     * AngleAxisT(rpy[1], Vector3T::UnitY())
                     * AngleAxisT(rpy[2], Vector3T::UnitZ());
@@ -316,16 +335,20 @@ public:
         auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
 
         // 2. Transform measurement to fusion frame
-        rot_meas = rot_map_enu * rot_meas; // R_map_imu
-        rot_meas = rot_meas * rot_imu_bl; // R_map_bl
+        rot_meas = rot_map_enu * rot_meas; // R_map_imu_meas
+        orientation = rot_meas;
+        DEBUG("ROT_MAP_ENU: " << rot_map_enu << "\n");
+        DEBUG("ORIENTATION_IMU: " << this->to_euler(orientation).transpose() << "\n");
+        rot_meas = rot_meas * rot_imu_bl; // R_map_bl_meas
 
         orientation = rot_meas;
         // Vector3T measurement = rot_meas.eulerAngles(0, 1, 2);
         // TO_DO: use our quaternion to rpy instead ??
         Vector3T measurement = this->to_euler(orientation);
+        DEBUG("ORIENTATION_TRANSFORMED: " << measurement.transpose() << "\n");
 
-        std::cout << "FUSE RPY(eigen): " << measurement.transpose() << "\n";
-        std::cout << "FUSE RPY2(custom): " << this->to_euler(orientation).transpose() << "\n";
+        // std::cout << "FUSE RPY(eigen): " << measurement.transpose() << "\n";
+        // std::cout << "FUSE RPY2(custom): " << this->to_euler(orientation).transpose() << "\n";
 
         // 3. Transform covariance, not sure for the second transformation
         Matrix3T covariance;
