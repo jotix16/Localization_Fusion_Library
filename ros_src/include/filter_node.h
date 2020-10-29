@@ -103,7 +103,7 @@ class FilterNode
          * and sets the initial frame transformations.
          * @param[in] config_path - path to .json configuration file
          */
-        void init(std::string config_file2)
+        void init()
         {
             // 1. initialize filter
             std::string config_file;

@@ -6,11 +6,9 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /TF1/Frames1
         - /Odometry1
-        - /Odometry1/Shape1
-        - /Odometry1/Covariance1
         - /Odometry1/Covariance1/Position1
-        - /Odometry2
       Splitter Ratio: 0.5
     Tree Height: 555
   - Class: rviz/Selection
@@ -61,15 +59,73 @@ Visualization Manager:
       Enabled: true
       Frame Timeout: 15
       Frames:
-        All Enabled: true
+        All Enabled: false
+        base_footprint:
+          Value: false
         base_link:
           Value: true
+        camera_center_aligned_depth_to_color_frame:
+          Value: false
+        camera_center_bottom_screw_frame:
+          Value: false
+        camera_center_color_frame:
+          Value: false
+        camera_center_color_optical_frame:
+          Value: false
+        camera_center_depth_frame:
+          Value: false
+        camera_center_depth_optical_frame:
+          Value: false
+        camera_center_link:
+          Value: false
+        camera_left_bottom_screw_frame:
+          Value: false
+        camera_left_depth_frame:
+          Value: false
+        camera_left_depth_optical_frame:
+          Value: false
+        camera_left_link:
+          Value: false
+        camera_mount_link:
+          Value: false
+        camera_pose_frame:
+          Value: false
+        camera_right_bottom_screw_frame:
+          Value: false
+        camera_right_depth_frame:
+          Value: false
+        camera_right_depth_optical_frame:
+          Value: false
+        camera_right_link:
+          Value: false
+        front_left_caster:
+          Value: false
+        front_left_caster_wheel:
+          Value: false
+        front_right_caster:
+          Value: false
+        front_right_caster_wheel:
+          Value: false
+        gps_link:
+          Value: false
+        house:
+          Value: false
         imu_link:
-          Value: true
+          Value: false
         map:
-          Value: true
+          Value: false
         odom:
           Value: true
+        sensor_housing_unit_link:
+          Value: false
+        utm:
+          Value: false
+        waterproof_case_center_link:
+          Value: false
+        waterproof_case_left_link:
+          Value: false
+        waterproof_case_right_link:
+          Value: false
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -79,8 +135,47 @@ Visualization Manager:
         map:
           odom:
             base_link:
+              camera_mount_link:
+                camera_pose_frame:
+                  {}
+                waterproof_case_center_link:
+                  camera_center_bottom_screw_frame:
+                    camera_center_link:
+                      camera_center_aligned_depth_to_color_frame:
+                        camera_center_color_optical_frame:
+                          {}
+                      camera_center_color_frame:
+                        {}
+                      camera_center_depth_frame:
+                        camera_center_depth_optical_frame:
+                          {}
+                waterproof_case_left_link:
+                  camera_left_bottom_screw_frame:
+                    camera_left_link:
+                      camera_left_depth_frame:
+                        camera_left_depth_optical_frame:
+                          {}
+                waterproof_case_right_link:
+                  camera_right_bottom_screw_frame:
+                    camera_right_link:
+                      camera_right_depth_frame:
+                        camera_right_depth_optical_frame:
+                          {}
+              front_left_caster:
+                front_left_caster_wheel:
+                  {}
+              front_right_caster:
+                front_right_caster_wheel:
+                  {}
+              house:
+                {}
               imu_link:
                 {}
+              sensor_housing_unit_link:
+                gps_link:
+                  {}
+          utm:
+            {}
       Update Interval: 0
       Value: true
     - Angle Tolerance: 0.10000000149011612
@@ -186,18 +281,18 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 44.83336639404297
-        Y: -0.6918646693229675
-        Z: 0.19381976127624512
+        X: 25.00480842590332
+        Y: 6.177698135375977
+        Z: 8.372867584228516
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8803979158401489
+      Pitch: 0.8853979110717773
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.735397458076477
+      Yaw: 0.7403974533081055
     Saved: ~
 Window Geometry:
   Displays:
