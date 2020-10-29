@@ -15,8 +15,8 @@ int main(int argc, char **argv)
   // NodeCtraEKF2D node(n, n_param);
   // NodeCtrvEKF2D node(n, n_param);
   node.init("filter_config.json");
+  // node.init("filter_config_gps.json");
   // node.init("filter_config_rosario.json");
-  node.publish_current_state();
   ros::spin();
 
   return 0;

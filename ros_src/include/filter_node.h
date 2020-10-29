@@ -103,11 +103,14 @@ class FilterNode
          * and sets the initial frame transformations.
          * @param[in] config_path - path to .json configuration file
          */
-        void init(std::string config_file)
+        void init(std::string config_file2)
         {
             // 1. initialize filter
+            std::string config_file;
+            m_nh_param.param("config", config_file, std::string("WTF"));
             std::string path = std::string(NODE_PATH) + std::string("/ros_src/config/") + config_file;
-            ROS_INFO_STREAM( "Initialize FilterWrapper from path: " << path << "\n");
+            ROS_INFO_STREAM("conf file: " << config_file << "\n");
+            ROS_INFO_STREAM("Initialize FilterWrapper from path: " << path << "\n");
             m_filter_wrapper.reset_config(path.c_str());
 
             // 2. initialize publisher
