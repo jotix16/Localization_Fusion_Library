@@ -379,15 +379,15 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 			T cp = cos(state[States::PITCH]);
 			T sp = sin(state[States::PITCH]);
-			T cpi = 1.0f/cp;
+			T cpi = 1.0/cp;
 			T tp = sp * cpi;
 
 			T cy = cos(state[States::YAW]);
 			T sy = sin(state[States::YAW]);
 
-			T x_coef = 0;
-			T y_coef = 0;
-			T z_coef = 0;
+			T x_coef = 0.0;
+			T y_coef = 0.0;
+			T z_coef = 0.0;
 
 			jacobi.setIdentity();
 
@@ -447,7 +447,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			T v_yaw = dt * state[States::V_YAW];
 
 			// X
-			x_coef = 0;
+			x_coef = 0.0;
 			y_coef = cy * sp * cr + sy * sr;
 			z_coef = -cy * sp * sr + sy * cr;
 			T dJx_dR = v_y * y_coef + v_z * z_coef + a_y * y_coef + a_z * z_coef;
@@ -463,7 +463,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			T dJx_dY = v_x * x_coef + v_y * y_coef + v_z * z_coef + a_x * x_coef + a_y * y_coef + a_z * z_coef;
 
 			// Y
-			x_coef = 0;
+			x_coef = 0.0;
 			y_coef = sy * sp * cr - cy * sr;
 			z_coef = -sy * sp * sr - cy * cr;
 			T dJy_dR = v_y * y_coef + v_z * z_coef + a_y * y_coef + a_z * z_coef;
@@ -479,7 +479,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 			T dJy_dY = v_x * x_coef + v_y * y_coef + v_z * z_coef + a_x * x_coef + a_y * y_coef + a_z * z_coef;
 
 			// Z
-			x_coef = 0;
+			x_coef = 0.0;
 			y_coef = cp * cr;
 			z_coef = -cp * sr;
 			T dJz_dR = v_y * y_coef + v_z * z_coef + a_y * y_coef + a_z * z_coef;
@@ -526,17 +526,19 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		static void predict(StateVector& state, const StateMatrix& jacobi, const tTime& dt)
 		{
 			StateMatrix transform_matrix = jacobi;
-			transform_matrix(States::X, States::ROLL) = 0;
-			transform_matrix(States::X, States::PITCH) = 0;
-			transform_matrix(States::X, States::YAW) = 0;
-			transform_matrix(States::Y, States::ROLL) = 0;
-			transform_matrix(States::Y, States::PITCH) = 0;
-			transform_matrix(States::Y, States::YAW) = 0;
-			transform_matrix(States::ROLL, States::ROLL) = 0;
-			transform_matrix(States::ROLL, States::PITCH) = 0;
-			transform_matrix(States::PITCH, States::PITCH) = 0;
-			transform_matrix(States::YAW, States::ROLL) = 0;
-			transform_matrix(States::YAW, States::PITCH) = 0;
+			transform_matrix(States::X, States::ROLL) = 0.0;
+			transform_matrix(States::X, States::PITCH) = 0.0;
+			transform_matrix(States::X, States::YAW) = 0.0;
+			transform_matrix(States::Y, States::ROLL) = 0.0;
+			transform_matrix(States::Y, States::PITCH) = 0.0;
+			transform_matrix(States::Y, States::YAW) = 0.0;
+			transform_matrix(States::Z, States::ROLL) = 0.0;
+			transform_matrix(States::Z, States::PITCH) = 0.0;
+			transform_matrix(States::ROLL, States::ROLL) = 1.0;
+			transform_matrix(States::ROLL, States::PITCH) = 0.0;
+			transform_matrix(States::PITCH, States::ROLL) = 0.0;
+			transform_matrix(States::YAW, States::ROLL) = 0.0;
+			transform_matrix(States::YAW, States::PITCH) = 0.0;
 			state = transform_matrix * state;
 		}
 
