@@ -65,12 +65,10 @@ struct SensorConfig{
     uint m_type;
     bool m_update_vector[STATE_SIZE];
     double m_mahal_thresh;
-    double m_pose_mahalanobis_thresh[POSE_SIZE]; // momentally not used, maybe needed for future weighted mahalanobis approach
-    double m_acc_mahalanobis_thresh[ACCELERATION_SIZE]; // momentally not used, maybe needed for future weighted mahalanobis approach
-    double m_speed_mahalanobis_thresh[TWIST_SIZE]; // momentally not used, maybe needed for future weighted mahalanobis approach
 
     // IMUS
     bool m_remove_gravity;
+    bool m_enu; // TO_DO: if given in NED we have to make up for it
 
     /**
      * @brief Default constructor
@@ -135,31 +133,7 @@ struct SensorConfig{
             }
             m_update_vector[i] = 0;
         }
-
-        if(type == 0 || type == 1) // only for odom and pose
-        {
-            for (int i = 0; i < POSE_SIZE; i++)
-            {
-                m_pose_mahalanobis_thresh[i] = doc[sensor_name]["pose_mahalanobis_thresh"][i].GetDouble();
-            }
-        }
-
-        if(type == 0 || type == 2 || type == 3) // only for twist and imu
-        {
-            for (int i = 0; i < TWIST_SIZE; i++)
-            {
-                m_speed_mahalanobis_thresh[i] = doc[sensor_name]["speed_mahalanobis_thresh"][i].GetDouble();
-            }
-        }
-
-        if(type == 3) // only for imu
-        {
-            for (int i = 0; i < ACCELERATION_SIZE; i++)
-            {
-                m_acc_mahalanobis_thresh[i] = doc[sensor_name]["acc_mahalanobis_thresh"][i].GetDouble();
-            }
-        }
-    }
+     }
 
     /**
      * @brief Prints out SensorConfig information
@@ -169,11 +143,7 @@ struct SensorConfig{
         std::cout<<"\n Update_vector \n";
         printt(m_update_vector, 1, STATE_SIZE);
 
-        std::cout<<"\n Pose_mahalanobis_thresh \n";
-        printt(m_pose_mahalanobis_thresh, 1, POSE_SIZE);
-
-        std::cout<<"\n Speed_mahalanobis_thresh \n";
-        printt(m_speed_mahalanobis_thresh, 1, POSE_SIZE);
+        std::cout<<"\n Mahalanobis_thresh: " << m_mahal_thresh << "\n";
     }
 };
 
@@ -215,7 +185,7 @@ struct FilterConfig{
         std::ifstream ifs {path};
         if ( !ifs.is_open() )
         {
-            std::cerr << "Could not open file for reading!\n";
+            std::cout << "Could not open file for reading!\n";
             return;
         }
 
@@ -240,6 +210,7 @@ struct FilterConfig{
         for (uint i = 0; i < 5; i++)
         {
             std::string sensor_type = sensor_types[i];
+            std::cout << "Configuring: " << sensor_type << std::endl;
             for (int  j = 0; j < doc["sensor_inputs"][i].GetInt(); j++)
             {
                 std::string sensor_name = sensor_type + SSTR(j);
