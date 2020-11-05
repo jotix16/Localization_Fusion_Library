@@ -209,22 +209,18 @@ public:
 
             // - consider m_update_vector
             // -- extract roll pitch yaw
-            auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
-            // TO_DO: use our quaternion to rpy instead ??
-            // auto rpy = this->to_euler(orientation);
+            auto rpy = euler::get_euler_rpy(orientation);
+
             // -- ignore roll pitch yaw according to m_update_vector
             rpy[0] *= (int)m_update_vector[STATE_ROLL];
             rpy[1] *= (int)m_update_vector[STATE_PITCH];
             rpy[2] *= (int)m_update_vector[STATE_YAW];
-            orientation = AngleAxisT(rpy[0], Vector3T::UnitX())
-                        * AngleAxisT(rpy[1], Vector3T::UnitY())
-                        * AngleAxisT(rpy[2], Vector3T::UnitZ());
-
+            orientation = euler::ToQuaternion(rpy[0], rpy[1], rpy[2]);
             if (orientation.norm()-1.0 > 0.01)
             {
                 orientation.normalize();
             }
-            pose_transf = orientation.toRotationMatrix(); // orientation part
+            pose_transf = euler::quat_to_rot(orientation); // orientation part
         }
         else DEBUG("Orientation is being ignored according to m_update_vector!\n");
 
@@ -239,16 +235,12 @@ public:
 
         // 3. Transform pose to fusion frame
         pose_transf = transform * pose_transf;
-        // DEBUG( " -> Pose transformed:\n" << pose_transf << "\n");
+
         // 4. Compute measurement vector
         Vector6T measurement;
         measurement.setZero();
         measurement.template head<3>() = pose_transf.translation();
-        measurement.template tail<3>() = pose_transf.rotation().eulerAngles(0,1,2);
-
-        // TO_DO: use our quaternion to rpy instead ??
-        // orientation = pose_transf.rotation();
-        // measurement.template tail<3>() = this->to_euler(orientation);
+        measurement.template tail<3>() = euler::get_euler_rpy(pose_transf.rotation());
 
         // 5. Rotate Covariance to fusion frame
         Matrix6T rot6d;
@@ -283,7 +275,6 @@ public:
                 // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
                 // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
         }
-
 
         DEBUG(" -> Noise pose:\n" << std::fixed << std::setprecision(4) << sub_covariance  << "\n");
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Prepare_Pose: OUT -------------------\n");

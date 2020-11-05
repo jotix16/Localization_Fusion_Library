@@ -30,6 +30,7 @@
 #include <Eigen/Eigen>
 
 #include <utilities/filter_utilities.h>
+#include <utilities/filter_euler_zyx.h>
 #include <measurement/measurement.h>
 #include <motion_model/motion_model.h>
 

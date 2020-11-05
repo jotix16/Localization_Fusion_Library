@@ -87,11 +87,9 @@ public:
             // constexpr uint roll_ix = States::full_state_to_estimated_state[STATE_ROLL],
             //             pitch_ix = States::full_state_to_estimated_state[STATE_PITCH],
             //             yaw_ix = States::full_state_to_estimated_state[STATE_YAW];
-
             // T roll = roll_ix < STATE_SIZE ? state[roll_ix] : 0,
             // pitch = pitch_ix < STATE_SIZE ? state[pitch_ix] : 0,
             // yaw = yaw_ix < STATE_SIZE ? state[yaw_ix] : 0;
-
             // TransformationMatrix T_map_bl;
             // T_map_bl = AngleAxisT(roll, Vector3T::UnitX())
             //         * AngleAxisT(pitch, Vector3T::UnitY())
@@ -106,17 +104,22 @@ public:
               msg->orientation.z};
 
         // R_map_enu = R_map_bl * R_bl_imu * R_enu_imu^-1
-        m_R_map_enu = T_map_bl.rotation() * T_bl_imu.rotation() * q_enu_imu.inverse();
+        m_R_map_enu = T_map_bl.rotation() * T_bl_imu.rotation() * euler::quat_to_rot(q_enu_imu).transpose();
         m_R_map_enu.translation() = Vector3T::Zero();
 
         m_init_orientation = true;
-        q_enu_imu = m_R_map_enu.rotation(); //  q_enu_imu is holding q_map_bl, used only for debugging
+
+        // ------------- DEBUG
+        q_enu_imu = euler::rot_to_quat(m_R_map_enu.rotation()); //  q_enu_imu is holding q_map_bl, used only for debugging
         DEBUG("R_MAP_BL:\n" << T_map_bl.rotation() << "\nP_MAP_BL: " << T_map_bl.translation().transpose() << "\n");
         DEBUG("Initialized at\n"
             << "--Rotation:\n" << m_R_map_enu.rotation() << std::endl
             << "--Translation: " << m_R_map_enu.translation().transpose() << std::endl
-            << "--EULER: " << std::endl << this->to_euler(q_enu_imu).transpose() << std::endl);
+            << "--EULER: " << std::endl << this->to_euler(q_enu_imu).transpose() << std::endl
+            << "--EULER_TF: " << std::endl <<euler::get_euler_rpy(q_enu_imu).transpose() << std::endl
+            << "--EULERAPOLLO: " << std::endl << euler::ToEulerAngles(q_enu_imu).transpose() << std::endl);
         DEBUG("\n\t\t--------------- IMU[" << m_topic_name<< "] INITIALIZING: OUT -------------------\n");
+        // -------------
     }
 
     /**
@@ -309,46 +312,42 @@ public:
 
         // - consider m_update_vector
         // -- extract roll pitch yaw
-        auto rpy = orientation.toRotationMatrix().eulerAngles(0, 1, 2);
+        auto rpy = euler::get_euler_rpy(orientation);
 
-        // TO_DO: use our quaternion to rpy instead ??
-        // auto rpy = this->to_euler(orientation);
+        // ------------- DEBUG
         DEBUG("QUATER: " << orientation.vec().transpose() << " " << orientation.w() << "\n");
         DEBUG("RPY1: " << rpy.transpose() << "\n");
         DEBUG("RPY2: " << this->to_euler(orientation).transpose() << "\n");
+        DEBUG("RPY3: " << orientation.toRotationMatrix().eulerAngles(0, 1, 2).transpose() << "\n");
+        // -------------
 
         // -- ignore roll pitch yaw according to m_update_vector
         rpy[0] *= (int)m_update_vector[STATE_ROLL];
         rpy[1] *= (int)m_update_vector[STATE_PITCH];
         rpy[2] *= (int)m_update_vector[STATE_YAW];
         DEBUG("ORIENTATION: " << rpy.transpose() << "\n");
-        orientation = AngleAxisT(rpy[0], Vector3T::UnitX())
-                    * AngleAxisT(rpy[1], Vector3T::UnitY())
-                    * AngleAxisT(rpy[2], Vector3T::UnitZ());
+
+        orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]);
         if (orientation.norm()-1.0 > 0.01)
         {
             orientation.normalize();
         }
 
-        auto rot_meas = orientation.toRotationMatrix();
+        auto rot_meas = euler::quat_to_rot(orientation);
         auto rot_map_enu = m_R_map_enu.rotation();
         auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
 
         // 2. Transform measurement to fusion frame
         rot_meas = rot_map_enu * rot_meas; // R_map_imu_meas
-        orientation = rot_meas;
-        DEBUG("ROT_MAP_ENU: " << rot_map_enu << "\n");
-        DEBUG("ORIENTATION_IMU: " << this->to_euler(orientation).transpose() << "\n");
         rot_meas = rot_meas * rot_imu_bl; // R_map_bl_meas
+        auto measurement = euler::get_euler_rpy(rot_meas);
 
-        orientation = rot_meas;
-        // Vector3T measurement = rot_meas.eulerAngles(0, 1, 2);
-        // TO_DO: use our quaternion to rpy instead ??
-        Vector3T measurement = this->to_euler(orientation);
-        DEBUG("ORIENTATION_TRANSFORMED: " << measurement.transpose() << "\n");
-
-        // std::cout << "FUSE RPY(eigen): " << measurement.transpose() << "\n";
-        // std::cout << "FUSE RPY2(custom): " << this->to_euler(orientation).transpose() << "\n";
+        // ------------- DEBUG
+        orientation = euler::rot_to_quat(rot_meas); // DEBUG
+        DEBUG("RPY1: " << measurement.transpose() << "\n");
+        DEBUG("RPY2: " << this->to_euler(orientation).transpose() << "\n");
+        DEBUG("RPY3: " << orientation.toRotationMatrix().eulerAngles(0, 1, 2).transpose() << "\n");
+        // -------------
 
         // 3. Transform covariance, not sure for the second transformation
         Matrix3T covariance;
