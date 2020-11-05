@@ -110,6 +110,7 @@ public:
      */
     void reset_config(const char* config_path)
     {
+        std::cout << "RESETING CONFIG\n";
         configure(config_path);
         m_wall_time = Clock();
         m_time_keeper = MeasurementTimeKeeper();
@@ -207,18 +208,6 @@ public:
         sensor_msgs::msg::NavSatFix* msg,
         const TransformationMatrix& transform_to_base_link)
     {
-        // std_msgs/Header header
-        // sensor_msgs/NavSatStatus status // satellite fix status information
-        // float64 latitude // [degrees]. Positive is north of equator; negative is south.
-        // float64 longitude // [degrees]. Positive is east of prime meridian; negative is west.
-        // float64 altitude // Altitude [m]. Positive is above the WGS 84 ellipsoid. (quiet NaN if no altitude is available).
-        // float64[9] position_covariance // defined relative to a tangential plane through the reported position.
-                                            // The components are East, North, and Up (ENU), in row-major order
-        // uint8 position_covariance_type // uint8 COVARIANCE_TYPE_UNKNOWN=0
-                                            // uint8 COVARIANCE_TYPE_APPROXIMATED=1
-                                            // uint8 COVARIANCE_TYPE_DIAGONAL_KNOWN=2
-                                            // uint8 COVARIANCE_TYPE_KNOWN=3
-
         // Make sure the GPS data is usable
         bool good_gps = (msg->status.status != sensor_msgs::msg::NavSatStatus__STATUS_NO_FIX &&
                             !std::isnan(msg->altitude) &&
@@ -240,7 +229,6 @@ public:
             }
             return false; // no imu initialized yet so we have to wait.
         }
-        //TO_DO: have to use local msg instead of latitude, longitude, hae_altitude
        Measurement m = m_gps_sensors_hmap[topic_name].gps_callback(get_state(), msg, transform_to_base_link);
        handle_measurement(m);
     }
@@ -293,17 +281,24 @@ public:
             DEBUG_W(std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n");
             // 1. temporal update
             auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
-            DEBUG_W("\n--------------- Wrapper: Temporal update, dt = "<< dt << " ---------------\n");
-            if (dt < 0) return false;
+            DEBUG_W("\n--------------- Wrapper: Temporal update, dt = "<< dt << ", t = " << m_time_keeper.to_global_time(measurement.m_time_stamp)  <<" ---------------\n");
+            DEBUG_W("\n--------------- Wrapper: Temporal update, now = "<< time_now << ", stamp = " << measurement.m_time_stamp  <<" ---------------\n");
+            if (dt < 0)
+            {
+                DEBUG_W("\n--------------- DELAYED MEASURMENT!! ---------------\n");
+                return false;
+            }
             // std::lock_guard<std::mutex> guard(m_callback_mutex);
             if (m_filter.temporal_update(dt))
             {
                 m_time_keeper.update_after_temporal_update(dt);
 
-                DEBUG_W(" -> Covar temp: \n");
-                DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
+                // DEBUG_W(" -> Covar temp: \n");
+                // DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
                 DEBUG_W(std::fixed << std::setprecision(4) << " -> State temp: " << get_state().transpose() << "\n");
             }
+            else DEBUG_W("TEMPORAL UPDATE DIDNT HAPPEN\n");
+
             // 2. observation update
             if (m_filter.observation_update(measurement))
             {
@@ -313,8 +308,8 @@ public:
                 DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.innovation.transpose() << "\n");
                 DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.z.transpose() << "\n");
                 DEBUG_W(std::fixed << std::setprecision(4) << " -> State obsv: " << get_state().transpose() << "\n");
-                DEBUG_W(" -> Covar obsv: \n");
-                DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
+                // DEBUG_W(" -> Covar obsv: \n");
+                // DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
             }
             else DEBUG_W(" Mahalanobis failed\n");
         }
@@ -405,43 +400,6 @@ public:
         return true;
     }
 
-    /**
-     * @brief FilterWrapper: Function that inizializes configuration related parameters of the class.
-     * @param[out] config_path - path to .json configuration file
-     */
-    void configure(const char* config_path)
-    {
-        m_config = FilterConfig_(config_path);
-        for (auto x: m_config.m_sensor_configs)
-        {
-            std::cout<<x.first<<" ";
-            switch(x.second.m_type) {
-            case 0:
-            std::cout << " ~~ m_update_vector: " << utilities::printtt(x.second.m_update_vector, 1, STATE_SIZE) << "\n";
-              m_odom_sensors_hmap.emplace(x.first,
-                    OdomT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug));
-              break;
-            case 1:
-              // code block
-              break;
-            case 2:
-              // code block
-              break;
-            case 3:
-              m_imu_sensors_hmap.emplace(x.first,
-                    ImuT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug, x.second.m_remove_gravity));
-              break;
-            case 4:
-              m_gps_sensors_hmap.emplace(x.first,
-                    GpsT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug));
-              break;
-            default:
-                // code block
-                return;
-            }
-        }
-        std::cout <<"\n";
-    }
 
     /**
      * @brief FilterWrapper: Function that creates an Odometry msg with data from the estimated state.
@@ -466,6 +424,7 @@ public:
         ix = States::full_state_to_estimated_state[STATE_ROLL];
         iy = States::full_state_to_estimated_state[STATE_PITCH];
         iz = States::full_state_to_estimated_state[STATE_YAW];
+        // EULER
         T roll =  ix < 15 ? m_filter.at(ix) : 0.0;
         T pitch = iy < 15 ? m_filter.at(iy) : 0.0;
         T yaw =   iz < 15 ? m_filter.at(iz) : 0.0;
@@ -545,8 +504,8 @@ public:
                 << msg.twist.twist.angular.y << " "
                 << msg.twist.twist.angular.z << " \n");
 
-        DEBUG_W("pose cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.pose.covariance, POSE_SIZE, POSE_SIZE));
-        DEBUG_W("twist cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.twist.covariance, TWIST_SIZE, TWIST_SIZE));
+        // DEBUG_W("pose cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.pose.covariance, POSE_SIZE, POSE_SIZE));
+        // DEBUG_W("twist cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.twist.covariance, TWIST_SIZE, TWIST_SIZE));
         DEBUG_W("********************************************************************\n\n")
 
         return msg;
@@ -560,6 +519,47 @@ public:
     tTime get_last_measurement_time()
     {
         return m_time_keeper.latest_timestamp();
+    }
+
+    /**
+     * @brief FilterWrapper: Function that inizializes configuration related parameters of the class.
+     * @param[out] config_path - path to .json configuration file
+     */
+    void configure(const char* config_path)
+    {
+        std::cout << "CONFIG" << config_path << "\n";
+        m_config = FilterConfig_(config_path);
+        for (auto x: m_config.m_sensor_configs)
+        {
+            std::cout<<x.first<<" ";
+            switch(x.second.m_type) {
+            case 0:
+                std::cout << " ~~ m_update_vector: " << utilities::printtt(x.second.m_update_vector, 1, STATE_SIZE) << "\n";
+                m_odom_sensors_hmap.emplace(x.first,
+                    OdomT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug));
+              break;
+            case 1:
+              // code block
+              break;
+            case 2:
+              // code block
+              break;
+            case 3:
+                std::cout << " ~~ m_update_vector: " << utilities::printtt(x.second.m_update_vector, 1, STATE_SIZE) << "\n";
+                m_imu_sensors_hmap.emplace(x.first,
+                    ImuT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug, x.second.m_remove_gravity));
+              break;
+            case 4:
+                std::cout << " ~~ m_update_vector: " << utilities::printtt(x.second.m_update_vector, 1, STATE_SIZE) << "\n";
+                m_gps_sensors_hmap.emplace(x.first,
+                    GpsT(x.first, x.second.m_update_vector, x.second.m_mahal_thresh, &m_debug_stream, m_debug));
+              break;
+            default:
+                // code block
+                return;
+            }
+        }
+        std::cout <<"\n";
     }
 
 };

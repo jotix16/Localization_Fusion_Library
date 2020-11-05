@@ -73,11 +73,6 @@ public:
     {
         T sq_measurement_mahalanobis = innovation.dot(hph_t_r_inv * innovation);
         T threshold = mahalanobis_threshold * mahalanobis_threshold;
-        // Eigen::EigenSolver<Matrix> eigensolver;
-        // eigensolver.compute(hph_t_r_inv);
-        // DEBUG("--------------- FilterEKF Mahalanobis: hph_t_r_inv: ---------------\n" << hph_t_r_inv << "\n");
-        // DEBUG("--------------- FilterEKF Mahalanobis: Eigenvalues: ---------------\n " << eigensolver.eigenvalues().real().transpose() << "\n\n");
-
         DEBUG("--------------- FilterEKF Mahalanobis: ")
         DEBUG("threshold: " << threshold << " value: " << sq_measurement_mahalanobis
             << " value2: " << innovation.transpose() * hph_t_r_inv * innovation << " ---------------\n");
@@ -101,7 +96,7 @@ public:
         for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
         {
            if(debug > 1) DEBUG("--------------- FilterEKF before clamp, yaw: " << this->m_state[i] <<"\n");
-           this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
+           this->m_state[i] = utilities::normalize_angle(this->m_state[i]);
            if(debug > 1) DEBUG("--------------- FilterEKF after clamp, yaw: " << this->m_state[i] <<"\n");
         }
 
@@ -134,15 +129,27 @@ public:
         // O(n) complexity instead of O(mn)
         // wrap angles of innovation
         uint meas_index = 0U;
+        bool tmp_bool = false;
         Vector innovation(m.m_update_indices.size());
         for ( uint i = 0; i < m.m_update_indices.size(); i++)
         {
             meas_index = m.m_update_indices[i];
             innovation[i] = m.z(i) - this->m_state(States::full_state_to_estimated_state[meas_index]);
             // clamp
-            if(meas_index < STATE_V_X && meas_index > STATE_Z) innovation[i] = utilities::clamp_rotation(innovation[i]);
+            if(meas_index < STATE_V_X && meas_index > STATE_Z)
+            {
+                if(innovation[i]>3.15)
+                {
+                    tmp_bool =true;
+                    if(debug > 1) DEBUG("HEYY\n");
+                }
+                if(debug > 1) DEBUG("--------------- FilterEKF Innovation, " << i << ": " << innovation[i] <<"\n");
+                innovation[i] = utilities::normalize_angle(innovation[i]);
+                if(debug > 1) DEBUG("--------------- FilterEKF Innovation, " << i << ": " << innovation[i] <<"\n");
+            }
         }
-
+        if(debug > 1) if(tmp_bool) DEBUG("HEYY: " << innovation.transpose() <<"\n");
+        tmp_bool = false;
         // check mahalanobis distance
         if(!passes_mahalanobis(innovation, hph_t_r_inv, m.m_mahalanobis_thresh))
         {
@@ -159,7 +166,7 @@ public:
         // wrap angles of state
         for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
         {
-           this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
+           this->m_state[i] = utilities::normalize_angle(this->m_state[i]);
         }
 
         // Correct the covariance using Joseph form for stability. This is the

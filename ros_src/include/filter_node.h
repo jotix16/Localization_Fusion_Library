@@ -95,7 +95,9 @@ class FilterNode
          * @param[in] nh_param - node handler needed for parameter reading
          */
         FilterNode(ros::NodeHandle& nh, ros::NodeHandle& nh_param): m_nh(nh), m_nh_param(nh_param), m_tf_listener(m_tf_buffer),m_enu_published(false)
-        {}
+        {
+            init();
+        }
 
         /**
          * @brief FilterNode: Function that inizializes the FilterWrapper from the .json config file and the
@@ -224,8 +226,6 @@ class FilterNode
 
             // 2. call filter's odom_callback
             // ros_info_msg(msg_loc);
-            std::cout << "CHILD FRANE ID: " << msgChildFrame << "\n";
-            std::cout << "MSG FRAME ID: " << msgFrame << "\n";
             m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_map, transform_to_base_link);
 
             // 3. publish updated base_link frame

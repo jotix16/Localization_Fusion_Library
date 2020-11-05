@@ -57,8 +57,8 @@ public:
         m_dt_to_global = global_time_now - measurement_time_stamp;
         m_t_last_temporal_update = measurement_time_stamp;
         m_t_last_observation_update = measurement_time_stamp;
-        if(debug) std::cout << "--------------- Measurement Time Keeper: dt_global: " << m_dt_to_global
-                            << ", last_temp: " <<m_t_last_temporal_update<<" -------------------\n";
+        // if(debug) std::cout << "--------------- Measurement Time Keeper: dt_global: " << m_dt_to_global
+        //                     << ", last_temp: " <<m_t_last_temporal_update<<" -------------------\n";
         m_inizialized = true;
     }
 
@@ -88,8 +88,8 @@ public:
     void update_with_measurement(tTime time_stamp, tTime global_time)
     {
         m_t_last_observation_update = time_stamp;
-        m_dt_to_global = global_time - time_stamp;
-        if(debug) std::cout << "---------------Measurement Time Keeper: dt_global: " << m_dt_to_global<<"\n";
+        // m_dt_to_global = global_time - time_stamp;
+        // if(debug) std::cout << "---------------Measurement Time Keeper: dt_global: " << m_dt_to_global<<"\n";
     }
 
 /**
@@ -100,7 +100,7 @@ public:
  */
     inline tTime time_since_last_temporal_update(tTime global_time_now) const
     {
-        return global_time_now - m_dt_to_global - m_t_last_temporal_update;
+        return to_measurement_time(global_time_now) - m_t_last_temporal_update;
     }
 
 /**
@@ -117,6 +117,11 @@ public:
     inline tTime to_measurement_time(tTime global_time_now) const
     {
         return global_time_now - m_dt_to_global;
+    }
+
+    inline tTime to_global_time(tTime meas_time_stamp) const
+    {
+        return meas_time_stamp + m_dt_to_global;
     }
 };
 

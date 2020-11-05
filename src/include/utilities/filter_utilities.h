@@ -32,8 +32,8 @@ namespace iav{ namespace state_predictor {
   /**
    * These are constants that can be used everywhere under state_predictor namespace
    */
-  static constexpr double PI = 3.141592653589793;
-  static  constexpr double TAU = 6.283185307179587;
+  static constexpr double TAU = 6.283185307179586232;
+  static constexpr double PI = TAU*static_cast<double>(0.5);
 
   /**
    * These are types definitions that can be used everywhere under state_predictor namespace
@@ -146,10 +146,11 @@ namespace iav{ namespace state_predictor{ namespace utilities{
   * @param[in] rotation - The rotation to bind
   * @return the bounded value
   */
-  double clamp_rotation(tTime rotation)
+ template <typename T>
+  double normalize_angle(T rotation)
   {
-      while (rotation > PI){rotation -= TAU;};
       while (rotation < -PI){rotation += TAU;};
+      while (rotation > PI){rotation -= TAU;};
       return rotation;
   }
 
