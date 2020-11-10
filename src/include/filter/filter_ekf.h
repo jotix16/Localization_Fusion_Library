@@ -129,7 +129,6 @@ public:
         // O(n) complexity instead of O(mn)
         // wrap angles of innovation
         uint meas_index = 0U;
-        bool tmp_bool = false;
         Vector innovation(m.m_update_indices.size());
         for ( uint i = 0; i < m.m_update_indices.size(); i++)
         {
@@ -138,18 +137,10 @@ public:
             // clamp
             if(meas_index < STATE_V_X && meas_index > STATE_Z)
             {
-                if(innovation[i]>3.15)
-                {
-                    tmp_bool =true;
-                    if(debug > 1) DEBUG("HEYY\n");
-                }
-                if(debug > 1) DEBUG("--------------- FilterEKF Innovation, " << i << ": " << innovation[i] <<"\n");
                 innovation[i] = utilities::normalize_angle(innovation[i]);
-                if(debug > 1) DEBUG("--------------- FilterEKF Innovation, " << i << ": " << innovation[i] <<"\n");
             }
         }
-        if(debug > 1) if(tmp_bool) DEBUG("HEYY: " << innovation.transpose() <<"\n");
-        tmp_bool = false;
+
         // check mahalanobis distance
         if(!passes_mahalanobis(innovation, hph_t_r_inv, m.m_mahalanobis_thresh))
         {
