@@ -5,6 +5,9 @@
 
 
 <launch>
+    <arg name="imu_topic_list" default="[/imu/data]"/>
+    <arg name="gps_topic_list" default="[/gps/fix]"/>
+
     <node pkg="tf2_ros" type="static_transform_publisher" name="bl_imu" args="0 -0.3 0.52 -1.570796327 0 1.570796327 base_link imu_link" />
     <node pkg="tf2_ros" type="static_transform_publisher" name="map_odom_combined"  args="0 0 0 0 0 0 map odom_combined" />
     <node pkg="tf2_ros" type="static_transform_publisher" name="map_odom"  args="0 0 0 0 0 0 map odom" />
@@ -21,14 +24,8 @@
       <param name="odom_frame" value="odom"/>
       <param name="base_link_frame" value="base_link"/>
 
-      <param name="odom_nr" value = "1"/>
-      <param name="imu_nr" value = "0"/>
-      <param name="pose_nr" value = "0"/>
-      <param name="twist_nr" value = "0"/>
-      <param name="gps_nr" value = "0"/>
-
-      <param name="odom0" value="/base_odometry/odom"/>
-      <param name="imu0" value="/imu/data"/>
-
+      <rosparam param="imu_topics" subst_value="True">$(arg imu_topic_list)</rosparam>
+      <rosparam param="gps_topics" subst_value="True">$(arg gps_topic_list)</rosparam>
     </node>
+
 </launch>

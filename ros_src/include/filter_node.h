@@ -118,48 +118,33 @@ class FilterNode
             m_imu_publisher = m_nh.advertise<OdomMsg>("pose/filtered", 20);
 
             // 3.a. initialize odom subscribers
-            int odom_nr_;
-            m_nh_param.param("odom_nr", odom_nr_, 0);
-
-            for(int i=0; i < odom_nr_; i++)
+            std::vector<std::string> odom_topics;
+            m_nh_param.param("odom_topics", odom_topics, std::vector<std::string>());
+            for(int i=0; i < odom_topics.size(); i++)
             {
-                std::stringstream ss;
-                ss << "odom" << i ;
-                std::string odom_topic;
-                m_nh_param.getParam(ss.str(), odom_topic);
-                ROS_INFO_STREAM("Subscribing to: " << odom_topic);
-                m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_topic, 10,
-                boost::bind(&FilterNode::odom_callback, this, _1, odom_topic)));
+                ROS_INFO_STREAM("Subscribing to: " << odom_topics[i]);
+                m_odom_sub_topics.push_back(m_nh.subscribe<OdomMsg>(odom_topics[i], 10,
+                boost::bind(&FilterNode::odom_callback, this, _1, odom_topics[i])));
             }
 
             // 3.b. initialize imu subscribers
-            int imu_nr_;
-            m_nh_param.param("imu_nr", imu_nr_, 0);
-
-            for(int i=0; i < imu_nr_; i++)
+            std::vector<std::string> imu_topics;
+            m_nh_param.param("imu_topics", imu_topics, std::vector<std::string>());
+            for(int i=0; i < imu_topics.size(); i++)
             {
-                std::stringstream ss;
-                ss << "imu" << i ;
-                std::string imu_topic;
-                m_nh_param.getParam(ss.str(), imu_topic);
-                ROS_INFO_STREAM("Subscribing to: " << imu_topic);
-                m_imu_sub_topics.push_back(m_nh.subscribe<ImuMsg>(imu_topic, 10,
-                boost::bind(&FilterNode::imu_callback, this, _1, imu_topic)));
+                ROS_INFO_STREAM("Subscribing to: " << imu_topics[i]);
+                m_imu_sub_topics.push_back(m_nh.subscribe<ImuMsg>(imu_topics[i], 10,
+                boost::bind(&FilterNode::imu_callback, this, _1, imu_topics[i])));
             }
 
             // 3.c. initialize gps subscribers
-            int gps_nr_;
-            m_nh_param.param("gps_nr", gps_nr_, 0);
-
-            for(int i=0; i < gps_nr_; i++)
+            std::vector<std::string> gps_topics;
+            m_nh_param.param("gps_topics", gps_topics, std::vector<std::string>());
+            for(int i=0; i < gps_topics.size(); i++)
             {
-                std::stringstream ss;
-                ss << "gps" << i ;
-                std::string gps_topic;
-                m_nh_param.getParam(ss.str(), gps_topic);
-                ROS_INFO_STREAM("Subscribing to: " << gps_topic);
-                m_gps_sub_topics.push_back(m_nh.subscribe<GpsMsg>(gps_topic, 10,
-                boost::bind(&FilterNode::gps_callback, this, _1, gps_topic)));
+                ROS_INFO_STREAM("Subscribing to: " << gps_topics[i]);
+                m_gps_sub_topics.push_back(m_nh.subscribe<GpsMsg>(gps_topics[i], 10,
+                boost::bind(&FilterNode::gps_callback, this, _1, gps_topics[i])));
             }
 
             // 4. set the frames
