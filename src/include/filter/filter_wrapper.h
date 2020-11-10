@@ -308,8 +308,8 @@ public:
                 DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.innovation.transpose() << "\n");
                 DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.z.transpose() << "\n");
                 DEBUG_W(std::fixed << std::setprecision(4) << " -> State obsv: " << get_state().transpose() << "\n");
-                // DEBUG_W(" -> Covar obsv: \n");
-                // DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
+                DEBUG_W(" -> Covar obsv: \n");
+                DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
             }
             else DEBUG_W(" Mahalanobis failed\n");
         }
@@ -366,32 +366,43 @@ public:
         x0 += measurement.H.transpose() * measurement.z;
 
         // extract the part of init_estimation and process_noise covariances you need
-        StateMatrix init_cov;
-        init_cov.setIdentity();
+        StateMatrix init_cov = StateMatrix::Identity()*1e-4;
+
+        // init_cov.setIdentity();
         StateMatrix process_noise;
         process_noise.setIdentity();
-        uint ind_temp1 = 0;
-        uint ind_temp2 = 0;
-        DEBUG_W("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
+
         for (auto i:States::full_state_to_estimated_state)
         {
-
+            if(i < STATE_SIZE) // check if this perticular state is not being estimated
+            {
+                for (auto j:States::full_state_to_estimated_state)
+                {
+                    if(j < STATE_SIZE) // check if this perticular state is not being estimated
+                    {
+                        init_cov(i, j) = m_config.m_init_estimation_covariance(i,j);
+                        process_noise(i, j) = m_config.m_process_noise(i,j);
+                    }
+                }
+            }
+        }
+        for ( uint i = 0; i < measurement.m_update_indices.size(); i++)
+        {
             if(i < STATE_SIZE)
             {
-                ind_temp2 = 0;
-                for (auto j:States::full_state_to_estimated_state)
+                for ( uint j = 0; j < measurement.m_update_indices.size(); j++)
                 {
                     if(j < STATE_SIZE)
                     {
-                        init_cov(i, j) = m_config.m_init_estimation_covariance(ind_temp1,ind_temp2);
-                        process_noise(i, j) = m_config.m_process_noise(ind_temp1,ind_temp2);
+                        init_cov(States::full_state_to_estimated_state[measurement.m_update_indices[i]], States::full_state_to_estimated_state[measurement.m_update_indices[j]]) = measurement.R(i,j);
                     }
-                    ++ind_temp2;
                 }
             }
-            ++ind_temp1;
         }
-        DEBUG_W("RESETING\n" << "State\n" << x0.transpose() <<"\nInit Covariance:\n" << init_cov << "\nProcess Noise\n" << process_noise);
+
+
+        DEBUG_W("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
+        DEBUG_W("RESETING\n" << "State\n" << x0.transpose() << std::setprecision(9) << "\nInit Covariance:\n" << init_cov << "\nProcess Noise\n" << process_noise << std::setprecision(4));
         DEBUG_W("\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
         m_filter.reset(x0, init_cov, process_noise);
 
@@ -527,7 +538,7 @@ public:
      */
     void configure(const char* config_path)
     {
-        std::cout << "CONFIG" << config_path << "\n";
+        std::cout << "CONFIG: " << config_path << "\n";
         m_config = FilterConfig_(config_path);
         for (auto x: m_config.m_sensor_configs)
         {

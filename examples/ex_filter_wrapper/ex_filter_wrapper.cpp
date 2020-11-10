@@ -49,8 +49,8 @@ int main(){
     msg.pose.pose.position.z = 3.0;
     for (int i = 0; i < 6; i++)
     {
-       msg.pose.covariance[i+i*6] = 1e-9; 
-       msg.twist.covariance[i+i*6]= 1e-9; 
+       msg.pose.covariance[i+i*6] = 1e-9;
+       msg.twist.covariance[i+i*6]= 1e-9;
     }
     msg.pose.pose.orientation.x = 1.0;
     msg.pose.pose.orientation.y = 0.5;
