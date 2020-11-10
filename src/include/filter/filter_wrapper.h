@@ -395,6 +395,7 @@ public:
                     if(j < STATE_SIZE)
                     {
                         init_cov(States::full_state_to_estimated_state[measurement.m_update_indices[i]], States::full_state_to_estimated_state[measurement.m_update_indices[j]]) = measurement.R(i,j);
+                        if(measurement.R(i,j) > 60) return false;
                     }
                 }
             }
