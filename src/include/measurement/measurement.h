@@ -87,9 +87,24 @@ public:
                 const Vector& innovation, const MappingMatrix& map_matrix,
                 const std::vector<uint>& update_indices, const std::string& sensor_id, const T& mahalanobis_thresh):
                 m_time_stamp{time_stamp}, m_sensor_id{sensor_id}, z{measurement},
-                R{covariance}, H{map_matrix}, m_update_indices{update_indices},
+                H{map_matrix}, m_update_indices{update_indices},
                 innovation{innovation}, m_mahalanobis_thresh{mahalanobis_thresh}
-    { }
+    {
+        R = covariance;
+        for (uint i = 0; i < R.rows(); i++)
+        {
+            if(R(i,i) < 0.0)
+            {
+                R(i,i) = std::fabs(R(i,i));
+                // std::cout << "covariance smaller than 0\n";
+            }
+            if(R(i,i) < 1e-9)
+            {
+                R(i,i) = 1e-9;
+                // std::cout << "covariance near 0\n";
+            }
+        }
+    }
 
 /**
  * @brief Measurement: Getter function for the measurement vector.
