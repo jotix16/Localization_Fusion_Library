@@ -215,7 +215,7 @@ public:
             rpy[0] *= (int)m_update_vector[STATE_ROLL];
             rpy[1] *= (int)m_update_vector[STATE_PITCH];
             rpy[2] *= (int)m_update_vector[STATE_YAW];
-            orientation = euler::ToQuaternion(rpy[0], rpy[1], rpy[2]);
+            orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]);
             if (orientation.norm()-1.0 > 0.01)
             {
                 orientation.normalize();

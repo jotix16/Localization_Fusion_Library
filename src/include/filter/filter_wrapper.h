@@ -442,9 +442,7 @@ public:
         T yaw =   iz < 15 ? m_filter.at(iz) : 0.0;
         // euler to quaternion
         QuaternionT qq;
-        qq = AngleAxisT(roll, Vector3T::UnitX())
-        * AngleAxisT(pitch, Vector3T::UnitY())
-        * AngleAxisT(yaw, Vector3T::UnitZ());
+        qq = euler::get_quat_rpy(roll, pitch, yaw);
         msg.pose.pose.orientation.x = qq.x();
         msg.pose.pose.orientation.y = qq.y();
         msg.pose.pose.orientation.z = qq.z();
