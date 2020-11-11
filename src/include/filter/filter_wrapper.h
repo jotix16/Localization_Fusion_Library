@@ -187,7 +187,7 @@ public:
     {
         if (!is_initialized())
         {
-            DEBUG_W("Got IMU but have to wait for odom first. Ignoring");
+            DEBUG_W("Got IMU but have to wait for odom first. Ignoring\n");
             return false;
         }
         Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_base_link_imu, transform_map_base_link);
@@ -424,7 +424,7 @@ public:
         nav_msgs::msg::Odometry msg;
         uint ix, iy, iz;
 
-        // 1. Posisiton
+        // 1. Position
         ix = States::full_state_to_estimated_state[STATE_X];
         iy = States::full_state_to_estimated_state[STATE_Y];
         iz = States::full_state_to_estimated_state[STATE_Z];
