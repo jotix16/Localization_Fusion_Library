@@ -215,11 +215,7 @@ public:
             rpy[0] *= (int)m_update_vector[STATE_ROLL];
             rpy[1] *= (int)m_update_vector[STATE_PITCH];
             rpy[2] *= (int)m_update_vector[STATE_YAW];
-            orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]);
-            if (orientation.norm()-1.0 > 0.01)
-            {
-                orientation.normalize();
-            }
+            orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized();
             pose_transf = euler::quat_to_rot(orientation); // orientation part
         }
         else DEBUG("Orientation is being ignored according to m_update_vector!\n");

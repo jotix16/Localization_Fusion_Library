@@ -110,7 +110,7 @@ public:
         m_init_orientation = true;
 
         // ------------- DEBUG
-        q_enu_imu = euler::rot_to_quat(m_R_map_enu.rotation()); //  q_enu_imu is holding q_map_bl, used only for debugging
+        q_enu_imu = euler::rot_to_quat(m_R_map_enu.rotation()).normalized(); //  q_enu_imu is holding q_map_bl, used only for debugging
         DEBUG("R_MAP_BL:\n" << T_map_bl.rotation() << "\nP_MAP_BL: " << T_map_bl.translation().transpose() << "\n");
         DEBUG("Initialized at\n"
             << "--Rotation:\n" << m_R_map_enu.rotation() << std::endl
