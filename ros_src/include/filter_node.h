@@ -575,14 +575,8 @@ class FilterNode
         {
             // ------------------------------- Visualize IMU ------------------------------------ //
             tf2::Quaternion quat_map_enu, quat_enu_imu_meas, quat_bl_imu;
-            geometry_msgs::Quaternion q_map_enu = m_tf_buffer.lookupTransform(m_map_frame_id, "enu", ros::Time(0), ros::Duration(1.0)).transform.rotation;
-            geometry_msgs::Quaternion q_bl_imu = m_tf_buffer.lookupTransform(m_baselink_frame_id , msgFrame, ros::Time(0), ros::Duration(1.0)).transform.rotation;
-            tf2::convert(q_map_enu , quat_map_enu);
             tf2::convert(msg->orientation , quat_enu_imu_meas);
-            tf2::convert(q_bl_imu , quat_bl_imu);
 
-            quat_enu_imu_meas = quat_map_enu * quat_enu_imu_meas * quat_bl_imu.inverse();
-            quat_enu_imu_meas.normalize();
 
             geometry_msgs::PoseWithCovariance* posePtr = new geometry_msgs::PoseWithCovariance();
             posePtr->pose.orientation = tf2::toMsg(quat_enu_imu_meas);
@@ -613,7 +607,7 @@ class FilterNode
             OdomMsg msg_pub;
             msg_pub.header.stamp = ros::Time::now();
             msg_pub.header.frame_id = m_map_frame_id;
-            msg_pub.child_frame_id = m_baselink_frame_id;
+            msg_pub.child_frame_id = msgFrame;
             msg_pub.pose = *posePtr;
             m_imu_publisher.publish(msg_pub);
             // ------------------------------- Visualize IMU ------------------------------------ //
