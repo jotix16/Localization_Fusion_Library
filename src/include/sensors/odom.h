@@ -211,9 +211,9 @@ public:
             auto rpy = euler::get_euler_rpy(orientation);
 
             // -- ignore roll pitch yaw according to m_update_vector
-            rpy[0] *= (int)m_update_vector[STATE_ROLL];
-            rpy[1] *= (int)m_update_vector[STATE_PITCH];
-            rpy[2] *= (int)m_update_vector[STATE_YAW];
+            rpy[0] = m_update_vector[STATE_ROLL] ?  rpy[0] : state(States::full_state_to_estimated_state[STATE_ROLL]);
+            rpy[1] = m_update_vector[STATE_PITCH] ? rpy[1] : state(States::full_state_to_estimated_state[STATE_PITCH]);
+            rpy[2] = m_update_vector[STATE_YAW] ?   rpy[2] : state(States::full_state_to_estimated_state[STATE_YAW]);
             orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized();
             rot_mat = euler::quat_to_rot(orientation); // orientation part
         }
@@ -221,10 +221,9 @@ public:
 
         if(valid_position)
         {
-            position = Vector3T{
-                msg->pose.position.x * (int)m_update_vector[STATE_X],
-                msg->pose.position.y * (int)m_update_vector[STATE_Y],
-                msg->pose.position.z * (int)m_update_vector[STATE_Z]}; // position part
+            position[0] = m_update_vector[STATE_X] ? msg->pose.position.x : state(States::full_state_to_estimated_state[STATE_X]);
+            position[1] = m_update_vector[STATE_Y] ? msg->pose.position.y : state(States::full_state_to_estimated_state[STATE_Y]);
+            position[2] = m_update_vector[STATE_Z] ? msg->pose.position.z : state(States::full_state_to_estimated_state[STATE_Z]);
         }
         else DEBUG("Position is being ignored according to m_update_vector!\n");
 
@@ -313,10 +312,9 @@ public:
             // 2. Extract angular velocities
             // - consider m_update_vector
             Vector3T angular_vel;
-            angular_vel <<
-                msg->twist.angular.x * (int)m_update_vector[STATE_V_ROLL],
-                msg->twist.angular.y * (int)m_update_vector[STATE_V_PITCH],
-                msg->twist.angular.z * (int)m_update_vector[STATE_V_YAW];
+            angular_vel[0] = m_update_vector[STATE_V_ROLL] ?  msg->twist.angular.x : state(States::full_state_to_estimated_state[STATE_V_ROLL]);
+            angular_vel[1] = m_update_vector[STATE_V_PITCH] ? msg->twist.angular.y : state(States::full_state_to_estimated_state[STATE_V_PITCH]);
+            angular_vel[2] = m_update_vector[STATE_V_YAW] ?   msg->twist.angular.z : state(States::full_state_to_estimated_state[STATE_V_YAW]);
             // - Transform measurement to fusion frame
             angular_vel = rot * angular_vel;
             measurement.template tail<3>() = angular_vel;
@@ -328,10 +326,9 @@ public:
             // 3. Extract linear velocities
             // - consider m_update_vector
             Vector3T linear_vel;
-            linear_vel <<
-                msg->twist.linear.x * (int)m_update_vector[STATE_V_X],
-                msg->twist.linear.y * (int)m_update_vector[STATE_V_Y],
-                msg->twist.linear.z * (int)m_update_vector[STATE_V_Z];
+            linear_vel[0] = m_update_vector[STATE_V_X] ? msg->twist.linear.x : state(States::full_state_to_estimated_state[STATE_V_X]);
+            linear_vel[1] = m_update_vector[STATE_V_Y] ? msg->twist.linear.y : state(States::full_state_to_estimated_state[STATE_V_Y]);
+            linear_vel[2] = m_update_vector[STATE_V_Z] ? msg->twist.linear.z : state(States::full_state_to_estimated_state[STATE_V_Z]);
             // - Extract angular velocities from the estimated state
             // - needed to add the effect of angular velocities to the linear ones(look below).
             Vector3T angular_vel_state;

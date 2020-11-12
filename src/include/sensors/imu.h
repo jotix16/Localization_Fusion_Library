@@ -305,9 +305,10 @@ public:
         auto rpy = euler::get_euler_rpy(orientation.normalized());
 
         // -- ignore roll pitch yaw according to m_update_vector
-        rpy[0] *= (int)m_update_vector[STATE_ROLL];
-        rpy[1] *= (int)m_update_vector[STATE_PITCH];
-        rpy[2] *= (int)m_update_vector[STATE_YAW];
+        rpy[0] = m_update_vector[STATE_ROLL] ? rpy[0] : state(States::full_state_to_estimated_state[STATE_ROLL]);
+        rpy[1] = m_update_vector[STATE_PITCH] ? rpy[1] : state(States::full_state_to_estimated_state[STATE_PITCH]);
+        rpy[2] = m_update_vector[STATE_YAW] ? rpy[2] : state(States::full_state_to_estimated_state[STATE_YAW]);
+
         DEBUG("ORIENTATION: " << rpy.transpose() << "\n");
         orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized();
 
@@ -377,10 +378,10 @@ public:
         // 1. Extract angular velocities
         // - consider m_update_vector
         Vector3T angular_vel;
-        angular_vel <<
-            meas_msg.x * (int)m_update_vector[STATE_V_ROLL],
-            meas_msg.y * (int)m_update_vector[STATE_V_PITCH],
-            meas_msg.z * (int)m_update_vector[STATE_V_YAW];
+        angular_vel[0] = m_update_vector[STATE_V_ROLL] ? meas_msg.x : state(States::full_state_to_estimated_state[STATE_V_ROLL]);
+        angular_vel[1] = m_update_vector[STATE_V_PITCH] ? meas_msg.y : state(States::full_state_to_estimated_state[STATE_V_PITCH]);
+        angular_vel[2] = m_update_vector[STATE_V_YAW] ? meas_msg.z : state(States::full_state_to_estimated_state[STATE_V_YAW]);
+
         // - Transform measurement to fusion frame
         auto rot = transform.rotation();
         angular_vel = rot * angular_vel;
@@ -457,9 +458,10 @@ public:
                 covariance(i, j) = covariance_array[i + j*3];
             }
         }
-        measurement[0] = meas_msg.x * (int)m_update_vector[STATE_A_X];
-        measurement[1] = meas_msg.y * (int)m_update_vector[STATE_A_Y];
-        measurement[2] = meas_msg.z * (int)m_update_vector[STATE_A_Z]; // remove_grav --- wrong
+
+        measurement[0] = m_update_vector[STATE_A_X] ? meas_msg.x : state(States::full_state_to_estimated_state[STATE_A_X]);
+        measurement[1] = m_update_vector[STATE_A_Y] ? meas_msg.y : state(States::full_state_to_estimated_state[STATE_A_Y]);
+        measurement[2] = m_update_vector[STATE_A_Z] ? meas_msg.z : state(States::full_state_to_estimated_state[STATE_A_Z]);
         // std::cout << "G: " << measurement[2]<< "\n";
 
         // 2. Transform measurement to fusion frame
@@ -471,6 +473,9 @@ public:
             Vector3T gravity_acc;
             gravity_acc << 0.0 , 0.0 , 9.8;
             gravity_acc = rot.transpose() * gravity_acc; // R^T = R^^1 for rotation matrixes (transpose instead of inverse)
+            gravity_acc[0] = m_update_vector[STATE_A_X] ? gravity_acc[0] : 0;
+            gravity_acc[1] = m_update_vector[STATE_A_Y] ? gravity_acc[1] : 0;
+            gravity_acc[2] = m_update_vector[STATE_A_Z] ? gravity_acc[2] : 0;
             measurement -= gravity_acc;
         }
         measurement = rot * measurement;
