@@ -112,11 +112,8 @@ public:
         q_enu_imu = euler::rot_to_quat(m_R_map_enu).normalized(); //  q_enu_imu is holding q_map_bl, used only for debugging
         DEBUG("R_MAP_BL:\n" << T_map_bl.rotation() << "\nP_MAP_BL: " << T_map_bl.translation().transpose() << "\n");
         DEBUG("Initialized at\n"
-            << "--Rotation:\n" << m_R_map_enu.rotation() << std::endl
-            << "--Translation: " << m_R_map_enu.translation().transpose() << std::endl
-            << "--EULER: " << std::endl << this->to_euler(q_enu_imu).transpose() << std::endl
-            << "--EULER_TF: " << std::endl <<euler::get_euler_rpy(q_enu_imu).transpose() << std::endl
-            << "--EULERAPOLLO: " << std::endl << euler::ToEulerAngles(q_enu_imu).transpose() << std::endl);
+            << "--Rotation:\n" << m_R_map_enu << std::endl
+            << "--EULER_TF: " << std::endl <<euler::get_euler_rpy(q_enu_imu).transpose() << std::endl);
         DEBUG("\n\t\t--------------- IMU[" << m_topic_name<< "] INITIALIZING: OUT -------------------\n");
         // -------------
     }
@@ -303,34 +300,27 @@ public:
                         meas_msg.x,
                         meas_msg.y,
                         meas_msg.z};
+        // - consider m_update_vector
+        // -- extract roll pitch yaw
+        auto rpy = euler::get_euler_rpy(orientation.normalized());
 
+        // ---------------------------------
+        // ------------- DEBUG -------------
         if (orientation.norm()-1.0 > 0.01)
         {
             orientation.normalize();
         }
-
-        // - consider m_update_vector
-        // -- extract roll pitch yaw
-        auto rpy = euler::get_euler_rpy(orientation);
-
-        // ------------- DEBUG
         DEBUG("QUATER: " << orientation.vec().transpose() << " " << orientation.w() << "\n");
         DEBUG("RPY1: " << rpy.transpose() << "\n");
-        DEBUG("RPY2: " << this->to_euler(orientation).transpose() << "\n");
-        DEBUG("RPY3: " << orientation.toRotationMatrix().eulerAngles(0, 1, 2).transpose() << "\n");
-        // -------------
+        // ---------------------------------
+        // ---------------------------------
 
         // -- ignore roll pitch yaw according to m_update_vector
         rpy[0] *= (int)m_update_vector[STATE_ROLL];
         rpy[1] *= (int)m_update_vector[STATE_PITCH];
         rpy[2] *= (int)m_update_vector[STATE_YAW];
         DEBUG("ORIENTATION: " << rpy.transpose() << "\n");
-
-        orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]);
-        if (orientation.norm()-1.0 > 0.01)
-        {
-            orientation.normalize();
-        }
+        orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized();
 
         auto rot_meas = euler::quat_to_rot(orientation);
         auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
@@ -339,12 +329,11 @@ public:
         rot_meas = m_R_map_enu * rot_meas * rot_imu_bl; // R_map_enu * R_enu_imu *R_imu_bl
         auto measurement = euler::get_euler_rpy(rot_meas);
 
-        // ------------- DEBUG
-        orientation = euler::rot_to_quat(rot_meas); // DEBUG
+        // ------------- DEBUG-------------
+        // ---------------------------------
         DEBUG("RPY1: " << measurement.transpose() << "\n");
-        DEBUG("RPY2: " << this->to_euler(orientation).transpose() << "\n");
-        DEBUG("RPY3: " << orientation.toRotationMatrix().eulerAngles(0, 1, 2).transpose() << "\n");
-        // -------------
+        // ---------------------------------
+        // ---------------------------------
 
         // 3. Transform covariance, not sure for the second transformation
         Matrix3T covariance;

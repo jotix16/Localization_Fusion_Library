@@ -187,7 +187,7 @@ namespace euler{
     return Eigen::Quaternion<T>(
 			cosRoll * cosPitch * cosYaw + sinRoll * sinPitch * sinYaw, //w
 			sinRoll * cosPitch * cosYaw - cosRoll * sinPitch * sinYaw, //x
-      cosRoll * sinPitch * cosYaw + sinRoll * cosPitch * sinYaw, //y
+      		cosRoll * sinPitch * cosYaw + sinRoll * cosPitch * sinYaw, //y
 			cosRoll * cosPitch * sinYaw - sinRoll * sinPitch * cosYaw);//z
 	}
 
