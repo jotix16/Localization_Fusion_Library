@@ -66,6 +66,7 @@ private:
 
     bool m_init_orientation;
     Matrix3T m_R_map_enu;
+    Matrix3T m_R_bl_enu;
 
 public:
     Imu(){}; // default constructor
@@ -82,19 +83,6 @@ public:
     {
         DEBUG("\n\t\t--------------- IMU[" << m_topic_name<< "] INITIALIZING: IN -------------------\n");
 
-        //--------------------- CAN GET THIS FROM OUR STATE TOO TOO!! ---------------------
-            // // R_map_bl
-            // constexpr uint roll_ix = States::full_state_to_estimated_state[STATE_ROLL],
-            //             pitch_ix = States::full_state_to_estimated_state[STATE_PITCH],
-            //             yaw_ix = States::full_state_to_estimated_state[STATE_YAW];
-            // T roll = roll_ix < STATE_SIZE ? state[roll_ix] : 0,
-            // pitch = pitch_ix < STATE_SIZE ? state[pitch_ix] : 0,
-            // yaw = yaw_ix < STATE_SIZE ? state[yaw_ix] : 0;
-            // TransformationMatrix T_map_bl;
-            // T_map_bl = AngleAxisT(roll, Vector3T::UnitX())
-            //         * AngleAxisT(pitch, Vector3T::UnitY())
-            //         * AngleAxisT(yaw, Vector3T::UnitZ());
-            // T_map_bl.translation() = Vector3T::Zero();
         // --------------------- CREATE TRANSFORMATION ---------------------
 
         QuaternionT q_enu_imu;
@@ -105,7 +93,9 @@ public:
 
         // R_map_enu = R_map_bl * R_bl_imu * R_enu_imu^-1
         m_R_map_enu = T_map_bl.rotation() * T_bl_imu.rotation() * euler::quat_to_rot(q_enu_imu).transpose();
-
+        auto rpy = euler::get_euler_rpy(q_enu_imu);
+        auto q_enu_imu_yaw = euler::get_quat_rpy(0.0, 0.0, rpy[2]);
+        m_R_bl_enu = euler::quat_to_rot(q_enu_imu_yaw) * T_bl_imu.rotation() * euler::quat_to_rot(q_enu_imu).transpose();
         m_init_orientation = true;
 
         // ------------- DEBUG
@@ -213,7 +203,7 @@ public:
         if (valid_orientation)
         {
             prepare_imu_orientation(state, msg->orientation, msg->orientation_covariance,
-                          transform_base_link_imu, sub_measurement,
+                          transform_map_base_link, transform_base_link_imu, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
                           update_indices_orientation, 0, update_size_orientation);
         }
@@ -278,6 +268,7 @@ public:
         const StateVector& state,
         geometry_msgs::msg::Quaternion& meas_msg,
         std::array<double, 9> covariance_array,
+        const TransformationMatrix& transform_map_base_link,
         const TransformationMatrix& transform_bl_imu,
         Vector& sub_measurement,
         Matrix& sub_covariance,
@@ -316,7 +307,8 @@ public:
         auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
 
         // 2. Transform measurement to fusion frame
-        rot_meas = m_R_map_enu * rot_meas * rot_imu_bl; // R_map_enu * R_enu_imu *R_imu_bl
+        // rot_meas = m_R_map_enu * rot_meas * rot_imu_bl; // R_map_enu * R_enu_imu *R_imu_bl
+        rot_meas = transform_map_base_link.rotation() * m_R_bl_enu * rot_meas * rot_imu_bl; // R_map_enu * R_enu_imu *R_imu_bl
         auto measurement = euler::get_euler_rpy(rot_meas);
 
         // 3. Transform covariance, not sure for the second transformation
