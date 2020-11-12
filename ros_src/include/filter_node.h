@@ -31,6 +31,11 @@
 #include <filter/filter_wrapper.h>
 #include <utilities/filter_utilities.h>
 
+// testing
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2/LinearMath/Transform.h>
+#include <utilities/filter_euler_zyx.h>
+
 
 using FilterWrapper = iav::state_predictor::filter::FilterCtrvEKF2D;
 
@@ -207,6 +212,7 @@ class FilterNode
             OdomMsgLocFusLib msg_loc;
             to_local_odom_msg(msg, msg_loc);
 
+            // test_odom(msg, msg_loc, transformStamped1, transform_to_map);
             // 2. call filter's odom_callback
             // ros_info_msg(msg_loc);
             m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_map, transform_to_base_link);
@@ -215,6 +221,60 @@ class FilterNode
             publish_current_state();
         }
 
+        void test_odom(const OdomMsg::ConstPtr& msg, OdomMsgLocFusLib msg_loc, geometry_msgs::TransformStamped transformStamped, TransformationMatrix transform_to_map)
+        {
+            tf2::Transform targetFrameTrans; tf2::fromMsg(transformStamped.transform, targetFrameTrans);
+
+            tf2::Quaternion q_tf; tf2::fromMsg(msg->pose.pose.orientation, q_tf); q_tf.normalize();
+
+            tf2::Stamped<tf2::Transform> poseTmp;
+            poseTmp.setOrigin(tf2::Vector3(msg->pose.pose.position.x,
+                                           msg->pose.pose.position.y,
+                                           msg->pose.pose.position.z));
+            poseTmp.setRotation(q_tf);
+            poseTmp.mult(targetFrameTrans, poseTmp);
+
+            // 7i. Finally, copy everything into our measurement and covariance objects
+            double roll, pitch, yaw; tf2::Matrix3x3 orTmp(poseTmp.getRotation()); orTmp.getRPY(roll, pitch, yaw);
+
+            Eigen::Matrix<T,6,1> measurement;
+            measurement(0) = poseTmp.getOrigin().x();
+            measurement(1) = poseTmp.getOrigin().y();
+            measurement(2) = poseTmp.getOrigin().z();
+            measurement(3) = roll;
+            measurement(4) = pitch;
+            measurement(5) = yaw;
+            // std::cout <<"TF:" << measurement.transpose() <<"\n";
+
+            Eigen::Quaternion<T> q_eg;
+            q_eg =  {msg->pose.pose.orientation.w,
+                     msg->pose.pose.orientation.x,
+                     msg->pose.pose.orientation.y,
+                     msg->pose.pose.orientation.z};
+            auto rpy = iav::state_predictor::euler::get_euler_rpy(q_eg);
+            q_eg = iav::state_predictor::euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized();
+
+            auto position = Eigen::Matrix<T,3,1>{
+                msg->pose.pose.position.x,
+                msg->pose.pose.position.y,
+                msg->pose.pose.position.z};
+
+            auto rot_mat = iav::state_predictor::euler::quat_to_rot(q_eg); // orientation part
+            rot_mat = transform_to_map.rotation() * rot_mat;
+            position = transform_to_map.rotation() * position + transform_to_map.translation();
+            Eigen::Matrix<T,6,1> measurement_eg;
+            measurement_eg.setZero();
+            measurement_eg.template head<3>() = position;
+            measurement_eg.template tail<3>() = iav::state_predictor::euler::get_euler_rpy(rot_mat);
+            std::cout <<"EG:" << measurement_eg.transpose() <<"\n";
+            auto diff = measurement_eg-measurement;
+            // std::cout <<"MM:" << diff.transpose() <<"\n";
+            if ( std::fabs(diff.transpose()*diff) > 0.1 )
+            {
+                std::cout << "ERROR IN PreparePose Odom !!!!!!!\n";
+                return;
+            }
+        }
         /**
          * @brief FilterNode: Callback for receiving all IMU msgs. It extracts transformation matrixes
          * to the fusing frames and calls the corresponding callback from filter_wrapper.
