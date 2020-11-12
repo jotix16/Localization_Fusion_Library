@@ -43,12 +43,12 @@ public:
     using Matrix        = typename SensorBaseT::Matrix;
     using Matrix6T      = typename SensorBaseT::Matrix6T;
     using Matrix4T      = typename SensorBaseT::Matrix4T;
+    using Matrix3T      = typename SensorBaseT::Matrix3T;
     using Vector6T      = typename SensorBaseT::Vector6T;
     using Vector3T      = typename SensorBaseT::Vector3T;
 
     using TransformationMatrix = typename SensorBaseT::TransformationMatrix;
     using QuaternionT          = typename SensorBaseT::QuaternionT;
-    using AngleAxisT           = typename SensorBaseT::AngleAxisT;
 
 private:
     using SensorBaseT::num_state;
@@ -183,9 +183,8 @@ public:
         // - and position as (T)ranslation-vector.          |R R R T|
         //                                                  |0 0 0 1|
         // consider m_update_vector
-        TransformationMatrix pose_transf;
-        pose_transf.setIdentity();
-
+        Matrix3T rot_mat;
+        Vector3T position;
         // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
         // - Handle bad (empty) quaternions and normalize
         QuaternionT orientation;
@@ -216,13 +215,13 @@ public:
             rpy[1] *= (int)m_update_vector[STATE_PITCH];
             rpy[2] *= (int)m_update_vector[STATE_YAW];
             orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized();
-            pose_transf = euler::quat_to_rot(orientation); // orientation part
+            rot_mat = euler::quat_to_rot(orientation); // orientation part
         }
         else DEBUG("Orientation is being ignored according to m_update_vector!\n");
 
         if(valid_position)
         {
-            pose_transf.translation() = Vector3T{
+            position = Vector3T{
                 msg->pose.position.x * (int)m_update_vector[STATE_X],
                 msg->pose.position.y * (int)m_update_vector[STATE_Y],
                 msg->pose.position.z * (int)m_update_vector[STATE_Z]}; // position part
@@ -230,13 +229,15 @@ public:
         else DEBUG("Position is being ignored according to m_update_vector!\n");
 
         // 3. Transform pose to fusion frame
-        pose_transf = transform * pose_transf;
+        rot_mat = transform.rotation() * rot_mat;
+        position = transform.rotation() * position + transform.translation();
 
         // 4. Compute measurement vector
         Vector6T measurement;
         measurement.setZero();
-        measurement.template head<3>() = pose_transf.translation();
-        measurement.template tail<3>() = euler::get_euler_rpy(pose_transf.rotation());
+        measurement.template head<3>() = position;
+        measurement.template tail<3>() = euler::get_euler_rpy(rot_mat);
+        std::cout <<"ET:" << measurement.transpose() <<"\n";
 
         // 5. Rotate Covariance to fusion frame
         Matrix6T rot6d;
