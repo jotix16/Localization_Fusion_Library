@@ -27,7 +27,7 @@ int main()
 
     StateVector state = StateVector::Ones();
 
-    gps.initialize(state, Eigen::Isometry3d::Identity(), latitude, longitude, hae_altitude, Eigen::Isometry3d::Identity());
+    gps.initialize(state, Eigen::Matrix3d::Identity(), latitude, longitude, hae_altitude, Eigen::Isometry3d::Identity());
     latitude=51.057564;
     longitude=13.746013;
     hae_altitude=1222.0;

@@ -84,7 +84,7 @@ public:
     }
 
     void initialize(const StateVector& state,
-                    const TransformationMatrix R_map_enu,
+                    const Matrix3T R_map_enu,
                     T latitude, T longitude, T hae_altitude,
                     const TransformationMatrix& T_bl_gps)
     {

@@ -43,9 +43,9 @@ public:
     using Matrix        = typename SensorBaseT::Matrix;
     using Matrix6T      = typename SensorBaseT::Matrix6T;
     using Matrix4T      = typename SensorBaseT::Matrix4T;
+    using Matrix3T      = typename SensorBaseT::Matrix3T;
     using Vector6T      = typename SensorBaseT::Vector6T;
     using Vector3T      = typename SensorBaseT::Vector3T;
-    using Matrix3T      = typename SensorBaseT::Matrix3T;
 
     using TransformationMatrix = typename SensorBaseT::TransformationMatrix;
     using QuaternionT          = typename SensorBaseT::QuaternionT;
@@ -65,7 +65,7 @@ private:
     using SensorBaseT::m_debug_stream;
 
     bool m_init_orientation;
-    TransformationMatrix m_R_map_enu;
+    Matrix3T m_R_map_enu;
 
 public:
     Imu(){}; // default constructor
@@ -105,12 +105,11 @@ public:
 
         // R_map_enu = R_map_bl * R_bl_imu * R_enu_imu^-1
         m_R_map_enu = T_map_bl.rotation() * T_bl_imu.rotation() * euler::quat_to_rot(q_enu_imu).transpose();
-        m_R_map_enu.translation() = Vector3T::Zero();
 
         m_init_orientation = true;
 
         // ------------- DEBUG
-        q_enu_imu = euler::rot_to_quat(m_R_map_enu.rotation()).normalized(); //  q_enu_imu is holding q_map_bl, used only for debugging
+        q_enu_imu = euler::rot_to_quat(m_R_map_enu).normalized(); //  q_enu_imu is holding q_map_bl, used only for debugging
         DEBUG("R_MAP_BL:\n" << T_map_bl.rotation() << "\nP_MAP_BL: " << T_map_bl.translation().transpose() << "\n");
         DEBUG("Initialized at\n"
             << "--Rotation:\n" << m_R_map_enu.rotation() << std::endl
@@ -334,12 +333,10 @@ public:
         }
 
         auto rot_meas = euler::quat_to_rot(orientation);
-        auto rot_map_enu = m_R_map_enu.rotation();
         auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
 
         // 2. Transform measurement to fusion frame
-        rot_meas = rot_map_enu * rot_meas; // R_map_imu_meas
-        rot_meas = rot_meas * rot_imu_bl; // R_map_bl_meas
+        rot_meas = m_R_map_enu * rot_meas * rot_imu_bl; // R_map_enu * R_enu_imu *R_imu_bl
         auto measurement = euler::get_euler_rpy(rot_meas);
 
         // ------------- DEBUG
@@ -358,7 +355,7 @@ public:
                 covariance(i, j) = covariance_array[i + j*3];
             }
         }
-        covariance = rot_map_enu * covariance * rot_map_enu.transpose();
+        covariance = m_R_map_enu * covariance * m_R_map_enu.transpose();
         covariance = rot_imu_bl * covariance * rot_imu_bl.transpose(); // not sure if this is right
 
         // 4. Fill sub_measurement vector and sub_covariance matrix, sub_inovation vector
@@ -531,7 +528,7 @@ public:
         DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Acceleration: OUT -------------------\n");
     }
 
-    TransformationMatrix get_R_map_enu()
+    Matrix3T get_R_map_enu()
     {
         return m_R_map_enu;
     }
