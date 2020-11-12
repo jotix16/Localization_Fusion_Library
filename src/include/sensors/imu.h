@@ -304,17 +304,6 @@ public:
         // -- extract roll pitch yaw
         auto rpy = euler::get_euler_rpy(orientation.normalized());
 
-        // ---------------------------------
-        // ------------- DEBUG -------------
-        if (orientation.norm()-1.0 > 0.01)
-        {
-            orientation.normalize();
-        }
-        DEBUG("QUATER: " << orientation.vec().transpose() << " " << orientation.w() << "\n");
-        DEBUG("RPY1: " << rpy.transpose() << "\n");
-        // ---------------------------------
-        // ---------------------------------
-
         // -- ignore roll pitch yaw according to m_update_vector
         rpy[0] *= (int)m_update_vector[STATE_ROLL];
         rpy[1] *= (int)m_update_vector[STATE_PITCH];
@@ -328,12 +317,6 @@ public:
         // 2. Transform measurement to fusion frame
         rot_meas = m_R_map_enu * rot_meas * rot_imu_bl; // R_map_enu * R_enu_imu *R_imu_bl
         auto measurement = euler::get_euler_rpy(rot_meas);
-
-        // ------------- DEBUG-------------
-        // ---------------------------------
-        DEBUG("RPY1: " << measurement.transpose() << "\n");
-        // ---------------------------------
-        // ---------------------------------
 
         // 3. Transform covariance, not sure for the second transformation
         Matrix3T covariance;
@@ -359,8 +342,6 @@ public:
                 sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i] - offset, update_indices[j] - offset);
             }
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
-                // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
-                // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
         }
 
         DEBUG(" -> Noise from orientation msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
@@ -414,7 +395,7 @@ public:
                 covariance(i,j) = covariance_array[i*ORIENTATION_SIZE + j];
             }
         }
-        // -. Rotate Covariance to fusion frame
+        // - Rotate Covariance to fusion frame
         covariance = rot * covariance * rot.transpose();
 
         // 3. Fill sub_measurement vector and sub_covariance matrix, sub_inovation vector
@@ -467,7 +448,6 @@ public:
         DEBUG("\n");
         // 1. Write orientation in a useful form( Quaternion -> rotation matrix)
         // - Handle bad (empty) quaternions and normalize
-
         Vector3T measurement;
         Matrix3T covariance;
         for(uint i = 0; i<3; ++i)
@@ -480,13 +460,12 @@ public:
         measurement[0] = meas_msg.x * (int)m_update_vector[STATE_A_X];
         measurement[1] = meas_msg.y * (int)m_update_vector[STATE_A_Y];
         measurement[2] = meas_msg.z * (int)m_update_vector[STATE_A_Z]; // remove_grav --- wrong
-
-
         // std::cout << "G: " << measurement[2]<< "\n";
 
-        // - Transform measurement to fusion frame
+        // 2. Transform measurement to fusion frame
         auto rot = transform.rotation();
 
+        // 3. Remove gravity from the accelerations
         if (m_remove_gravity)
         {
             Vector3T gravity_acc;
@@ -509,8 +488,6 @@ public:
                 sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i] - offset, update_indices[j] - offset);
             }
             state_to_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
-                // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
-                // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
         }
 
         DEBUG(" -> Noise from acceleration msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(covariance_array, 3, 3));
