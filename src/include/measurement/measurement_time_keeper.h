@@ -103,6 +103,11 @@ public:
         return to_measurement_time(global_time_now) - m_t_last_temporal_update;
     }
 
+    inline tTime time_since_last_update(tTime meas_time) const
+    {
+        return meas_time - latest_timestamp();
+    }
+
 /**
  * @brief MeasurementTimeKeeper: Returns the latest time_stamp.
  *        Normally used to check if a new measurement comes from the past.

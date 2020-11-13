@@ -280,7 +280,8 @@ public:
         {
             DEBUG_W(std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n");
             // 1. temporal update
-            auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
+            // auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
+            auto dt = m_time_keeper.time_since_last_update(measurement.m_time_stamp);
             DEBUG_W("\n--------------- Wrapper: Temporal update, dt = "<< dt << ", t = " << m_time_keeper.to_global_time(measurement.m_time_stamp)  <<" ---------------\n");
             DEBUG_W("\n--------------- Wrapper: Temporal update, now = "<< time_now << ", stamp = " << measurement.m_time_stamp  <<" ---------------\n");
             if (dt < 0)

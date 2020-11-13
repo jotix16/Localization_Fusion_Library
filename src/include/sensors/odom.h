@@ -228,31 +228,30 @@ public:
         else DEBUG("Position is being ignored according to m_update_vector!\n");
 
         // 3. Transform pose to fusion frame
-        rot_mat = transform.rotation() * rot_mat;
-        position = transform.rotation() * position + transform.translation();
+        auto rot = transform.rotation();
+        rot_mat = rot * rot_mat;
+        position = rot * position + transform.translation();
 
         // 4. Compute measurement vector
         Vector6T measurement;
         measurement.setZero();
         measurement.template head<3>() = position;
         measurement.template tail<3>() = euler::get_euler_rpy(rot_mat);
-        std::cout <<"ET:" << measurement.transpose() <<"\n";
 
         // 5. Rotate Covariance to fusion frame
         Matrix6T rot6d;
         rot6d.setZero();
-        auto rot = transform.rotation();
         rot6d.template block<3,3>(0,0) = rot;
         rot6d.template block<3,3>(3,3) = rot;
 
         // 6. Compute measurement covariance
         Matrix6T covariance;
         covariance.setZero();
-        for (uint i = 0; i < TWIST_SIZE; i++)
+        for (uint i = 0; i < POSE_SIZE; i++)
         {
-            for (uint j = 0; j < TWIST_SIZE; j++)
+            for (uint j = 0; j < POSE_SIZE; j++)
             {
-                covariance(i,j) = msg->covariance[i*TWIST_SIZE + j];
+                covariance(i,j) = msg->covariance[i*POSE_SIZE + j];
             }
         }
         covariance = rot6d * covariance * rot6d.transpose();
