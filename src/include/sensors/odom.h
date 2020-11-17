@@ -385,6 +385,33 @@ public:
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Prepare_Twist: OUT -------------------\n");
     }
 
+    void debug_msg(const nav_msgs::msg::Odometry* msg, const TransformationMatrix transform_to_bl)
+    {
+        QuaternionT orientation;
+        orientation = {msg->pose.pose.orientation.w,
+                       msg->pose.pose.orientation.x,
+                       msg->pose.pose.orientation.y,
+                       msg->pose.pose.orientation.z};
+
+        DEBUG("\n------------------------ Message in: ------------------------n");
+        DEBUG("MSG frame: " << msg->header.frame_id << ", child_frame id: " << msg->child_frame_id << "\n");
+        DEBUG("R_sens_to_bl:\n" << transform_to_bl.rotation() << "\n");
+        DEBUG("rpy: " <<euler::get_euler_rpy(orientation.normalized()).transpose() << "\n");
+        DEBUG("pose: "
+                << msg->pose.pose.position.x << " "
+                << msg->pose.pose.position.y << " "
+                << msg->pose.pose.position.z << " "
+                << orientation.vec().transpose() << " " << orientation.w() << "\n");
+
+        DEBUG("twist: "
+                << msg->twist.twist.linear.x << " "
+                << msg->twist.twist.linear.y << " "
+                << msg->twist.twist.linear.z << " "
+                << msg->twist.twist.angular.x << " "
+                << msg->twist.twist.angular.y << " "
+                << msg->twist.twist.angular.z << " \n");
+        DEBUG("---------------------------------------------------------------\n\n");
+    }
 };
 
 using OdomD = Odom<double, motion_model::Ctrv2D::States>;

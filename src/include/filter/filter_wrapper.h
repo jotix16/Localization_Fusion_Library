@@ -506,6 +506,7 @@ public:
         // 8. Debugg information
         if(!debug) return msg;
         DEBUG_W("\n******************** State msg to be published: ********************\n")
+        DEBUG_W("orinetation-> roll: " << roll << ", pitch: " << pitch << ", yaw: " << yaw << "\n");
         DEBUG_W("pose: "
                 << msg.pose.pose.position.x << " "
                 << msg.pose.pose.position.y << " "
