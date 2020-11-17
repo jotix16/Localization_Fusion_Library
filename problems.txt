@@ -1,0 +1,3 @@
+-- Problems --
+[x] Negative dt in temporal update: the problem is how i transform time from ROSTIME to global time. I use only nsec instead of nsec&sec(since they are combined)
+[ ] Rosario bag: msg have covariances with huge values which cause NAN when inverting..

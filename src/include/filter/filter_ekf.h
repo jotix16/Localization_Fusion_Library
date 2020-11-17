@@ -24,103 +24,172 @@
 
 #pragma once
 
-#include<filter/filter_base.h>
-#include<utilities/filter_utilities.h>
-
+#include <filter/filter_base.h>
+#include <utilities/filter_utilities.h>
+#include <Eigen/Eigenvalues>
 
 namespace iav{ namespace state_predictor { namespace filter {
 
 //TO_DO: we can use dynamic process noise covariance. Especially for cases when
 // we don't want to increase the covariance estimation of the state when the vehicle is not moving
-template<class MotionModelT, int num_state, typename T = double>
-class FilterEkf : public FilterBase<MotionModelT, num_state, T>
+
+/**
+ * @brief Filter class that inherits from FilterBase class
+ * @param<template> MotionModelT - The motion model used. This defines the state to be estimated too.
+ * @param<template> T - Type that should be used for calculations(default is double, but float can be used too)
+ */
+//TO_DO: we can use dynamic process noise covariance. Especially for cases when
+// we don't want to increase the covariance estimation of the state when the vehicle is not moving
+template<class MotionModelT>
+class FilterEkf : public FilterBase<MotionModelT>
 {
 public:
-    using FilterBase_ = FilterBase<MotionModelT, num_state, T>;
-    using StateVector = typename FilterBase_::StateVector;
-    using StateMatrix = typename FilterBase_::StateMatrix;
-    using ObservationVector = typename FilterBase_::ObservationVector;
-    using ObservationMatrix = typename FilterBase_::ObservationMatrix;
-    using Matrix = typename FilterBase_::Matrix;
-    using Vector = typename FilterBase_::Vector;
-    using States = typename FilterBase_::States;
+    using FilterBaseT = FilterBase<MotionModelT>;
+    using T = typename FilterBaseT::T;
+    using Measurement = typename FilterBaseT::Measurement;
+    using StateVector = typename FilterBaseT::StateVector;
+    using StateMatrix = typename FilterBaseT::StateMatrix;
+    using Matrix = typename FilterBaseT::Matrix;
+    using Vector = typename FilterBaseT::Vector;
+    using States = typename FilterBaseT::States;
+    static constexpr uint num_state = FilterBaseT::num_state;
 
 public:
+    int debug = 1;
+
+    /**
+     * @brief FilterBase: Default constructor
+     */
     FilterEkf(){};
-    bool passes_mahalanobis(const ObservationVector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)
+
+    /**
+     * @brief FilterBase: Function that checks if measurement is an outlier by checking the mahalanobis distance
+     * @param[in] innovation - Innovation
+     * @param[in] hph_t_r_inv - (H P H^t)^-1
+     * @param[in] mahalanobis_threshold - Mahalanobis threshold
+     * @return true if measurement(innovation) is not an outlier, otherwise false
+     */
+    bool passes_mahalanobis(const Vector& innovation, const Matrix& hph_t_r_inv, const T& mahalanobis_threshold)
     {
         T sq_measurement_mahalanobis = innovation.dot(hph_t_r_inv * innovation);
         T threshold = mahalanobis_threshold * mahalanobis_threshold;
-        if(sq_measurement_mahalanobis <= threshold) return true;
-        return false;
-    }
-    bool temporal_update(const tTime& dt)
-    {
-        if(!this->m_initialized) return false;
-        StateMatrix jacobian;
-		this->m_motion_model.compute_jacobian_and_predict(jacobian,this->m_state, dt);
-        // wrap angles of state
-        for (uint i = States::ORIENTATION_OFFSET; i < States::POSITION_V_OFFSET; i++)
+        DEBUG("--------------- FilterEKF Mahalanobis: ")
+        DEBUG("threshold: " << threshold << " value: " << sq_measurement_mahalanobis
+            << " value2: " << innovation.transpose() * hph_t_r_inv * innovation << " ---------------\n");
+        if(sq_measurement_mahalanobis > threshold)
         {
-           this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
+            return false;
         }
-        
-        // update the covariance: P = J * P * J' + Q
-       this->m_covariance = jacobian *this->m_covariance * jacobian.transpose();
-       this->m_covariance.noalias() += dt *this->m_process_noise;
         return true;
     }
-    bool observation_update(const ObservationVector& z, const ObservationMatrix& H, const Matrix& R, const T& mahalanobis_threshold)
+
+    bool temporal_update(const tTime& dt)
     {
-        // Check if initialized
+        DEBUG("\n\t\t--------------- FilterEKF Temporal_Update: IN ---------------\n");
         if(!this->m_initialized) return false;
-        Matrix ph_t =this->m_covariance * H.transpose();
-        Matrix hph_t_r_inv = (H * ph_t + R).inverse();
-        ObservationVector innovation = z - H *this->m_state;
-        // wrap angles of innovation( NOT SURE )
-        // We could either allow to take an array with the indexes to the angles as input parameter()
-        // or do the one below where I search for 1.0 in matrix H which come only in the columns that correspond to state angle indexes.
-        // The corresponding rows' indexes should then be measurement/innovaion angles' indexes
-        for (uint j = States::ORIENTATION_OFFSET; j < States::POSITION_V_OFFSET; j++)
+
+        // get jacobian matrix
+        StateMatrix jacobian;
+		this->m_motion_model.compute_jacobian_and_predict(jacobian, this->m_state, dt);
+
+        // wrap angles of state
+        for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
         {
-            for (uint i = 0; i < H.rows(); i++)
+           if(debug > 1) DEBUG("--------------- FilterEKF before clamp, yaw: " << this->m_state[i] <<"\n");
+           this->m_state[i] = utilities::normalize_angle(this->m_state[i]);
+           if(debug > 1) DEBUG("--------------- FilterEKF after clamp, yaw: " << this->m_state[i] <<"\n");
+        }
+
+        // update the covariance: P = J * P * J' + Q
+        this->m_covariance = jacobian * this->m_covariance * jacobian.transpose();
+        // this->m_covariance.noalias() += dt*this->m_process_noise;
+        this->m_covariance.noalias() += this->m_process_noise;
+
+        DEBUG("\t\t--------------- FilterEKF Temporal_Update: OUT ---------------\n");
+        return true;
+    }
+
+    bool observation_update(const Measurement& m)
+    {
+        DEBUG("\n\t\t--------------- FilterEKF Observation_Update: IN ---------------\n");
+
+        // Check if initialized
+        if(!this->m_initialized)
+        {
+            DEBUG("\n---------------FilterEKF: Filter not initialized ---------------\n");
+            return false;
+        }
+        // DEBUG("H matrix: \n" << m.H << "\n");
+        Matrix ph_t = this->m_covariance * m.H.transpose();
+        Matrix hph_t_r_inv = (m.H * ph_t + m.R).inverse();
+
+        // Compute innovation
+        // avoid calculating innovation directly like
+        // innov = z - Hx, instead calculate it with a loop and update_indices
+        // O(n) complexity instead of O(mn)
+        // wrap angles of innovation
+        uint meas_index = 0U;
+        Vector innovation(m.m_update_indices.size());
+        for ( uint i = 0; i < m.m_update_indices.size(); i++)
+        {
+            meas_index = m.m_update_indices[i];
+            innovation[i] = m.z(i) - this->m_state(States::full_state_to_estimated_state[meas_index]);
+            // clamp
+            if(meas_index < STATE_V_X && meas_index > STATE_Z)
             {
-                if(H(i,j)==1.0)
-                {
-                    innovation[i] = utilities::clamp_rotation(innovation[i]);
-                    break;
-                }
+                innovation[i] = utilities::normalize_angle(innovation[i]);
             }
         }
-        // check mahalanobis distance
-        if(!passes_mahalanobis(innovation, hph_t_r_inv, mahalanobis_threshold)) return false;
 
-        Matrix K(num_state, z.rows());
+        // check mahalanobis distance
+        if(!passes_mahalanobis(innovation, hph_t_r_inv, m.m_mahalanobis_thresh))
+        {
+            return false;
+        }
+
+        Matrix K(num_state, m.z.rows());
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
+        // DEBUG(std::fixed << std::setprecision(9) << "ph_t:\n" << ph_t << "\n");
+
         this->m_state.noalias() += K * innovation;
+
         // wrap angles of state
-        for (uint i = States::ORIENTATION_OFFSET; i < States::POSITION_V_OFFSET; i++)
+        for (uint i = States::ORIENTATION_OFFSET_M; i < States::POSITION_V_OFFSET_M; i++)
         {
-           this->m_state[i] = utilities::clamp_rotation(this->m_state[i]);
+           this->m_state[i] = utilities::normalize_angle(this->m_state[i]);
         }
 
         // Correct the covariance using Joseph form for stability. This is the
         // same as P = P - K * H * P, but presents less of a problem in the
         // presense of floating point roundoff.
         // The Joseph Update has the form: P = (I - KH)P(I - KH)' + KRK'
-        StateMatrix I_K_H =this->m_identity;
-        I_K_H.noalias() -= K * H;
-       this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
-       this->m_covariance.noalias() += K * R * K.transpose();
+        // if covariance diagonal elements are near 0 or negative we give them a small value
+        StateMatrix I_K_H = this->m_identity;
+        I_K_H.noalias() -= K * m.H;
+        this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
+        this->m_covariance.noalias() += K * m.R * K.transpose();
+
+        for (uint i = 0; i < States::STATE_SIZE_M; i++)
+        {
+            if(this->m_covariance(i,i) < 0.0) this->m_covariance(i,i) = -this->m_covariance(i,i);
+            if(this->m_covariance(i,i) < 1e-9) this->m_covariance(i,i) = 1e-9;
+            // if(this->m_covariance(i,i) > 2.0) this->m_covariance(i,i) = 2.0;
+        }
+        DEBUG("\t\t--------------- FilterEKF Observation_Update: OUT ---------------\n");
         return true;
     }
 };
 
-using Ctrv_EKF2D = FilterEkf<motion_model::Ctrv2D, 6, double>;
-using Ctra_EKF2D = FilterEkf<motion_model::Ctra2D, 6, double>;
-using Ctra_EKF3D = FilterEkf<motion_model::Ctra3D, 6, double>;
+// define used static variable
+template<class MotionModelT>
+constexpr uint FilterEkf<MotionModelT>::num_state;
 
-} // end namespace filter 
+// explicit template initialization
+using Ctrv_EKF2D = FilterEkf<motion_model::Ctrv2D>;
+using Ctra_EKF2D = FilterEkf<motion_model::Ctra2D>;
+using Ctra_EKF3D = FilterEkf<motion_model::Ctra3D>;
+
+} // end namespace filter
 } // end namespace state_predictor
 } // end namespace iav

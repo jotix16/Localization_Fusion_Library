@@ -22,31 +22,137 @@
 */
 
 #pragma once
-namespace iav{ namespace state_predictor {
 
+#include <chrono>
+
+#define DEBUG_W(msg) if (m_debug) { m_debug_stream << msg; } //used in FilterWrapper
+#define DEBUG(msg) if (this->m_debug) { *(this->m_debug_stream) << msg; } // used everywhere else
+
+namespace iav{ namespace state_predictor {
   /**
    * These are constants that can be used everywhere under state_predictor namespace
    */
-  static constexpr double PI = 3.141592653589793;
-  static  constexpr double TAU = 6.283185307179587;
+  static constexpr double TAU = 6.283185307179586232;
+  static constexpr double PI = TAU*static_cast<double>(0.5);
 
   /**
    * These are types definitions that can be used everywhere under state_predictor namespace
    */
-  using tTime = double;
   using uint = unsigned short int;
+  using tTime = double;
+  // using tTime = float32_t;
+
+		/**
+		 * @brief Struct that defines the WallTime. It starts a timer when FilterWrapper is initialized.
+     * All global times are then returned relative to this time.
+		 */
+  struct Clock{
+    using clock_t = std::chrono::high_resolution_clock;
+    clock_t::time_point init_time;
+
+		/**
+		 * @brief Initializes Wall Time(i.e startes the timer)
+		 */
+    Clock(): init_time(clock_t::now()) {};
+
+		/**
+		 * @brief Used to return actual time.
+		 * @return time in seconds passed from init_time.
+		 */
+    inline tTime now() const
+    {
+      return std::chrono::duration<tTime>(clock_t::now() - init_time).count(); // returns time in seconds
+    }
+  };
+
+  /**
+   * Pose and twist messages' parameters
+  */
+  constexpr uint STATE_SIZE = 15;
+  constexpr uint POSE_SIZE = 6;
+  constexpr uint TWIST_SIZE = 6;
+  constexpr uint POSITION_SIZE = 3;
+  constexpr uint ORIENTATION_SIZE = 3;
+  constexpr uint LINEAR_VELOCITY_SIZE = 3;
+  constexpr uint ACCELERATION_SIZE = 3;
+
+  constexpr uint STATE_X = 0U;       ///< index of x position
+  constexpr uint STATE_Y = 1U;       ///< index of y position
+  constexpr uint STATE_Z = 2U;       ///< index of z position
+  constexpr uint STATE_ROLL= 3U;     ///< index of roll position
+  constexpr uint STATE_PITCH= 4U;    ///< index of pitch position
+  constexpr uint STATE_YAW= 5U;      ///< index of yaw position
+  constexpr uint STATE_V_X = 6U;     ///< index of x velocity
+  constexpr uint STATE_V_Y = 7U;     ///< index of y velocity
+  constexpr uint STATE_V_Z = 8U;     ///< index of z velocity
+  constexpr uint STATE_V_ROLL = 9U;  ///< index of roll velocity
+  constexpr uint STATE_V_PITCH= 10U; ///< index of pitch velocity
+  constexpr uint STATE_V_YAW= 11U;   ///< index of yaw velocity
+  constexpr uint STATE_A_X = 12U;    ///< index of x acceleration
+  constexpr uint STATE_A_Y = 13U;    ///< index of y acceleration
+  constexpr uint STATE_A_Z = 14U;    ///< index of z acceleratio
 
 }  // namespace state_predictor
 }  // namespace iav
 
-namespace iav{ namespace state_predictor { namespace utilities {
+namespace iav{ namespace state_predictor{ namespace utilities{
+
+  /**
+   * @brief Templated function to print out arrays of different types T
+   * @param[template] T - type of data in array
+   * @param[in] arr - array to be printed
+   * @param[in] a - nr of rows
+   * @param[in] b - nr of columns
+   * @return the matrix as a string
+   */
+  template<typename T>
+  std::string printtt(T* arr, int a, int b=0){
+      std::ostringstream out;
+      for (int i = 0; i < a; i++)
+      {
+          for (int j = 0; j < b; j++)
+          {
+              out << " " << arr[i*a+j];
+          }
+          out << "\n";
+      }
+      return out.str();
+  }
+
+  /**
+   * @brief Templated function to print out arrays of different types T
+   * @param[template] T - type of data in array
+   * @param[in] arr - std::array to be printed
+   * @param[in] a - nr of rows
+   * @param[in] b - nr of columns
+   * @return the matrix as a string
+   */
+  template<typename T, long unsigned int size>
+  std::string printtt(std::array<T, size> arr, int a, int b=0){
+      std::ostringstream out;
+      for (int i = 0; i < a; i++)
+      {
+          for (int j = 0; j < b; j++)
+          {
+              out << " " << arr[i*a+j];
+          }
+          out << "\n";
+      }
+      return out.str();
+  }
 
   /**
   * @brief Utility method keeping RPY angles in the range [-pi, pi].
   * @param[in] rotation - The rotation to bind
   * @return the bounded value
   */
-  double clamp_rotation(double rotation);
+ template <typename T>
+  double normalize_angle(T rotation)
+  {
+      while (rotation < -PI){rotation += TAU;};
+      while (rotation > PI){rotation -= TAU;};
+      return rotation;
+  }
 
   /**
   * @brief Utility method that transforms standard datatypes to string

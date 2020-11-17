@@ -50,8 +50,8 @@ vyaw = vyaw
 
 Resulting in the following jacobian:
 ```c
-1  0  -dt*vx*sin(yaw)-dt*vx*cos(yaw)  dt*cos(yaw)  -dt*sin(yaw)  0
-0  1  dt*vx*cos(yaw)-dt*vx*sin(yaw)   dt*sin(yaw)  dt*cos(yaw)   0
+1  0  -dt*vx*sin(yaw)-dt*vy*cos(yaw)  dt*cos(yaw)  -dt*sin(yaw)  0
+0  1  dt*vx*cos(yaw)-dt*vy*sin(yaw)   dt*sin(yaw)  dt*cos(yaw)   0
 0  0  1                               0            0             dt
 0  0  0                               1            0             0
 0  0  0                               0            1             0
@@ -89,8 +89,8 @@ ay = ay
 
 Resulting in the following jacobian:
 ```c
-1  0  -dt*vx*sin(yaw)-dt*vx*cos(yaw)-0.5*dt^2*ax*sin(yaw)-0.5*dt^2*ax*cos(yaw)  dt*cos(yaw)  -dt*sin(yaw)  0   0.5*dt^2*cos(yaw)  -0.5*dt^2*sin(yaw)
-0  1  dt*vx*cos(yaw)-dt*vx*sin(yaw)+0.5*dt^2*ax*cos(yaw)-0.5*dt^2*ax*sin(yaw)   dt*sin(yaw)  dt*cos(yaw)   0   0.5*dt^2*sin(yaw)  0.5*dt^2*cos(yaw)
+1  0  -dt*vx*sin(yaw)-dt*vy*cos(yaw)-0.5*dt^2*ax*sin(yaw)-0.5*dt^2*ay*cos(yaw)  dt*cos(yaw)  -dt*sin(yaw)  0   0.5*dt^2*cos(yaw)  -0.5*dt^2*sin(yaw)
+0  1  dt*vx*cos(yaw)-dt*vy*sin(yaw)+0.5*dt^2*ax*cos(yaw)-0.5*dt^2*ay*sin(yaw)   dt*sin(yaw)  dt*cos(yaw)   0   0.5*dt^2*sin(yaw)  0.5*dt^2*cos(yaw)
 0  0  1                                                                         0            0             dt  0                  0
 0  0  0                                                                         1            0             0   dt                 0
 0  0  0                                                                         0            1             0   0                  dt
@@ -99,7 +99,7 @@ Resulting in the following jacobian:
 0  0  0                                                                         0            0             0   0                  1
 ```
 
-## 2D Models
+## 3D Models
 ### CTRA (Constant turning rate and acceleration)
 This model follows the same logic as the 2D motion model to extend the model for the 3d dimension(z-direction).
 The derivations get more complicated as we now have 2 more directions to consider. As the Jacobian gets very big the derivations are left as an exercise for the reader.
@@ -173,7 +173,7 @@ dpitch/dpitch = dt*0*vpitch - dt*0*vyaw
 dpitch/dyaw = dt*0*vpitch - dt*0*vyaw
 
 dyaw/droll = dt*cr/cp*vpitch - dt*sr/cp*vyaw
-dyaw/dpitch = -dt*sr*tp/cp*vpitch - dt*cr*tp/cp*vyaw
+dyaw/dpitch = dt*sr*tp/cp*vpitch + dt*cr*tp/cp*vyaw
 dyaw/dyaw = dt*0*vpitch + dt*0*vyaw
 ```
 
@@ -186,7 +186,7 @@ dyaw/dyaw = dt*0*vpitch + dt*0*vyaw
 For an easier understanding, the transformations that occur to the velocities and accelerations are rotations which in the general(3D) case can be described by the rotation matrix:
 
 
-![](images/rotation_matrix.PNG)
+![](../images/rotation_matrix.PNG)
 
 
 where alpha=yaw, beta=pitch and gamma=roll.
