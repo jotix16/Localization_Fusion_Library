@@ -160,7 +160,6 @@ public:
      * @param[in] transform_to_map - transf from sensor frame of msg to map frame where pose is fused
      * @param[in] transform_to_base_link - transf from sensor frame of msg to base_link frame where twist is fused
      */
-
     bool odom_callback(
         const std::string& topic_name,
         nav_msgs::msg::Odometry* msg,
@@ -210,7 +209,6 @@ public:
      * @param[in] msg - pointer to the gps msg of the measurement
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame
      */
-    //TO_DO: have to use local msg or get full info from msg in filter_node
     bool gps_callback(
         const std::string& topic_name,
         sensor_msgs::msg::NavSatFix* msg,
@@ -423,7 +421,6 @@ public:
         return true;
     }
 
-
     /**
      * @brief FilterWrapper: Function that creates an Odometry msg with data from the estimated state.
      * @return Odometry msg from the state. Not known values are set to 0
@@ -545,7 +542,7 @@ public:
 
     /**
      * @brief FilterWrapper: Function that inizializes configuration related parameters of the class.
-     * @param[out] config_path - path to .json configuration file
+     * @return config_path - path to .json configuration file
      */
     void configure(const char* config_path)
     {

@@ -223,7 +223,6 @@ class FilterNode
             }
         }
 
-
         /**
          * @brief FilterNode: Callback for receiving all IMU msgs. It extracts transformation matrixes
          * to the fusing frames and calls the corresponding callback from filter_wrapper.
@@ -285,6 +284,12 @@ class FilterNode
             }
         }
 
+        /**
+         * @brief FilterNode: Callback for receiving all GPS msgs. It extracts transformation matrixes
+         * to the fusing frames and calls the corresponding callback from filter_wrapper.
+         * @param[in] msg - reference to the GPS msg of the measurement
+         * @param[string] topic_name - name of the topic where we listened the message
+         */
         void gps_callback(const GpsMsg::ConstPtr& msg, std::string topic_name)
         {
             // std::stringstream ss;
@@ -326,8 +331,6 @@ class FilterNode
                 publish_current_state();
             }
         }
-
-
 
         void pose_callback(const PoseWithCovStampedMsg::ConstPtr& msg)
         {
@@ -437,12 +440,12 @@ class FilterNode
                 msg_loc.linear_acceleration_covariance[i] = msg->linear_acceleration_covariance[i];
             }
         }
+
         /**
          * @brief FilterNode: Helper function to transform ros NavSatFix to idl(ros2)_NavSatFix
          * @param[in] msg - reference to the ROS msg to be transformed
          * @param[inout] msg_loc - reference to the msg[idl(ROS2)] to be filled and returned
          */
-
         void to_local_navsat_msg(const GpsMsg::ConstPtr& msg, GpsMsgLocFusLib &msg_loc)
         {
             // status
@@ -561,7 +564,6 @@ class FilterNode
             m_imu_publisher.publish(msg_pub);
             // ------------------------------- Visualize IMU ------------------------------------ //
         }
-
 
         /**
          * @brief FilterNode: Helper function to calculate T_map_enu from the first IMU measurement.

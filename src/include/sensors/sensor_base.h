@@ -71,6 +71,15 @@ protected:
 public:
     SensorBase(){};
 
+    /**
+     * @brief SensorBase: Funciton that initializes the IMU orientation after the first measurement(only if we are not ignoring orientation)
+     * @param[in] state - vector for the state we are estimating
+     * @param[in] R_map_enu - pointer to the imu msg of the measurement
+     * @param[in] latitude - latitude of first measurement
+     * @param[in] longitude - latitude of first measurement
+     * @param[in] hae_altitude - latitude of first measurement
+     * @param[in] T_bl_gps - transf from base_link to enu frame of the GPS
+     */
     SensorBase(const std::string topic_name, const bool* update_vector,
                const T mahalanobis_threshold, std::ostream* out_stream, bool debug):
     m_debug(debug),
@@ -81,6 +90,10 @@ public:
         if(debug) setDebug(out_stream);
     }
 
+    /**
+     * @brief SensorBase: Funciton that sets the debug steam for the sensor
+     * @param[in] out_stream - debug stream
+     */
     void setDebug(std::ostream* out_stream)
     {
             m_debug_stream = out_stream;
@@ -88,6 +101,12 @@ public:
             DEBUG("\t\t\t----- /Sensor::"<< m_topic_name <<" is on!" << " ------\n");
             DEBUG("\t\t\t-----------------------------------------\n");
     }
+
+    /**
+     * @brief SensorBase: Funciton that extracts the rotation R_map_to_bl from the estimated state
+     * @param[in] state - vector for the state we are estimating
+     * @return return the rotation
+     */
     Matrix3T get_rotation_from_state(const StateVector& state)
     {
         T r ,p ,y;
@@ -100,6 +119,12 @@ public:
         return euler::quat_to_rot(euler::get_quat_rpy(r, p, y).normalized());
     }
 
+    /**
+     * @brief SensorBase: Funciton that extracts the translation P_map_to_bl from the estimated state
+     * @param[in] state - vector for the state we are estimating
+     * @param[in] R_map_enu - pointer to the imu msg of the measurement
+     * @return return the translation
+     */
     Vector3T get_translation_from_state(const StateVector& state)
     {
         T x ,y ,z;
@@ -111,7 +136,6 @@ public:
         z = z_ix < STATE_SIZE ? state(z_ix) : 0.0;
         return {x, y, z};
     }
-
 };
 
 template<typename T, typename States>

@@ -71,12 +71,28 @@ private:
 public:
     Imu(){}; // default constructor
 
+    /**
+     * @brief Imu: Constructor to initialize the imu object.
+     * @param[in] topic_name - vector for the state we are estimating, needed to compute T_map_bl(could use ros too, but first step to independence)
+     * @param[in] update_vector - pointer to the imu msg of the measurement
+     * @param[in] mahalanobis_threshold - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     * @param[in] out_stream - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     * @param[in] debug - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     * @param[in] remove_gravity - option to remove gravity from the acceleration part
+     */
     Imu(const std::string topic_name, const bool* update_vector,
          const T mahalanobis_threshold, std::ostream* out_stream, bool debug, bool remove_gravity)
         : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug), m_init_orientation(false), m_remove_gravity(remove_gravity)
         { }
 
-    void init(const StateVector& state,
+    /**
+     * @brief Imu: Funciton that initializes the IMU orientation after the first measurement(only if we are not ignoring orientation)
+     * @param[in] state - vector for the state we are estimating
+     * @param[in] msg - pointer to the imu msg of the measurement
+     * @param[in] T_bl_imu - transf from base_link frame to the sensor frame of msg
+     * @param[in] T_map_bl - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     */
+    void initialize(const StateVector& state,
          sensor_msgs::msg::Imu* msg,
          const TransformationMatrix& T_bl_imu,
          const TransformationMatrix& T_map_bl)
@@ -109,9 +125,10 @@ public:
     }
 
     /**
-     * @brief FilterNode: Callback for receiving all odom msgs. It processes all comming messages
+     * @brief Imu: Callback for receiving all odom msgs. It processes all comming messages
      * by considering transforming them in the fusing frame, considering the m_update_vector to ignore parts
      * of the measurements and capturing matrixes with faulty values.
+     * @param[in] state - vector for the state we are estimating
      * @param[in] msg - pointer to the imu msg of the measurement
      * @param[in] transform_to_world - transf from sensor frame of msg to world frame where orientation is fused
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
@@ -155,7 +172,7 @@ public:
             }
             else
             {
-                init(state, msg, transform_base_link_imu, transform_map_base_link);
+                initialize(state, msg, transform_base_link_imu, transform_map_base_link);
             }
         }
 
@@ -252,7 +269,7 @@ public:
     }
 
     /**
-     * @brief FilterWrapper: Prepares an orientation msg and fills the corresponding part of the measurement
+     * @brief Imu: Prepares an orientation msg and fills the corresponding part of the measurement
      * @param[in] msg - pointer to msg to be prepared
      * @param[in] transform_map_enu - transformation matrix T_map_enu (gives enu in map_frame)
      * @param[in] transform_bl_imu - transformation matrix T_bl_imu (gives imu in base_link frame)
@@ -342,7 +359,7 @@ public:
     }
 
     /**
-     * @brief FilterWrapper: Prepares a Twist msg and fills the corresponding part of the measurement
+     * @brief Imu: Prepares a Twist msg and fills the corresponding part of the measurement
      * @param[in] msg - pointer to msg to be prepared
      * @param[in] transform - transformation matrix to the frame of fusion(base_link frame)
      * @param[inout] sub_measurement - measurement vector to be filled
@@ -414,7 +431,7 @@ public:
     }
 
     /**
-     * @brief FilterWrapper: Prepares a Pose msg and fills the corresponding part of the measurement
+     * @brief Imu: Prepares a Pose msg and fills the corresponding part of the measurement
      * @param[in] msg - pointer to msg to be prepared
      * @param[in] transform - transformation matrix to the frame of fusion(world frame)
      * @param[inout] sub_measurement - measurement vector to be filled
@@ -491,11 +508,19 @@ public:
         DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Acceleration: OUT -------------------\n");
     }
 
+    /**
+     * @brief Imu: Getter function that returns the rotation from map to enu frame.
+     * @return R_map_enu (3x3Matrix)
+     */
     Matrix3T get_R_map_enu()
     {
         return m_R_map_enu;
     }
 
+    /**
+     * @brief Imu: Helper function that checks if IMU orientation is initialized.
+     * @return true/false
+     */
     bool ready()
     {
         return m_init_orientation;

@@ -73,16 +73,28 @@ private:
 public:
     Gps(){}; // default constructor
 
+    /**
+     * @brief Gps: Constructor to initialize the gps object.
+     * @param[in] topic_name - vector for the state we are estimating, needed to compute T_map_bl(could use ros too, but first step to independence)
+     * @param[in] update_vector - pointer to the gps msg of the measurement
+     * @param[in] mahalanobis_threshold - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     * @param[in] out_stream - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     * @param[in] debug - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     */
     Gps(const std::string topic_name, const bool* update_vector,
          const T mahalanobis_threshold, std::ostream* out_stream, bool debug)
         : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug)
         { }
 
-    inline bool ready() const
-    {
-        return m_initialized;
-    }
-
+    /**
+     * @brief Gps: Funciton that initializes the IMU orientation after the first measurement(only if we are not ignoring orientation)
+     * @param[in] state - vector for the state we are estimating
+     * @param[in] R_map_enu - pointer to the imu msg of the measurement
+     * @param[in] latitude - latitude of first measurement
+     * @param[in] longitude - latitude of first measurement
+     * @param[in] hae_altitude - latitude of first measurement
+     * @param[in] T_bl_gps - transf from base_link to enu frame of the GPS
+     */
     void initialize(const StateVector& state,
                     const Matrix3T R_map_enu,
                     T latitude, T longitude, T hae_altitude,
@@ -130,6 +142,7 @@ public:
             << "Translation: " << std::endl << m_T_map_utm.translation().transpose() << std::endl);
         DEBUG("\n\t\t--------------- Gps[" << m_topic_name<< "] INITIALIZING: OUT -------------------\n");
     }
+
     /**
      * @brief Gps: Callback for receiving all gps msgs. It processes all comming messages
      * by considering transforming them in the fusing frame, considering the m_update_vector to ignore parts
@@ -235,6 +248,15 @@ public:
         DEBUG(" -> GPS " << meas.print());
         DEBUG("\n\t\t--------------- Gps[" << m_topic_name<< "] Gps_callback: OUT -------------------\n");
         return meas;
+    }
+
+    /**
+     * @brief Gps: Helper function that checks if the T_map_to_enu transformation of the GPS is initialized.
+     * @return true/false
+     */
+    inline bool ready() const
+    {
+        return m_initialized;
     }
 };
 

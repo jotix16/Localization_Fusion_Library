@@ -124,6 +124,10 @@ public:
  */
     inline const MappingMatrix get_mapping() { return H; }
 
+/**
+ * @brief Measurement: Helping function to print measurement information.
+ * @return String with measurement information.
+ */
     std::string print()
     {
         std::ostringstream out;

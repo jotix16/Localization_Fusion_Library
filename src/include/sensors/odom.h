@@ -64,11 +64,28 @@ private:
 public:
     Odom(){};
 
+    /**
+     * @brief Odom: Constructor to initialize the odom object.
+     * @param[in] topic_name - vector for the state we are estimating, needed to compute T_map_bl(could use ros too, but first step to independence)
+     * @param[in] update_vector - pointer to the odom msg of the measurement
+     * @param[in] mahalanobis_threshold - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     * @param[in] out_stream - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     * @param[in] debug - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     */
     Odom(const std::string topic_name, const bool* update_vector,
          const T mahalanobis_threshold, std::ostream* out_stream, bool debug)
         : SensorBaseT(topic_name, update_vector, mahalanobis_threshold, out_stream, debug)
         { }
 
+    /**
+     * @brief Odom: Callback for receiving all odom msgs. It processes all comming messages
+     * by considering transforming them in the fusing frame, considering the m_update_vector to ignore parts
+     * of the measurements and capturing matrixes with faulty values. It is a special case of the default odom_callback
+     * as it only hanldes odom messages that have frame_id=m_odom_frame and child_frame_id=m_base_link_frame
+     * @param[in] state - vector for the state we are estimating, needed to compute T_map_bl(could use ros too, but first step to independence)
+     * @param[in] msg - odom msg
+     * @param[out] transformed and processed measurement corersponding to the msg
+     */
     Measurement odom_callback(
         const StateVector& state,
         nav_msgs::msg::Odometry* msg)
@@ -162,7 +179,15 @@ public:
         return meas;
     }
 
-
+    /**
+     * @brief Odom: Callback for receiving all odom msgs. It processes all comming messages
+     * by considering transforming them in the fusing frame, considering the m_update_vector to ignore parts
+     * of the measurements and capturing matrixes with faulty values.
+     * @param[in] state - vector for the state we are estimating, needed to compute T_map_bl(could use ros too, but first step to independence)
+     * @param[in] msg - odom msg
+     * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     * @param[out] transformed and processed measurement corersponding to the msg
+     */
     Measurement odom_callback(
         const StateVector& state,
         nav_msgs::msg::Odometry* msg,
@@ -481,6 +506,11 @@ public:
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Prepare_Twist: OUT -------------------\n");
     }
 
+    /**
+     * @brief Odom: Helper function that adds odom msg in the debug stream.
+     * @param[in] msg - odom msg
+     * @param[in] transform_to_bl - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
+     */
     void debug_msg(const nav_msgs::msg::Odometry* msg, const TransformationMatrix transform_to_bl)
     {
         QuaternionT orientation;

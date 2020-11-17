@@ -46,12 +46,12 @@ public:
     MeasurementTimeKeeper(): m_inizialized(false)
     {}
 
-/**
- * @brief MeasurementTimeKeeper:
- *        Synces last_temp_update and last_obs_update to the time_stamp of first measurement
- * @param[in] global_time_now - The global time from the WallTime when the measurement arrived.
- * @param[in] measurement_time_stamp - The time stamp of the measurement.
- */
+    /**
+     * @brief MeasurementTimeKeeper:
+     *        Synces last_temp_update and last_obs_update to the time_stamp of first measurement
+     * @param[in] global_time_now - The global time from the WallTime when the measurement arrived.
+     * @param[in] measurement_time_stamp - The time stamp of the measurement.
+     */
     void reset(tTime global_time_now, tTime measurement_time_stamp)
     {
         m_dt_to_global = global_time_now - measurement_time_stamp;
@@ -62,29 +62,29 @@ public:
         m_inizialized = true;
     }
 
-/**
- * @brief MeasurementTimeKeeper: Check if object of this class is initialized.
- * @return true if the Object from MeasurementTimeKeeper is initialized, otherwise false.
- */
+    /**
+     * @brief MeasurementTimeKeeper: Check if object of this class is initialized.
+     * @return true if the Object from MeasurementTimeKeeper is initialized, otherwise false.
+     */
     inline bool is_initialized() const
     {
        return m_inizialized;
     }
 
-/**
- * @brief MeasurementTimeKeeper: Updates the time keeper after a temporal update.
- * @param[in] dt - The time-difference for which the prediction was be performed.
- */
+    /**
+     * @brief MeasurementTimeKeeper: Updates the time keeper after a temporal update.
+     * @param[in] dt - The time-difference for which the prediction was be performed.
+     */
     void update_after_temporal_update(tTime dt)
     {
         m_t_last_temporal_update += dt;
     }
 
-/**
- * @brief MeasurementTimeKeeper: Updates the time keeper after an observation update.
- * @param[in] time_stamp - The time stamp of the measurement processed.
- * @param[in] global_time - The wall time when the measurement arrived.
- */
+    /**
+     * @brief MeasurementTimeKeeper: Updates the time keeper after an observation update.
+     * @param[in] time_stamp - The time stamp of the measurement processed.
+     * @param[in] global_time - The wall time when the measurement arrived.
+     */
     void update_with_measurement(tTime time_stamp, tTime global_time)
     {
         m_t_last_observation_update = time_stamp;
@@ -92,38 +92,53 @@ public:
         // if(debug) std::cout << "---------------Measurement Time Keeper: dt_global: " << m_dt_to_global<<"\n";
     }
 
-/**
- * @brief MeasurementTimeKeeper: Calculates the time difference since last temporal update.
- * @param[in] gloal_time_now - The wall time from which the time difference should be calculated.
- * @return The time difference from the last temporal update to global_time_now.
- *         dt = (global_time_now - m_dt_to_global) - m_t_last_temp_update
- */
+    /**
+     * @brief MeasurementTimeKeeper: Calculates the time difference since last temporal update.
+     * @param[in] gloal_time_now - The wall time from which the time difference should be calculated.
+     * @return The time difference from the last temporal update to global_time_now.
+     *         dt = (global_time_now - m_dt_to_global) - m_t_last_temp_update
+     */
     inline tTime time_since_last_temporal_update(tTime global_time_now) const
     {
         return to_measurement_time(global_time_now) - m_t_last_temporal_update;
     }
 
+    /**
+     * @brief MeasurementTimeKeeper: Calculates the time difference since last update.
+     * @param[in] meas_time - Timestamp of measurement from which the dt should be comptuted
+     * @return The time difference from the latest timestamp to the measurement timestamp.
+     */
     inline tTime time_since_last_update(tTime meas_time) const
     {
         return meas_time - latest_timestamp();
     }
 
-/**
- * @brief MeasurementTimeKeeper: Returns the latest time_stamp.
- *        Normally used to check if a new measurement comes from the past.
- * @return The latest time in meassurement-time-frame when either a temporal
- *         or an observation update took place.
- */
+    /**
+     * @brief MeasurementTimeKeeper: Returns the latest time_stamp.
+     *        Normally used to check if a new measurement comes from the past.
+     * @return The latest time in measurement-time-frame when either a temporal
+     *         or an observation update took place.
+     */
     inline tTime latest_timestamp() const
     {
         return m_t_last_observation_update < m_t_last_temporal_update ? m_t_last_temporal_update : m_t_last_observation_update;
     }
 
+    /**
+     * @brief MeasurementTimeKeeper: Transfrorms from global time to measurement time
+     * @param[in] global_time_now - Global time that has to be transformed
+     * @return Corresponding measurement time
+     */
     inline tTime to_measurement_time(tTime global_time_now) const
     {
         return global_time_now - m_dt_to_global;
     }
 
+    /**
+     * @brief MeasurementTimeKeeper: Transfrorms from measurement time to global time
+     * @param[in] meas_time_stamp - Measurement time that has to be transformed
+     * @return Corresponding global time
+     */
     inline tTime to_global_time(tTime meas_time_stamp) const
     {
         return meas_time_stamp + m_dt_to_global;

@@ -16,16 +16,26 @@ namespace iav{
 namespace state_predictor{
 namespace euler{
 
-  template <typename T>
-  inline T asin(T x)
- {
-    if (x < T(-1))
-      x = T(-1);
-    if (x > T(1))
-      x = T(1);
-    return std::asin(x);
- }
+    /**
+     * @brief asin: asin math funciton
+     * @param[in] x - input
+     * @return asin(x)
+     */
+	template <typename T>
+	inline T asin(T x)
+	{
+		if (x < T(-1))
+		x = T(-1);
+		if (x > T(1))
+		x = T(1);
+		return std::asin(x);
+	}
 
+    /**
+     * @brief euler: Funciton that transforms quaternion to rotation matrix
+     * @param[in] q - quaternion to be transformed
+     * @return return the rotation matrix
+     */
   	template <typename T>
 	Eigen::Matrix<T,3,3> quat_to_rot(const Eigen::Quaternion<T>& q)
 	{
@@ -43,6 +53,12 @@ namespace euler{
 		return rot_matr;
 	}
 
+    /**
+     * @brief euler: Get rpy angles in zyx ordering from the matrix
+     * @param[in] m_el - vector for the state we are estimating
+     * @param[in] solution_number - pointer to the imu msg of the measurement
+     * @return return the translation
+     */
   	template <typename T>
 	Eigen::Matrix<T,3,1> get_euler_rpy(const Eigen::Matrix<T,3,3> m_el, unsigned int solution_number = 1)
 	{
@@ -107,16 +123,25 @@ namespace euler{
 		}
 	}
 
+    /**
+     * @brief euler: Get rpy angles in zyx ordering from the quaternion
+     * @param[in] q - vector for the state we are estimating
+     * @param[in] solution_number - to decide which from two possibilities to use(1 is zyx ordering)
+     * @return return the rpy as a vector
+     */
   	template <typename T>
 	Eigen::Matrix<T,3,1> get_euler_rpy(const Eigen::Quaternion<T> q, unsigned int solution_number = 1)
 	{
 		return get_euler_rpy(quat_to_rot(q), solution_number);
 	}
 
-  /**@brief Set the quaternion using Euler angles
-   * @param yaw Angle around Y
-   * @param pitch Angle around X
-   * @param roll Angle around Z */
+    /**
+     * @brief euler: Set the quaternion using Euler angles
+     * @param[in] roll - Angle around Y
+     * @param[in] pitch - Angle around X
+     * @param[in] yaw - Angle around Y
+     * @return return the quaternion
+     */
   	template <typename T>
 	Eigen::Quaternion<T> get_quat_rpy(const T& roll, const T& pitch, const T& yaw)
 	{
@@ -136,8 +161,11 @@ namespace euler{
 			cosRoll * cosPitch * sinYaw - sinRoll * sinPitch * cosYaw);//z
 	}
 
-	/**@brief Get the matrix represented as a quaternion
-	* @param q The quaternion which will be set */
+    /**
+     * @brief euler: Get the matrix represented as a quaternion
+     * @param[in] m_el - rotation matrix
+     * @return return the quaternion
+     */
   	template <typename T>
 	Eigen::Quaternion<T> rot_to_quat(const Eigen::Matrix<T,3,3>& m_el)
 	{
