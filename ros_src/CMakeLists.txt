@@ -41,9 +41,8 @@ include_directories(
 #################################################################
 ######################### R O S #################################
 # Add a rosnode
-# add_executable(filter_ros_node src/ex_filter_wrapper.cpp)
-# target_link_libraries(filter_ros_node ${catkin_LIBRARIES} estimator)
-# add_dependencies(filter_node beginner_tutorials_generate_messages_cpp)
+add_executable(test_euler src/test_euler.cpp)
+target_link_libraries(test_euler ${catkin_LIBRARIES} estimator)
 
 add_executable(filter_ros_node src/filter_node.cpp)
 target_include_directories(filter_ros_node PRIVATE include)
