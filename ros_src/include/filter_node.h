@@ -246,7 +246,7 @@ class FilterNode
             {
                 // a. map_bl
                 transform_stamped1 = m_tf_buffer.lookupTransform(m_map_frame_id, m_baselink_frame_id, ros::Time(0), ros::Duration(1.0));
-                transform_map_base_link = tf2::transformToEigen(transform_stamped);
+                transform_map_base_link = tf2::transformToEigen(transform_stamped1);
 
                 // b. baselink frame to imu sensor frame for the velocity and acceleratation part of the imu msg
                 if (m_baselink_frame_id == msgFrame)
