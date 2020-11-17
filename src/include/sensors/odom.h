@@ -71,6 +71,100 @@ public:
 
     Measurement odom_callback(
         const StateVector& state,
+        nav_msgs::msg::Odometry* msg)
+    {
+        DEBUG("\n\t\t--------------- Odom[" << m_topic_name<< "] Odom_callback_identity: IN -------------------\n");
+        DEBUG( "\n" << msg->header.frame_id <<" ~~ m_update_vector: " << utilities::printtt(m_update_vector, 1, STATE_SIZE));
+
+        // 1.a. POSE PART
+        Vector6T pose_measurement;
+        pose_measurement[0] = msg->pose.pose.position.x;
+        pose_measurement[1] = msg->pose.pose.position.y,
+        pose_measurement[2] = msg->pose.pose.position.z;
+        pose_measurement.template tail<3>() = euler::get_euler_rpy(QuaternionT(
+            msg->pose.pose.orientation.w,
+            msg->pose.pose.orientation.x,
+            msg->pose.pose.orientation.y,
+            msg->pose.pose.orientation.z
+            ));
+
+        std::vector<uint> update_indices_pose;
+        for (uint i = 0; i < POSE_SIZE; ++i)
+        {
+            if(States::full_state_to_estimated_state[i] < STATE_SIZE && m_update_vector[i])
+            {
+                update_indices_pose.push_back(i);
+            }
+        }
+        size_t update_size_pose = update_indices_pose.size();
+
+        // 1.b. TWIST PART
+        Vector6T twist_measurement;
+        twist_measurement[0] = msg->twist.twist.linear.x;
+        twist_measurement[1] = msg->twist.twist.linear.y,
+        twist_measurement[2] = msg->twist.twist.linear.z;
+        twist_measurement[3] = msg->twist.twist.angular.x;
+        twist_measurement[4] = msg->twist.twist.angular.y;
+        twist_measurement[5] = msg->twist.twist.angular.z;
+
+        std::vector<uint> update_indices_twist;
+        for (uint i = POSE_SIZE; i < POSE_SIZE + TWIST_SIZE; ++i)
+        {
+            if(States::full_state_to_estimated_state[i] < STATE_SIZE && m_update_vector[i])
+                update_indices_twist.push_back(i);
+        }
+        size_t update_size_twist = update_indices_twist.size();
+
+        // 2. Initialize submeasurement related variables
+        size_t update_size = update_size_pose + update_size_twist;
+        Vector sub_measurement = Vector::Zero(update_size); // z
+        Vector sub_innovation = Vector::Zero(update_size); // z'-z
+        Matrix sub_covariance = Matrix::Zero(update_size, update_size);
+        MappingMatrix state_to_measurement_mapping = MappingMatrix::Zero(update_size, num_state);
+        std::vector<uint> sub_u_indices;
+        sub_u_indices.reserve(update_size); // preallocate memory
+        sub_u_indices.insert(sub_u_indices.end(), update_indices_pose.begin(), update_indices_pose.end());
+        sub_u_indices.insert(sub_u_indices.end(), update_indices_twist.begin(), update_indices_twist.end());
+
+        // 3.a. Fill the submeasurement for POSE
+        for (uint i = 0; i < update_size_pose; i++)
+        {
+            sub_measurement[i] = pose_measurement[update_indices_pose[i]];
+            sub_innovation[i] = sub_measurement[i] - state(States::full_state_to_estimated_state[update_indices_pose[i]]);
+            for (uint j = 0; j < update_size_pose; j++)
+            {
+                sub_covariance(i, j) = msg->pose.covariance[POSE_SIZE* update_indices_pose[i] + update_indices_pose[j]];
+            }
+            state_to_measurement_mapping(i , States::full_state_to_estimated_state[update_indices_pose[i]]) = 1.0;
+        }
+
+        // 3.b. Fill the submeasurement for TWIST
+        for (uint i = 0; i < update_size_twist; i++)
+        {
+            uint id_i = i + update_size_pose;
+            sub_measurement[id_i] = twist_measurement[update_indices_twist[i]-POSE_SIZE];
+            sub_innovation[id_i] = sub_measurement[id_i] - state(States::full_state_to_estimated_state[update_indices_twist[i]]);
+            for (uint j = 0; j < update_size_twist; j++)
+            {
+                sub_covariance(id_i, j + update_size_pose) = msg->pose.covariance[TWIST_SIZE * update_indices_twist[i] + update_indices_twist[j]];
+            }
+            state_to_measurement_mapping(id_i, States::full_state_to_estimated_state[update_indices_twist[i]]) = 1.0;
+        }
+
+        // 4. Create measurement to be handled
+        tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
+        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
+                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold);
+
+        DEBUG(" -> Odom " << meas.print());
+        debug_msg(msg, TransformationMatrix::Identity());
+        DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Odom_callback_identity: OUT -------------------\n");
+        return meas;
+    }
+
+
+    Measurement odom_callback(
+        const StateVector& state,
         nav_msgs::msg::Odometry* msg,
         const TransformationMatrix& transform_to_base_link)
     {
