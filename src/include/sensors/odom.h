@@ -72,7 +72,6 @@ public:
     Measurement odom_callback(
         const StateVector& state,
         nav_msgs::msg::Odometry* msg,
-        const TransformationMatrix& transform_to_map,
         const TransformationMatrix& transform_to_base_link)
     {
         DEBUG("\n\t\t--------------- Odom[" << m_topic_name<< "] Odom_callback: IN -------------------\n");
@@ -125,11 +124,9 @@ public:
         sub_u_indices.reserve(update_size); // preallocate memory
         sub_u_indices.insert(sub_u_indices.end(), update_indices_pose.begin(), update_indices_pose.end());
         sub_u_indices.insert(sub_u_indices.end(), update_indices_twist.begin(), update_indices_twist.end());
-        // if we just want to put update_indices_twist after update_indices_pose instaed of creating a new one
-        // update_indices_pose.insert(update_indices_pose.end(), update_indices_twist.begin(), update_indices_twist.end());
 
         // 3. Fill the submeasurement matrixes
-        prepare_pose(state, &(msg->pose), transform_to_map, sub_measurement,
+        prepare_pose(state, &(msg->pose), transform_to_base_link, sub_measurement,
                     sub_covariance, sub_innovation, state_to_measurement_mapping,
                     update_indices_pose, 0, update_size_pose,
                     valid_position, valid_orientation);
@@ -145,6 +142,7 @@ public:
         Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
                         sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold);
         DEBUG(" -> Odom " << meas.print());
+        debug_msg(msg, transform_to_base_link);
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Odom_callback: OUT -------------------\n");
         return meas;
     }
@@ -228,9 +226,10 @@ public:
         else DEBUG("Position is being ignored according to m_update_vector!\n");
 
         // 3. Transform pose to fusion frame
-        auto rot = transform.rotation();
-        rot_mat = rot * rot_mat;
-        position = rot * position + transform.translation();
+        auto transform_inv = transform.inverse(); // T_sensor_bl
+        auto rot = transform_inv.rotation(); // R_sensor_bl
+        position += rot_mat *  transform_inv.translation(); // position in map frame: P_map_bl = P_map_sensor + R_map_sensor*P_sensor_bl
+        rot_mat *= rot; // R_map_bl = R_map_sensor * R_sensor_bl
 
         // 4. Compute measurement vector
         Vector6T measurement;

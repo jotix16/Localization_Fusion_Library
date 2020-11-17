@@ -164,11 +164,19 @@ public:
     bool odom_callback(
         const std::string& topic_name,
         nav_msgs::msg::Odometry* msg,
-        const TransformationMatrix& transform_to_map, // can get from the state for the futer toward ros independence
-        const TransformationMatrix& transform_to_base_link)
+        const TransformationMatrix& transform_to_base_link,
+        bool odom_bl=false)
     {
-       Measurement m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg, transform_to_map, transform_to_base_link);
-       handle_measurement(m);
+        if (odom_bl)
+        {
+            Measurement m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg);
+            handle_measurement(m);
+        }
+        else
+        {
+            Measurement m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg, transform_to_base_link);
+            handle_measurement(m);
+        }
     }
 
     /**

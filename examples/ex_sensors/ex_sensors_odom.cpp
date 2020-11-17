@@ -31,12 +31,12 @@ int main()
     msg.twist.twist.angular.x = 0.0; msg.twist.twist.angular.y = 0.0; msg.twist.twist.angular.z = 12.0;
     for (int i = 0; i < 6; i++)
     {
-       msg.pose.covariance[i+i*6] = 1e-9; msg.twist.covariance[i+i*6]= 1e-9; 
+       msg.pose.covariance[i+i*6] = 1e-9; msg.twist.covariance[i+i*6]= 1e-9;
     }
-    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity());
     msg.header.stamp.sec = 3331;
-    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
-    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity());
+    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity());
+    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity());
+    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity());
+    odom.odom_callback(state, &msg, Eigen::Isometry3d::Identity());
 }

@@ -176,29 +176,31 @@ class FilterNode
          */
         void odom_callback(const OdomMsg::ConstPtr& msg, std::string topic_name)
         {
-            TransformationMatrix transform_to_map;
-            TransformationMatrix transform_to_base_link;
 
             // 1. get transformations from map and base_link to the sensor frame
-            std::string msgFrame = (msg->header.frame_id == "" ? m_baselink_frame_id : msg->header.frame_id);
             std::string msgChildFrame = (msg->child_frame_id == "" ? m_baselink_frame_id : msg->child_frame_id);
-            geometry_msgs::TransformStamped transformStamped1;
-            geometry_msgs::TransformStamped transformStamped2;
+            std::string msgFrame = (msg->header.frame_id == "" ? m_odom_frame_id : msg->header.frame_id);
+            if (msgFrame != m_odom_frame_id)
+            {
+                ROS_ERROR_STREAM("The pose part of odometry sensor must be in odom frame:" << m_odom_frame_id
+                << ", instead of the given frame: " << msgFrame <<"\n");
+                return;
+            }
+            TransformationMatrix transform_to_base_link;
+            geometry_msgs::TransformStamped transformStamped;
+            bool odom_bl = false; // pose is in odom frame and twist in baselink frame
             try
             {
-                // a. map frame to sensor frame for the pose part of msg
-                transformStamped1 = m_tf_buffer.lookupTransform(m_map_frame_id, msgFrame ,ros::Time(0), ros::Duration(1.0));
-                transform_to_map = tf2::transformToEigen(transformStamped1);
-
-                if (m_baselink_frame_id == msgFrame)
+                if (m_baselink_frame_id == msgChildFrame)
                 {
+                    odom_bl = true;
                     transform_to_base_link.setIdentity();
                 }
                 else
                 {
                     // b. base_link frame to sensor frame for the twist part of msg
-                    transformStamped2 = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgChildFrame, ros::Time(0), ros::Duration(1.0));
-                    transform_to_base_link = tf2::transformToEigen(transformStamped2);
+                    transformStamped = m_tf_buffer.lookupTransform(m_baselink_frame_id, msgChildFrame, ros::Time(0), ros::Duration(1.0));
+                    transform_to_base_link = tf2::transformToEigen(transformStamped);
                 }
             }
             catch (tf2::TransformException &ex)
@@ -212,69 +214,15 @@ class FilterNode
             OdomMsgLocFusLib msg_loc;
             to_local_odom_msg(msg, msg_loc);
 
-            // test_odom(msg, msg_loc, transformStamped1, transform_to_map);
             // 2. call filter's odom_callback
             // ros_info_msg(msg_loc);
-            m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_map, transform_to_base_link);
+            m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_base_link, odom_bl);
 
             // 3. publish updated base_link frame
             publish_current_state();
         }
 
-        void test_odom(const OdomMsg::ConstPtr& msg, OdomMsgLocFusLib msg_loc, geometry_msgs::TransformStamped transformStamped, TransformationMatrix transform_to_map)
-        {
-            tf2::Transform targetFrameTrans; tf2::fromMsg(transformStamped.transform, targetFrameTrans);
 
-            tf2::Quaternion q_tf; tf2::fromMsg(msg->pose.pose.orientation, q_tf); q_tf.normalize();
-
-            tf2::Stamped<tf2::Transform> poseTmp;
-            poseTmp.setOrigin(tf2::Vector3(msg->pose.pose.position.x,
-                                           msg->pose.pose.position.y,
-                                           msg->pose.pose.position.z));
-            poseTmp.setRotation(q_tf);
-            poseTmp.mult(targetFrameTrans, poseTmp);
-
-            // 7i. Finally, copy everything into our measurement and covariance objects
-            double roll, pitch, yaw; tf2::Matrix3x3 orTmp(poseTmp.getRotation()); orTmp.getRPY(roll, pitch, yaw);
-
-            Eigen::Matrix<T,6,1> measurement;
-            measurement(0) = poseTmp.getOrigin().x();
-            measurement(1) = poseTmp.getOrigin().y();
-            measurement(2) = poseTmp.getOrigin().z();
-            measurement(3) = roll;
-            measurement(4) = pitch;
-            measurement(5) = yaw;
-            // std::cout <<"TF:" << measurement.transpose() <<"\n";
-
-            Eigen::Quaternion<T> q_eg;
-            q_eg =  {msg->pose.pose.orientation.w,
-                     msg->pose.pose.orientation.x,
-                     msg->pose.pose.orientation.y,
-                     msg->pose.pose.orientation.z};
-            auto rpy = iav::state_predictor::euler::get_euler_rpy(q_eg);
-            q_eg = iav::state_predictor::euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized();
-
-            auto position = Eigen::Matrix<T,3,1>{
-                msg->pose.pose.position.x,
-                msg->pose.pose.position.y,
-                msg->pose.pose.position.z};
-
-            auto rot_mat = iav::state_predictor::euler::quat_to_rot(q_eg); // orientation part
-            rot_mat = transform_to_map.rotation() * rot_mat;
-            position = transform_to_map.rotation() * position + transform_to_map.translation();
-            Eigen::Matrix<T,6,1> measurement_eg;
-            measurement_eg.setZero();
-            measurement_eg.template head<3>() = position;
-            measurement_eg.template tail<3>() = iav::state_predictor::euler::get_euler_rpy(rot_mat);
-            std::cout <<"EG:" << measurement_eg.transpose() <<"\n";
-            auto diff = measurement_eg-measurement;
-            // std::cout <<"MM:" << diff.transpose() <<"\n";
-            if ( std::fabs(diff.transpose()*diff) > 0.1 )
-            {
-                std::cout << "ERROR IN PreparePose Odom !!!!!!!\n";
-                return;
-            }
-        }
         /**
          * @brief FilterNode: Callback for receiving all IMU msgs. It extracts transformation matrixes
          * to the fusing frames and calls the corresponding callback from filter_wrapper.
