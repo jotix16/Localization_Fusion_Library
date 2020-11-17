@@ -7,8 +7,8 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1/Frames1
-        - /Odometry1
         - /Odometry1/Covariance1/Position1
+        - /Odometry4/Shape1
       Splitter Ratio: 0.5
     Tree Height: 555
   - Class: rviz/Selection
@@ -60,72 +60,12 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        base_footprint:
-          Value: false
         base_link:
           Value: true
-        camera_center_aligned_depth_to_color_frame:
-          Value: false
-        camera_center_bottom_screw_frame:
-          Value: false
-        camera_center_color_frame:
-          Value: false
-        camera_center_color_optical_frame:
-          Value: false
-        camera_center_depth_frame:
-          Value: false
-        camera_center_depth_optical_frame:
-          Value: false
-        camera_center_link:
-          Value: false
-        camera_left_bottom_screw_frame:
-          Value: false
-        camera_left_depth_frame:
-          Value: false
-        camera_left_depth_optical_frame:
-          Value: false
-        camera_left_link:
-          Value: false
-        camera_mount_link:
-          Value: false
-        camera_pose_frame:
-          Value: false
-        camera_right_bottom_screw_frame:
-          Value: false
-        camera_right_depth_frame:
-          Value: false
-        camera_right_depth_optical_frame:
-          Value: false
-        camera_right_link:
-          Value: false
-        front_left_caster:
-          Value: false
-        front_left_caster_wheel:
-          Value: false
-        front_right_caster:
-          Value: false
-        front_right_caster_wheel:
-          Value: false
-        gps_link:
-          Value: false
-        house:
-          Value: false
-        imu_link:
-          Value: false
         map:
           Value: false
         odom:
           Value: true
-        sensor_housing_unit_link:
-          Value: false
-        utm:
-          Value: false
-        waterproof_case_center_link:
-          Value: false
-        waterproof_case_left_link:
-          Value: false
-        waterproof_case_right_link:
-          Value: false
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -135,47 +75,7 @@ Visualization Manager:
         map:
           odom:
             base_link:
-              camera_mount_link:
-                camera_pose_frame:
-                  {}
-                waterproof_case_center_link:
-                  camera_center_bottom_screw_frame:
-                    camera_center_link:
-                      camera_center_aligned_depth_to_color_frame:
-                        camera_center_color_optical_frame:
-                          {}
-                      camera_center_color_frame:
-                        {}
-                      camera_center_depth_frame:
-                        camera_center_depth_optical_frame:
-                          {}
-                waterproof_case_left_link:
-                  camera_left_bottom_screw_frame:
-                    camera_left_link:
-                      camera_left_depth_frame:
-                        camera_left_depth_optical_frame:
-                          {}
-                waterproof_case_right_link:
-                  camera_right_bottom_screw_frame:
-                    camera_right_link:
-                      camera_right_depth_frame:
-                        camera_right_depth_optical_frame:
-                          {}
-              front_left_caster:
-                front_left_caster_wheel:
-                  {}
-              front_right_caster:
-                front_right_caster_wheel:
-                  {}
-              house:
-                {}
-              imu_link:
-                {}
-              sensor_housing_unit_link:
-                gps_link:
-                  {}
-          utm:
-            {}
+              {}
       Update Interval: 0
       Value: true
     - Angle Tolerance: 0.10000000149011612
@@ -188,7 +88,7 @@ Visualization Manager:
           Frame: Local
           Offset: 1
           Scale: 1
-          Value: true
+          Value: false
         Position:
           Alpha: 0.10000000149011612
           Color: 255; 85; 0
@@ -246,6 +146,74 @@ Visualization Manager:
       Topic: /husky_velocity_controller/odom
       Unreliable: false
       Value: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: false
+      Enabled: true
+      Keep: 10000
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic: /jackal_velocity_controller/odom
+      Unreliable: false
+      Value: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: false
+      Enabled: true
+      Keep: 10000
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 85; 0; 255
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic: /odometry/filtered_map
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -274,16 +242,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 71.01007080078125
+      Distance: 3.791271686553955
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 25.00480842590332
-        Y: 6.177698135375977
-        Z: 8.372867584228516
+        X: 15.427373886108398
+        Y: 6.81648588180542
+        Z: 13.801226615905762
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
