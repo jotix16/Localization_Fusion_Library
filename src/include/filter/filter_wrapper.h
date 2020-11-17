@@ -170,12 +170,12 @@ public:
         if (odom_bl)
         {
             Measurement m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg);
-            handle_measurement(m);
+            return handle_measurement(m);
         }
         else
         {
             Measurement m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg, transform_to_base_link);
-            handle_measurement(m);
+            return handle_measurement(m);
         }
     }
 
@@ -263,7 +263,7 @@ public:
      * @brief FilterWrapper: Processes a measurement by feeding it to the filter's temporal & observation update.
      *        It initializes the time keeper and filter with the first measurement if they are not initialized.
      * @param[in] measurement - measurement to be processed
-     * @return true if processing was sucessful
+     * @return true if processing was sucessful( either filtered or reseted)
      */
     bool process_measurement(Measurement& measurement)
     {
@@ -282,7 +282,7 @@ public:
 
             // Initialize the filter with the first measurement
             reset(measurement, time_now);
-            return false;
+            return true;
         }
         else
         {
