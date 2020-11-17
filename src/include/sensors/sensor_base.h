@@ -88,8 +88,29 @@ public:
             DEBUG("\t\t\t----- /Sensor::"<< m_topic_name <<" is on!" << " ------\n");
             DEBUG("\t\t\t-----------------------------------------\n");
     }
+    Matrix3T get_rotation_from_state(const StateVector& state)
+    {
+        T r ,p ,y;
+        uint roll_ix = States::full_state_to_estimated_state[STATE_ROLL];
+        uint pitch_ix = States::full_state_to_estimated_state[STATE_PITCH];
+        uint yaw_ix = States::full_state_to_estimated_state[STATE_YAW];
+        r = roll_ix < STATE_SIZE ? state(roll_ix) : 0.0;
+        p = pitch_ix < STATE_SIZE ? state(pitch_ix) : 0.0;
+        y = yaw_ix < STATE_SIZE ? state(yaw_ix) : 0.0;
+        return euler::quat_to_rot(euler::get_quat_rpy(r, p, y).normalized());
+    }
 
-
+    Vector3T get_translation_from_state(const StateVector& state)
+    {
+        T x ,y ,z;
+        uint x_ix = States::full_state_to_estimated_state[STATE_X];
+        uint y_ix = States::full_state_to_estimated_state[STATE_Y];
+        uint z_ix = States::full_state_to_estimated_state[STATE_Z];
+        x = x_ix < STATE_SIZE ? state(x_ix) : 0.0;
+        y = y_ix < STATE_SIZE ? state(y_ix) : 0.0;
+        z = z_ix < STATE_SIZE ? state(z_ix) : 0.0;
+        return {x, y, z};
+    }
 
 };
 

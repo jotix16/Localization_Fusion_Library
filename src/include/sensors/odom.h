@@ -180,6 +180,8 @@ public:
         // - the orientation in form of a (R)otation-matrix |R R R T|
         // - and position as (T)ranslation-vector.          |R R R T|
         //                                                  |0 0 0 1|
+        auto state_rot = this->get_rotation_from_state(state);
+        auto state_translation =  this->get_translation_from_state(state);
         // consider m_update_vector
         Matrix3T rot_mat;
         Vector3T position;
@@ -207,21 +209,21 @@ public:
             // - consider m_update_vector
             // -- extract roll pitch yaw
             auto rpy = euler::get_euler_rpy(orientation);
-
-            // -- ignore roll pitch yaw according to m_update_vector
-            rpy[0] = m_update_vector[STATE_ROLL] ?  rpy[0] : state(States::full_state_to_estimated_state[STATE_ROLL]);
-            rpy[1] = m_update_vector[STATE_PITCH] ? rpy[1] : state(States::full_state_to_estimated_state[STATE_PITCH]);
-            rpy[2] = m_update_vector[STATE_YAW] ?   rpy[2] : state(States::full_state_to_estimated_state[STATE_YAW]);
-            orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized();
-            rot_mat = euler::quat_to_rot(orientation); // orientation part
+            auto rpy_state = euler::get_euler_rpy(Matrix3T(state_rot * transform.rotation())); // transform rpy in sensor frame R_map_bl * R_bl_sensor
+            // // -- ignore roll pitch yaw according to m_update_vector
+            rpy[0] = m_update_vector[STATE_ROLL] ?  rpy[0] : rpy_state[0];
+            rpy[1] = m_update_vector[STATE_PITCH] ? rpy[1] : rpy_state[1];
+            rpy[2] = m_update_vector[STATE_YAW] ?   rpy[2] : rpy_state[2];
+            rot_mat = euler::quat_to_rot(euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized()); // get rpy in rotation matrix form: R_map_sensor
         }
         else DEBUG("Orientation is being ignored according to m_update_vector!\n");
 
         if(valid_position)
         {
-            position[0] = m_update_vector[STATE_X] ? msg->pose.position.x : state(States::full_state_to_estimated_state[STATE_X]);
-            position[1] = m_update_vector[STATE_Y] ? msg->pose.position.y : state(States::full_state_to_estimated_state[STATE_Y]);
-            position[2] = m_update_vector[STATE_Z] ? msg->pose.position.z : state(States::full_state_to_estimated_state[STATE_Z]);
+            auto position_state = state_translation + state_rot * transform.translation(); // transform position from state in sensor frame P_map_bl + R_map_bl*P_bl_sensor
+            position[0] = m_update_vector[STATE_X] ? msg->pose.position.x : position_state[0];
+            position[1] = m_update_vector[STATE_Y] ? msg->pose.position.y : position_state[1];
+            position[2] = m_update_vector[STATE_Z] ? msg->pose.position.z : position_state[2]; // position P_map_sensor
         }
         else DEBUG("Position is being ignored according to m_update_vector!\n");
 
