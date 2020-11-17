@@ -272,7 +272,7 @@ public:
         tTime time_now = m_wall_time.now();
 
         if (!is_initialized()) {
-            DEBUG_W("\n");
+            DEBUG_W("Have to initialize!\n");
             DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.innovation.transpose() << "\n");
             DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.z.transpose() << "\n");
             // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
@@ -395,6 +395,7 @@ public:
                 }
             }
         }
+        bool huge_noise = false;
         for ( uint i = 0; i < measurement.m_update_indices.size(); i++)
         {
             if(i < STATE_SIZE)
@@ -404,7 +405,7 @@ public:
                     if(j < STATE_SIZE)
                     {
                         init_cov(States::full_state_to_estimated_state[measurement.m_update_indices[i]], States::full_state_to_estimated_state[measurement.m_update_indices[j]]) = measurement.R(i,j);
-                        if(measurement.R(i,j) > 60) return false;
+                        if(measurement.R(i,j) > 60) huge_noise = true;
                     }
                 }
             }
@@ -412,6 +413,7 @@ public:
 
 
         DEBUG_W("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
+        if (huge_noise) DEBUG_W("VERY BIG INITIAL ESTIMATION COVARIANCE\n");
         DEBUG_W("RESETING\n" << "State\n" << x0.transpose() << std::setprecision(9) << "\nInit Covariance:\n" << init_cov << "\nProcess Noise\n" << process_noise << std::setprecision(4));
         DEBUG_W("\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
         m_filter.reset(x0, init_cov, process_noise);
@@ -505,7 +507,7 @@ public:
 
         // 8. Debugg information
         if(!debug) return msg;
-        DEBUG_W("\n******************** State msg to be published: ********************\n")
+        DEBUG_W("\n******************** State msg to be published: ********************\n");
         DEBUG_W("orinetation-> roll: " << roll << ", pitch: " << pitch << ", yaw: " << yaw << "\n");
         DEBUG_W("pose: "
                 << msg.pose.pose.position.x << " "
@@ -524,9 +526,9 @@ public:
                 << msg.twist.twist.angular.y << " "
                 << msg.twist.twist.angular.z << " \n");
 
-        // DEBUG_W("pose cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.pose.covariance, POSE_SIZE, POSE_SIZE));
-        // DEBUG_W("twist cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.twist.covariance, TWIST_SIZE, TWIST_SIZE));
-        DEBUG_W("********************************************************************\n\n")
+        DEBUG_W("pose cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.pose.covariance, POSE_SIZE, POSE_SIZE));
+        DEBUG_W("twist cov:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg.twist.covariance, TWIST_SIZE, TWIST_SIZE));
+        DEBUG_W("********************************************************************\n\n");
 
         return msg;
     }

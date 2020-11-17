@@ -489,7 +489,7 @@ public:
                        msg->pose.pose.orientation.y,
                        msg->pose.pose.orientation.z};
 
-        DEBUG("\n------------------------ Message in: ------------------------n");
+        DEBUG("\n------------------------ Message in: ------------------------\n");
         DEBUG("MSG frame: " << msg->header.frame_id << ", child_frame id: " << msg->child_frame_id << "\n");
         DEBUG("R_sens_to_bl:\n" << transform_to_bl.rotation() << "\n");
         DEBUG("rpy: " <<euler::get_euler_rpy(orientation.normalized()).transpose() << "\n");

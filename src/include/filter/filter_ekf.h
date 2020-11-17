@@ -174,7 +174,7 @@ public:
         {
             if(this->m_covariance(i,i) < 0.0) this->m_covariance(i,i) = -this->m_covariance(i,i);
             if(this->m_covariance(i,i) < 1e-9) this->m_covariance(i,i) = 1e-9;
-            if(this->m_covariance(i,i) > 2.0) this->m_covariance(i,i) = 2.0;
+            // if(this->m_covariance(i,i) > 2.0) this->m_covariance(i,i) = 2.0;
         }
         DEBUG("\t\t--------------- FilterEKF Observation_Update: OUT ---------------\n");
         return true;
