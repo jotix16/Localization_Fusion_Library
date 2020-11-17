@@ -16,60 +16,6 @@ namespace iav{
 namespace state_predictor{
 namespace euler{
 
-
-// ------------------------------- TO BE DELETED
-  /**
-   * @brief Constructs a rotation using components of a quaternion.
-   *
-   * @param qw Quaternion w-coordinate
-   * @param qx Quaternion x-coordinate
-   * @param qy Quaternion y-coordinate
-   * @param qz Quaternion z-coordinate
-   */
-  template <typename T>
-  Eigen::Matrix<T,3,1> ToEulerAngles(Eigen::Quaternion<T> q)
-  {
-    T roll_ = std::atan2(T(2.0) * (q.w() * q.y() - q.x() * q.z()),
-                         T(2.0) * (q.w()*q.w() + q.z()*q.z()) -
-                             T(1.0));
-    T pitch_ = std::asin(T(2.0) * (q.w() * q.x() + q.y() * q.z()));
-    T yaw_ = std::atan2(T(2.0) * (q.w() * q.z() - q.x() * q.y()),
-                        T(2.0) * (q.w()*q.w() + q.y()*q.y()) -
-                            T(1.0));
-    return {roll_, pitch_, yaw_};
-  }
-
-  /**
-   * @brief Converts to a quaternion with a non-negative scalar part
-   * @return Quaternion encoding this rotation.
-   */
-  template <typename T>
-  Eigen::Quaternion<T> ToQuaternion(T roll, T pitch, T yaw) {
-    T coeff = T(0.5);
-    T r = roll * coeff;
-    T p = pitch * coeff;
-    T y = yaw * coeff;
-
-    T sr = std::sin(r);
-    T sp = std::sin(p);
-    T sy = std::sin(y);
-
-    T cr = std::cos(r);
-    T cp = std::cos(p);
-    T cy = std::cos(y);
-
-    T qw = cr * cp * cy - sr * sp * sy;
-    T qx = cr * sp * cy - sr * cp * sy;
-    T qy = cr * sp * sy + sr * cp * cy;
-    T qz = cr * cp * sy + sr * sp * cy;
-    if (qw < 0.0) {
-      return {-qw, -qx, -qy, -qz};
-    }
-    return {qw, qx, qy, qz};
-  }
-// -------------------------------
-
-
   template <typename T>
   inline T asin(T x)
  {
@@ -80,26 +26,25 @@ namespace euler{
     return std::asin(x);
  }
 
-  template <typename T>
+  	template <typename T>
 	Eigen::Matrix<T,3,3> quat_to_rot(const Eigen::Quaternion<T>& q)
 	{
-		// T d = q.squaredNorm();
 		T d = q.x()*q.x() + q.y()*q.y() + q.z()*q.z() + q.w()*q.w();
-		std:assert(d != T(0.0));
+		assert(d != T(0.0));
 		T s = T(2.0) / d;
 		T xs = q.x() * s,   ys = q.y() * s,   zs = q.z() * s;
 		T wx = q.w() * xs,  wy = q.w() * ys,  wz = q.w() * zs;
 		T xx = q.x() * xs,  xy = q.x() * ys,  xz = q.x() * zs;
 		T yy = q.y() * ys,  yz = q.y() * zs,  zz = q.z() * zs;
-    Eigen::Matrix<T,3,3> rot_matr;
+		Eigen::Matrix<T,3,3> rot_matr;
 		rot_matr << T(1.0) - (yy + zz), xy - wz, xz + wy,
-                xy + wz, T(1.0) - (xx + zz), yz - wx,
-                xz - wy, yz + wx, T(1.0) - (xx + yy);
-    return rot_matr;
+					xy + wz, T(1.0) - (xx + zz), yz - wx,
+					xz - wy, yz + wx, T(1.0) - (xx + yy);
+		return rot_matr;
 	}
 
-  template <typename T>
-	Eigen::Matrix<T,3,1> get_euler_rpy(const Eigen::Matrix<T,3,3>& m_el, unsigned int solution_number = 1)
+  	template <typename T>
+	Eigen::Matrix<T,3,1> get_euler_rpy(const Eigen::Matrix<T,3,3> m_el, unsigned int solution_number = 1)
 	{
 		struct Euler
 		{
@@ -154,25 +99,25 @@ namespace euler{
 
 		if (solution_number == 1)
 		{
-      return {euler_out.roll, euler_out.pitch, euler_out.yaw};
+      		return {euler_out.roll, euler_out.pitch, euler_out.yaw};
 		}
 		else
 		{
-      return {euler_out2.roll, euler_out2.pitch, euler_out2.yaw};
+      		return {euler_out2.roll, euler_out2.pitch, euler_out2.yaw};
 		}
 	}
 
-  template <typename T>
+  	template <typename T>
 	Eigen::Matrix<T,3,1> get_euler_rpy(const Eigen::Quaternion<T> q, unsigned int solution_number = 1)
-  {
-    return get_euler_rpy(quat_to_rot(q), solution_number);
-  }
+	{
+		return get_euler_rpy(quat_to_rot(q), solution_number);
+	}
 
   /**@brief Set the quaternion using Euler angles
    * @param yaw Angle around Y
    * @param pitch Angle around X
    * @param roll Angle around Z */
-  template <typename T>
+  	template <typename T>
 	Eigen::Quaternion<T> get_quat_rpy(const T& roll, const T& pitch, const T& yaw)
 	{
 		T halfYaw = T(yaw) * T(0.5);
@@ -184,7 +129,7 @@ namespace euler{
 		T sinPitch = std::sin(halfPitch);
 		T cosRoll = std::cos(halfRoll);
 		T sinRoll = std::sin(halfRoll);
-    return Eigen::Quaternion<T>(
+    	return Eigen::Quaternion<T>(
 			cosRoll * cosPitch * cosYaw + sinRoll * sinPitch * sinYaw, //w
 			sinRoll * cosPitch * cosYaw - cosRoll * sinPitch * sinYaw, //x
       		cosRoll * sinPitch * cosYaw + sinRoll * cosPitch * sinYaw, //y
@@ -193,7 +138,7 @@ namespace euler{
 
 	/**@brief Get the matrix represented as a quaternion
 	* @param q The quaternion which will be set */
-  template <typename T>
+  	template <typename T>
 	Eigen::Quaternion<T> rot_to_quat(const Eigen::Matrix<T,3,3>& m_el)
 	{
 		T trace = m_el(0,0) + m_el(1,1) + m_el(2,2);
@@ -225,7 +170,7 @@ namespace euler{
 			temp[j] = (m_el(j,i) + m_el(i,j)) * s;
 			temp[k] = (m_el(k,i) + m_el(i,k)) * s;
 		}
-    return Eigen::Quaternion<T>(temp[3], temp[0], temp[1], temp[2]);
+    	return Eigen::Quaternion<T>(temp[3], temp[0], temp[1], temp[2]);
 	}
 
 }  // namespace utilities

@@ -266,11 +266,10 @@ public:
                 sub_covariance(i + ix1, j + ix1) = covariance(update_indices[i], update_indices[j]);
             }
             state_to_sub_measurement_mapping(i + ix1, States::full_state_to_estimated_state[update_indices[i]]) = 1.0;
-                // if(sub_covariance(i,i) < 0.0) sub_covariance(i,i) = -sub_covariance(i,i);
-                // if(sub_covariance(i,i) < 1e-9) sub_covariance(i,i) = 1e-9;
         }
 
-        DEBUG(" -> Noise pose:\n" << std::fixed << std::setprecision(4) << sub_covariance  << "\n");
+        // DEBUG(" -> Noise pose:\n" << std::fixed << std::setprecision(4) << sub_covariance  << "\n");
+        DEBUG(" -> ROT pose: "<<update_size<<"\n" << std::fixed << std::setprecision(4) << rot << "\n");
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Prepare_Pose: OUT -------------------\n");
     }
 
@@ -383,7 +382,6 @@ public:
         }
 
         DEBUG(" -> ROT twist: "<<update_size<<"\n" << std::fixed << std::setprecision(4) << rot << "\n");
-        DEBUG(" -> Noise from twist msg:\n" << std::fixed << std::setprecision(4) << utilities::printtt(msg->covariance, 6, 6));
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Prepare_Twist: OUT -------------------\n");
     }
 
