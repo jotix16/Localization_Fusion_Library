@@ -1,4 +1,3 @@
-#include <Eigen/Eigen>
 #include <functional>
 #include <deque>
 #include <queue>
@@ -89,83 +88,90 @@ public:
         return true;
     }
 
+    bool process_measurement(DataT measurement)
+    {
+        predict(measurement.stamp - state.time);
+        update(measurement);
+    }
+
     StateDPtr get_state()
     {
         return StateDPtr(new StateT(state.data, state.time));
     }
 
-    void print(Statetype<T> s)
+    void print()
     {
-        std::cout << "Filte_: " << "<<" << s.data << ", " << s.time << ">>\n";
+        std::cout << "Filte_: " << "<<" << state.data << ", " << state.time << ">>\n";
     }
 };
 typedef Filter<double> FilterD;
 
-template<typename T=double>
+template<class Datatype, class Statetype, typename T=double>
 class Buffer
 {
     public:
-        typedef Datatype<T> DataT;
-        typedef Statetype<T> StateT;
+        typedef Datatype DataT; // time, data, operator(data1, data2) return data1<data2,
+        typedef Statetype StateT; // stamp, data
         typedef std::shared_ptr<DataT> DataTPtr;
         typedef std::shared_ptr<StateT> StateTPtr;
 
         typedef std::deque<DataTPtr> MeasurementHistoryDeque;
         typedef std::deque<StateTPtr> FilterStateHistoryDeque;
         typedef std::priority_queue<DataTPtr, std::vector<DataTPtr>, DataT> MeasurementQueue;
-        // top(): returns the top element
-        // empty(): returns true if queue empty
-        // size(): returns size of queue
-        // push(DataDPtr): inserts element and sorts the underlying container,
-        // emplace(): constructs element in-place and sorts the underlying container
-        // pop(): removes the top element
-        typedef std::function<bool(DataT)> UpdateCallback;
+        // top(): returns the top element                                               // empty(): returns true if queue empty
+        // size(): returns size of queue                                                // push(DataDPtr): inserts element and sorts the underlying container,
+        // emplace(): constructs element in-place and sorts the underlying container    // pop(): removes the top element
+        typedef std::function<bool(DataT)> ProcessMeasCallback;
         typedef std::function<bool(T)> PredictCallback;
-        typedef std::function<void(StateT)> PublishCallback;
+        typedef std::function<void()> PublishCallback;
         typedef std::function<StateTPtr()> GetStateCallback;
 
     public:
-        UpdateCallback m_update_callback;
+        ProcessMeasCallback m_process_measurement_callback;
         PredictCallback m_predict_callback;
         PublishCallback m_publish_callback;
         GetStateCallback m_get_state_callback;
 
         MeasurementQueue m_measurement_queue;
+        MeasurementHistoryDeque m_measurement_fifo;
         MeasurementHistoryDeque m_measurement_history;
         FilterStateHistoryDeque m_state_history;
 
     public:
         Buffer(){};
 
-        void set_update_function(UpdateCallback f){ m_update_callback = f;}
+        void set_process_measurement_function(ProcessMeasCallback f){ m_process_measurement_callback = f;}
         void set_predict_function(PredictCallback f){ m_predict_callback = f;}
         void set_publish_function(PublishCallback f){ m_publish_callback = f;}
         void set_get_state_function(GetStateCallback f){ m_get_state_callback = f;}
 
         void enqueue_measurement(DataTPtr data)
         {
+            std::cout << "Inserting: "; data->print(); std::cout<<"\n";
             m_measurement_queue.push(data);
+            // m_measurement_fifo.push(data);
         }
 
         /**
-         * - call integrate_function(Time t) that integrates all measurements up to time t
-         * - publish latest estimated state and the map_bl transformation
-         * - publish the accelerometer if required
-         * - clear out expired history data
+         * - [x]call integrate_function(Time t) that integrates all measurements up to time t
+         * - [x]publish latest estimated state and the map_bl transformation
+         * - [x]publish the accelerometer if required
+         * - []clear out expired history data
          **/
         void periodic_update(const T time)
         {
+            // auto temp_fifo = m_measurement_fifo;
             std::cout <<"Periodic update with time: " << time << "\n";
             integrate_measurement(time);
-            return;
+            // m_publish_callback();
         }
 
         /**
-         * - integrate all measurements with older timestamp than t
-         * - if any of the measurements is older than the current time of the filter -> go back to the time of the measurement
-         * - after any measurement integration add measurement and state in their respective history_dequeues
-         * - if no measurement for still keep updating up to the current time t
-         * - if filter not yet initialized don't do anything
+         * - [x]integrate all measurements with older timestamp than t
+         * - [x]if any of the measurements is older than the current time of the filter -> go back to the time of the measurement
+         * - [x]after any measurement integration add measurement and state in their respective history_dequeues
+         * - []if no measurement for still keep updating up to the current time t
+         * - [x]if filter not yet initialized assume the process measurement will take care of it(so do nothing)
         **/
         void integrate_measurement(const T time)
         {
@@ -182,7 +188,7 @@ class Buffer
             // - either happens after the current state(bigger timestamp than the current state)
             // - or for which there is a state in the state_history that happened before(this state in the history has smaller time_stamp than the meas)
             DataTPtr d = m_measurement_queue.top();
-            uint initial_size = static_cast<uint>(m_measurement_queue.size());
+
             while(!m_measurement_queue.empty())
             {
                 d = m_measurement_queue.top();
@@ -193,6 +199,7 @@ class Buffer
                 }
                 else if (d->stamp < m_state_history.back()->time)
                 {
+                    uint initial_size = static_cast<uint>(m_measurement_queue.size());
                     go_back_to_time(d->stamp);
                     std::cout << "Reverted to time: " << d->stamp << " that required the revertion of "
                     << static_cast<uint>(m_measurement_queue.size()) - initial_size<<" measurements.\n";
@@ -209,7 +216,8 @@ class Buffer
                     d = m_measurement_queue.top();
                     m_measurement_queue.pop();
 
-                    m_update_callback(*d);
+                    // integrate
+                    m_process_measurement_callback(*d);
                     m_state_history.push_back(m_get_state_callback());
                     m_measurement_history.push_back(d);
                 }
@@ -224,8 +232,8 @@ class Buffer
         }
 
         /**
-         * - Finds the latest filter state before the given timestamp and makes it the current state again and discards the later states
-         * - insert all measurements between the older filter timestamp and now into the measurements queue.
+         * - [x]Finds the latest filter state before the given timestamp and makes it the current state again and discards the later states
+         * - [x]insert all measurements between the older filter timestamp and now into the measurements queue.
         **/
         void go_back_to_time(T time)
         {
@@ -261,47 +269,99 @@ class Buffer
             }
         }
 
-        template<class Container>
-        void print(const Container& container, std::string name)
+        void clear_expired_history(const T up_to_time)
         {
-            std::cout << name << ": ";
-            for(auto n : container)
+            std::cout << "\n----- Buffer::clear_expired_history() -----"
+            << "\n Clear history up to(not including) time " << up_to_time << "\n";
+
+            int poppedMeasurements = 0;
+            int poppedStates = 0;
+
+            while (!m_measurement_history.empty() && m_measurement_history.front()->stamp < up_to_time)
             {
-                n->print();
+                m_measurement_history.pop_front();
+                poppedMeasurements++;
             }
-            std::cout << '\n';
-        }
 
-        void print(MeasurementQueue que)
-        {
-            std::cout << "Meas queue: ";
-            while(!que.empty())
+            while (!m_state_history.empty() && m_state_history.front()->time < up_to_time)
             {
-                auto t = que.top(); t->print();
-                que.pop();
+                m_state_history.pop_front();
+                poppedStates++;
             }
-            std::cout << "\n";
+
+            std::cout << "Popped " << poppedMeasurements << " measurements and " <<
+                poppedStates << " states from their respective queues." <<
+                    "\n---- Buffer::clear_expired_history() ----\n";
         }
 
-        void print()
+        void clear_measurement_queue()
         {
-
-            print(m_measurement_queue);
-            print(m_measurement_history, "Meas-history");
-            print(m_state_history, "Stat-history");
-            std::cout << "----------------------------------------\n";
+            while (!m_measurement_queue.empty()) //  && ros::ok()
+            {
+                m_measurement_queue.pop();
+            }
+            return;
         }
+
+        MeasurementQueue get_measurement_queue()
+        {
+            return m_measurement_queue;
+        }
+
+        MeasurementHistoryDeque get_measurement_history()
+        {
+            return m_measurement_history;
+        }
+
+        FilterStateHistoryDeque get_state_history()
+        {
+            return m_state_history;
+        }
+
 };
-typedef Buffer<double> BufferD;
+typedef Buffer<Datatype<double>, Statetype<double>, double> BufferD;
+
+
+template<class Container>
+void print(const Container& container, std::string name)
+{
+    std::cout << name << ": ";
+    for(auto n : container)
+    {
+        n->print();
+    }
+    std::cout << '\n';
+}
+
+template<class MeasurementQueue>
+void print(MeasurementQueue que)
+{
+    std::cout << "Meas queue: ";
+    while(!que.empty())
+    {
+        auto t = que.top(); t->print();
+        que.pop();
+    }
+    std::cout << "\n";
+}
+
+void print(BufferD b)
+{
+    print(b.get_measurement_queue());
+    print(b.get_measurement_history(), "Meas-history");
+    print(b.get_state_history(), "Stat-history");
+    std::cout << "----------------------------------------\n";
+}
+
 
 int main()
 {
     FilterD my_filter(DataD(0,0));
 
     BufferD b;
-    b.set_update_function([&my_filter](DataD d) { return my_filter.update(d);});
+    b.set_process_measurement_function([&my_filter](DataD d) { return my_filter.process_measurement(d);});
     b.set_predict_function([&my_filter](double t) { return my_filter.predict(t);});
-    b.set_publish_function([&my_filter](StateD s) { my_filter.print(s);});
+    b.set_publish_function([&my_filter]() { my_filter.print();});
     b.set_get_state_function([&my_filter]() { return my_filter.get_state();});
 
     // FilterStatePtr(new FilterState()) StateDPtr
@@ -311,19 +371,32 @@ int main()
     b.enqueue_measurement(DataDPtr(new DataD(4,3)));
     b.enqueue_measurement(DataDPtr(new DataD(5,4)));
 
-    std::cout <<"START\n";
-    b.print();
-    b.periodic_update(2);
-    b.print();
+    print(b);
+    b.periodic_update(3);
+    print(b);
 
     b.enqueue_measurement(DataDPtr(new DataD(6,2.5)));
-    b.print();
+    print(b);
     b.periodic_update(3);
-    b.print();
+    print(b);
 
+    // Edge case 1: Delayed measurement
     b.enqueue_measurement(DataDPtr(new DataD(7,1.5)));
+    print(b);
+    b.periodic_update(3);
+    print(b);
+
+    b.clear_expired_history(2);
+    print(b);
+    b.clear_measurement_queue();
+    print(b);
+
+    // Edge case 2: Our history doesnt go as back in history as required by measurement
+    b.enqueue_measurement(DataDPtr(new DataD(7,1.5)));
+    b.enqueue_measurement(DataDPtr(new DataD(7,2)));
+    print(b);
     b.periodic_update(4);
-    b.print();
+    print(b);
 }
 
     // two possible ways for callbacks: lambdas & std::bind
