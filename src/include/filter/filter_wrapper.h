@@ -66,6 +66,8 @@ public:
     using Measurement   = typename FilterT::Measurement;
     using MeasurementPtr   = typename std::shared_ptr<Measurement>;
     using States        = typename FilterT::States;
+    using StateCovTime  = typename FilterT::StateCovTime;
+    using StateCovTimePtr  = typename std::shared_ptr<StateCovTime>;
     using StateVector   = typename FilterT::StateVector;
     using StateMatrix   = typename FilterT::StateMatrix;
     using OdomT = typename sensors::Odom<T,States>;
@@ -340,6 +342,15 @@ public:
     inline const StateVector get_state() const
     {
         return m_filter.get_state();
+    }
+
+    /**
+     * @brief FilterWrapper: Getter function for the state estimation
+     * @return the state estimation vector
+     */
+    inline StateCovTimePtr get_state_ptr()
+    {
+        return StateCovTimePtr(new StateCovTime(get_last_measurement_time(), get_state(), get_covariance()));
     }
 
     /**

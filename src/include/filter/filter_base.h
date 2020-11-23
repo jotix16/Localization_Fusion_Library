@@ -47,6 +47,18 @@ public:
     using Matrix = typename Measurement::Matrix;
     using Vector = typename Measurement::Vector;
 
+public:
+    class StateCovTime
+    {
+        public:
+            tTime m_time_stamp;
+            StateVector m_state;
+            StateMatrix m_covariance;
+            StateCovTime(const tTime time_stamp, const StateVector state, const StateMatrix covariance)
+            : m_time_stamp{time_stamp}, m_state{state}, m_covariance{covariance}
+            {}
+    };
+
 protected:
     bool m_initialized;
     MotionModelT m_motion_model;
