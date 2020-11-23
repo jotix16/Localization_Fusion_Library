@@ -28,6 +28,7 @@
 #include <vector>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <assert.h>
 #include <buffer/filter_timer.h>
 
@@ -58,9 +59,7 @@ class Buffer : public CallBackTimer
         typedef std::function<T()> GetTimeNowCallback;
 
     public:
-        Buffer() : CallBackTimer()
-        {};
-
+        Buffer() : CallBackTimer() {}
         void set_process_measurement_function(ProcessMeasCallback f){ m_process_measurement_callback = f;}
         void set_predict_function(PredictCallback f){ m_predict_callback = f;}
         void set_publish_function(PublishCallback f){ m_publish_callback = f;}
@@ -69,7 +68,7 @@ class Buffer : public CallBackTimer
 
         void enqueue_measurement(DataTPtr data)
         {
-            std::cout << "Inserting: "; data->print(); std::cout<<"\n";
+            // std::cout << "Inserting: "; data->print(); std::cout<<"\n";
             m_measurement_raw.push(data);
         }
 
@@ -90,6 +89,7 @@ class Buffer : public CallBackTimer
 
         void swap_n_push()
         {
+            std::lock_guard<std::mutex> guard(m_meas_raw_mutex);
             if(m_measurement_queue.empty() && !m_measurement_raw.empty())
             {
                 std::swap(m_measurement_raw, m_measurement_queue);
@@ -254,6 +254,7 @@ class Buffer : public CallBackTimer
         GetTimeNowCallback m_get_time_now;
 
         MeasurementQueue m_measurement_raw;
+        std::mutex m_meas_raw_mutex;
         MeasurementQueue m_measurement_queue;
         MeasurementHistoryDeque m_measurement_history;
         FilterStateHistoryDeque m_state_history;
