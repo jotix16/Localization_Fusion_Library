@@ -87,7 +87,7 @@ struct SensorConfig{
         // make sure that components that are not part of each type of measurements
         // are 0s.
         m_type = type;
-        m_mahal_thresh = doc[sensor_name]["mahalanobis_thresh"].GetDouble();; //TO_DO:
+        m_mahal_thresh = doc[sensor_name]["mahalanobis_thresh"].GetDouble();
         for (int i = 0; i < STATE_SIZE; i++)
         {
             if(type == 0)

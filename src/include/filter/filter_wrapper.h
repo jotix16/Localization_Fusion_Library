@@ -264,6 +264,11 @@ public:
         {
             return process_measurement(measurement);
         }
+        else
+        {
+            //TO_DO: initialize the buffer
+        }
+
         return true;
     }
 
@@ -286,7 +291,8 @@ public:
             // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
             // and the filter is not set to any state, we reset it.
             // We only consider the parts that are allowed by update_vector
-            // TO_DO: any other way?
+            // TO_DO: any other way? -> If a part of the state is 0 and we get a measurement corresponding to eat we initialize
+            // it with the measurement and the coresponding diagonal element with the variance of the measurement
 
             // Initialize the filter with the first measurement
             reset(*measurement, time_now);
@@ -381,9 +387,6 @@ public:
      */
     bool reset(const Measurement& measurement, tTime time_now)
     {
-        //TO_DO: check if the measurement is stateful?
-        // either odometry or pose
-
         // 1. reset filter
         StateVector x0;
         x0.setZero();

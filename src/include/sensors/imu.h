@@ -155,8 +155,6 @@ public:
         // 1. Create vector the same size as the submeasurement
         // - its elements are the corresponding parts of the state we are estimating
         // - the size of this index-vector enables initializing of the submeasurement matrixes
-        // TO_DO: we are not ignoring nan & inf measurements
-
         // a- update_indeces for the ORIENTATION in the measurement
         size_t update_size_orientation = 0;
         std::vector<uint> update_indices_orientation;
@@ -259,7 +257,6 @@ public:
         }
 
         // 4. Create measurement to be handled
-        // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
         MeasurementPtr meas(new Measurement(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
                         sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold));

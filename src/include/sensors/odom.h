@@ -209,8 +209,6 @@ public:
         // 1. Create vector the same size as the submeasurement
         // - its elements are the corresponding parts of the state we are estimating
         // - the size of this index-vector enables initializing of the submeasurement matrixes
-        // TO_DO: we are not ignoring nan & inf measurements
-
         // a. POSE PART
         uint start_index, end_index;
         start_index = valid_position ?  0 : POSITION_SIZE;

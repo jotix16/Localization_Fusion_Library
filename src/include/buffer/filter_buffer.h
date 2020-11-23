@@ -190,7 +190,8 @@ class Buffer : public CallBackTimer
                     break;
                 }
             }
-            assert(ret_val == true);
+            assert(ret_val == true); // should not hapen, since we make sure in integrate_measurement before calling this function
+            //TO_DO: reset filter
 
             // search the right state
             DataTPtr last_history_measurement;

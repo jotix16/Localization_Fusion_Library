@@ -30,9 +30,6 @@
 
 namespace iav{ namespace state_predictor { namespace filter {
 
-//TO_DO: we can use dynamic process noise covariance. Especially for cases when
-// we don't want to increase the covariance estimation of the state when the vehicle is not moving
-
 /**
  * @brief Filter class that inherits from FilterBase class
  * @param<template> MotionModelT - The motion model used. This defines the state to be estimated too.
