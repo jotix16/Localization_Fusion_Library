@@ -92,6 +92,9 @@ private:
     bool m_debug;
     std::mutex m_callback_mutex;
 
+    // functions from ros/adtf node
+    std::function<T()> get_time_now;
+
 public:
     FilterWrapper() = default;
 
@@ -104,6 +107,10 @@ public:
         reset_config(config_path);
     }
 
+    void set_time_callback(std::function<T()> func)
+    {
+        get_time_now = func;
+    }
     /**
      * @brief FilterWrapper: Function that inizializes configuration related parameters and time-keeping
      * @param[in] config_path - path to .json configuration file
@@ -295,7 +302,7 @@ public:
                 DEBUG_W("\n--------------- DELAYED MEASURMENT!! ---------------\n");
                 return false;
             }
-            // std::lock_guard<std::mutex> guard(m_callback_mutex);
+
             if (m_filter.temporal_update(dt))
             {
                 m_time_keeper.update_after_temporal_update(dt);

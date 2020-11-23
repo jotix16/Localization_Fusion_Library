@@ -117,6 +117,7 @@ class FilterNode
             m_nh_param.param("config", config_file, std::string("WTF"));
             ROS_INFO_STREAM("Initialize FilterWrapper from path: " << config_file << "\n");
             m_filter_wrapper.reset_config(config_file.c_str());
+            m_filter_wrapper.set_time_callback([this]() { return get_time_now();});
 
             // 2. initialize publisher
             m_position_publisher = m_nh.advertise<OdomMsg>("odometry/filtered", 20);
@@ -168,6 +169,11 @@ class FilterNode
                         "must not match the map_frame or odom_frame.");
         }
 
+        inline T get_time_now()
+        {
+            return static_cast<T>(ros::Time::now().toSec());
+        }
+
         /**
          * @brief FilterNode: Callback for receiving all odom msgs. It extracts transformation matrixes
          * to the fusing frames and calls the corresponding callback from filter_wrapper.
@@ -176,7 +182,6 @@ class FilterNode
          */
         void odom_callback(const OdomMsg::ConstPtr& msg, std::string topic_name)
         {
-
             // 1. get transformations from map and base_link to the sensor frame
             std::string msgChildFrame = (msg->child_frame_id == "" ? m_baselink_frame_id : msg->child_frame_id);
             std::string msgFrame = (msg->header.frame_id == "" ? m_odom_frame_id : msg->header.frame_id);
