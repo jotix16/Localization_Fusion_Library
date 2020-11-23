@@ -25,7 +25,7 @@
 #pragma once
 
 #include <iomanip>
-
+#include <memory>
 #include <vector>
 #include <Eigen/Eigen>
 
@@ -43,7 +43,7 @@ public:
     static constexpr uint num_state = States::STATE_SIZE_M;
 
     using Measurement = typename measurement::Measurement<num_state, T>;
-
+    using MeasurementPtr = typename std::shared_ptr<Measurement>;
     using StateVector =   typename Eigen::Matrix<T, num_state, 1>;
     using MappingMatrix = typename Eigen::Matrix<T, Eigen::Dynamic, num_state>;
     using Vector =        typename Eigen::Matrix<T, Eigen::Dynamic, 1>;

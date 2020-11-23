@@ -37,6 +37,7 @@ class Imu : public SensorBase<T, States>
 public:
     using SensorBaseT   = SensorBase<T, States>;
     using Measurement   = typename SensorBaseT::Measurement;
+    using MeasurementPtr   = typename SensorBaseT::MeasurementPtr;
     using StateVector   = typename SensorBaseT::StateVector;
     using MappingMatrix = typename SensorBaseT::MappingMatrix;
     using Vector        = typename SensorBaseT::Vector;
@@ -133,7 +134,7 @@ public:
      * @param[in] transform_to_world - transf from sensor frame of msg to world frame where orientation is fused
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
      */
-    Measurement imu_callback(
+    MeasurementPtr imu_callback(
         const StateVector& state,
         sensor_msgs::msg::Imu* msg,
         const TransformationMatrix& transform_base_link_imu,
@@ -260,10 +261,10 @@ public:
         // 4. Create measurement to be handled
         // TO_DO: clarify how to determine the pose and twist mahalanobis thresholds
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
-        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
-                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold);
+        MeasurementPtr meas(new Measurement(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
+                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold));
 
-        DEBUG(" -> IMU " << meas.print());
+        DEBUG(" -> IMU " << meas->print());
         DEBUG("\t\t--------------- Imu[" << m_topic_name<< "] Imu_callback: OUT -------------------\n");
         return meas;
     }

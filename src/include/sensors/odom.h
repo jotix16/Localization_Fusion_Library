@@ -37,6 +37,7 @@ class Odom : public SensorBase<T, States>
 public:
     using SensorBaseT   = SensorBase<T, States>;
     using Measurement   = typename SensorBaseT::Measurement;
+    using MeasurementPtr   = typename SensorBaseT::MeasurementPtr;
     using StateVector   = typename SensorBaseT::StateVector;
     using MappingMatrix = typename SensorBaseT::MappingMatrix;
     using Vector        = typename SensorBaseT::Vector;
@@ -86,7 +87,7 @@ public:
      * @param[in] msg - odom msg
      * @param[out] transformed and processed measurement corersponding to the msg
      */
-    Measurement odom_callback(
+    MeasurementPtr odom_callback(
         const StateVector& state,
         nav_msgs::msg::Odometry* msg)
     {
@@ -170,10 +171,10 @@ public:
 
         // 4. Create measurement to be handled
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
-        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
-                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold);
+        MeasurementPtr meas(new Measurement(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
+                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold));
 
-        DEBUG(" -> Odom " << meas.print());
+        DEBUG(" -> Odom " << meas->print());
         debug_msg(msg, TransformationMatrix::Identity());
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Odom_callback_identity: OUT -------------------\n");
         return meas;
@@ -188,7 +189,7 @@ public:
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
      * @param[out] transformed and processed measurement corersponding to the msg
      */
-    Measurement odom_callback(
+    MeasurementPtr odom_callback(
         const StateVector& state,
         nav_msgs::msg::Odometry* msg,
         const TransformationMatrix& transform_to_base_link)
@@ -258,9 +259,9 @@ public:
 
         // 4. Create measurement to be handled
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
-        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
-                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold);
-        DEBUG(" -> Odom " << meas.print());
+        MeasurementPtr meas(new Measurement(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
+                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold));
+        DEBUG(" -> Odom " << meas->print());
         debug_msg(msg, transform_to_base_link);
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Odom_callback: OUT -------------------\n");
         return meas;
