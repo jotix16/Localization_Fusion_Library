@@ -58,6 +58,7 @@ class Buffer : public CallBackTimer
         typedef std::function<void()> PublishCallback;
         typedef std::function<StateTPtr()> GetStateCallback;
         typedef std::function<tTime()> GetTimeNowCallback;
+        typedef std::function<void(StateTPtr)> ResetFilterState;
 
     public:
         Buffer() : CallBackTimer() {}
@@ -65,6 +66,7 @@ class Buffer : public CallBackTimer
         void set_predict_function(PredictCallback f){ m_predict_callback = f;}
         void set_publish_function(PublishCallback f){ m_publish_callback = f;}
         void set_get_state_ptr_function(GetStateCallback f){ m_get_state_callback = f;}
+        void set_reset_filter_state(ResetFilterState f){ m_reset_filter_state = f;}
         void set_get_time_now(GetTimeNowCallback f){ m_get_time_now = f;}
 
         void enqueue_measurement(DataTPtr data)
@@ -83,9 +85,16 @@ class Buffer : public CallBackTimer
         void periodic_update(Event event=Event())
         {
             T time = m_get_time_now();
-            // std::cout <<"Periodic update with time: " << time << "\n";
             swap_n_push();
-            integrate_measurement(time);
+            if(m_measurement_queue.empty() & !m_state_history.empty())
+            {
+                m_predict_callback( time - m_state_history.back()->m_time_stamp);
+            }
+            else
+            {
+                std::cout <<"Measurement queue size: " << m_measurement_queue.size() << "\n";
+                integrate_measurement(time);
+            }
             m_publish_callback();
         }
 
@@ -148,6 +157,7 @@ class Buffer : public CallBackTimer
             }
 
             // 2. Integrate measurements in the que since we made sure they are younger than the last measurement integrated
+            std::cout <<"Measurement queue size: " << m_measurement_queue.size() << "\n";
             while(!m_measurement_queue.empty())
             {
                 if(m_measurement_queue.top()->m_time_stamp <= time)
@@ -176,7 +186,6 @@ class Buffer : public CallBackTimer
         **/
         void go_back_to_time(T time)
         {
-            std::cout <<"Going back to time: " << time << "\n";
             bool ret_val = false;
             // search the right state
             StateTPtr last_history_state;
@@ -195,6 +204,7 @@ class Buffer : public CallBackTimer
             }
             assert(ret_val == true); // should not hapen, since we make sure in integrate_measurement before calling this function
             //TO_DO: reset filter
+            m_reset_filter_state(last_history_state);
 
             // search the right state
             DataTPtr last_history_measurement;
@@ -261,6 +271,7 @@ class Buffer : public CallBackTimer
         PublishCallback m_publish_callback;
         GetStateCallback m_get_state_callback;
         GetTimeNowCallback m_get_time_now;
+        ResetFilterState m_reset_filter_state;
 
         MeasurementQueue m_measurement_raw;
         std::mutex m_meas_raw_mutex;

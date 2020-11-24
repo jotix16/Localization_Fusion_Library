@@ -113,6 +113,17 @@ public:
     }
 
     /**
+     * @brief FilterBase: Resets/initializes the filter
+     * @param[in] x0 - initial state estimation
+     * @param[in] P0 - initial covariance estimation
+     */
+    void reset(const std::shared_ptr<StateCovTime>& state)
+    {
+        m_state = state->m_state;
+        m_covariance = state->m_covariance;
+    }
+
+    /**
      * @brief FilterBase: Getter function for the state estimation vector
      * @return the state estimation vector
      */

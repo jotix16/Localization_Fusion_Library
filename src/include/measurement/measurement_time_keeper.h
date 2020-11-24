@@ -85,11 +85,9 @@ public:
      * @param[in] time_stamp - The time stamp of the measurement processed.
      * @param[in] global_time - The wall time when the measurement arrived.
      */
-    void update_with_measurement(tTime time_stamp, tTime global_time)
+    void update_with_measurement(tTime time_stamp)
     {
         m_t_last_observation_update = time_stamp;
-        // m_dt_to_global = global_time - time_stamp;
-        // if(debug) std::cout << "---------------Measurement Time Keeper: dt_global: " << m_dt_to_global<<"\n";
     }
 
     /**

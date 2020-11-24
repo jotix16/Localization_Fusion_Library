@@ -104,6 +104,7 @@ private:
     // options
     BufferT m_time_triggered_buffer;
     bool m_data_triggered;
+    int m_frequency;
 
 public:
     FilterWrapper() = default;
@@ -145,14 +146,14 @@ public:
 
     void init_buffer()
     {
-        int interval = 50;
-        std::cout << "********* Initializing timed buffer with a period of " << interval << " milliseconds. *********\n";
+        std::cout << "********* Initializing timed buffer with a period of " << m_frequency << " milliseconds. *********\n";
         m_time_triggered_buffer.set_process_measurement_function([this](MeasurementPtr d) { return this->process_measurement(d);});
         m_time_triggered_buffer.set_predict_function([this](tTime t) { return this->temporal_update(t);});
         m_time_triggered_buffer.set_publish_function([this]() { this->publish_state();});
         m_time_triggered_buffer.set_get_state_ptr_function([this]() { return this->get_state_ptr();});
+        m_time_triggered_buffer.set_reset_filter_state([this](StateCovTimePtr state) { return this->reset_filter_state(state);});
         m_time_triggered_buffer.set_get_time_now([this]() { return this->get_time_now();});
-        m_time_triggered_buffer.start(interval);
+        m_time_triggered_buffer.start(m_frequency);
     }
 
     /**
@@ -284,8 +285,6 @@ public:
      */
     bool handle_measurement(MeasurementPtr measurement)
     {
-        // TO_DO: this function differentiates the data_triggered and time_triggered option
-        // it calls process_measurement imidiately if data triggered and otherwise puts the measurement in the buffer.
         if (m_data_triggered)
         {
             if (process_measurement(measurement))
@@ -296,7 +295,6 @@ public:
         }
         else
         {
-            //TO_DO: initialize the buffer
             m_time_triggered_buffer.enqueue_measurement(measurement);
         }
         return true;
@@ -375,7 +373,7 @@ public:
         bool ret_val = false;
         if (m_filter.observation_update(*measurement))
         {
-            m_time_keeper.update_with_measurement(measurement->m_time_stamp, time_now);
+            m_time_keeper.update_with_measurement(measurement->m_time_stamp);
 
             DEBUG_W("\n--------------- Wrapper: Observation update! ---------------\n");
             DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement->innovation.transpose() << "\n");
@@ -489,6 +487,12 @@ public:
         // 2. reset timekeeper
         m_time_keeper.reset(time_now, measurement.m_time_stamp);
         return true;
+    }
+
+    void reset_filter_state(const StateCovTimePtr& state)
+    {
+        m_filter.reset(state);
+        m_time_keeper.update_with_measurement(state->m_time_stamp);
     }
 
     /**
@@ -619,6 +623,7 @@ public:
         std::cout << "CONFIG: " << config_path << "\n";
         m_config = FilterConfig_(config_path);
         m_data_triggered = m_config.m_data_triggered;
+        m_frequency = m_config.m_frequency;
         for (auto x: m_config.m_sensor_configs)
         {
             std::cout<<x.first<<" ";

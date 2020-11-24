@@ -1,6 +1,7 @@
 {
     "//FILTER":" Here we define the FILTER's parameters",
     "data_triggered": false,
+    "frequency": 30,
     "init_estimate_covariance": [   1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                     0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                     0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
