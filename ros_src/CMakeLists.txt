@@ -41,6 +41,9 @@ include_directories(
 #################################################################
 ######################### R O S #################################
 # Add a rosnode
+add_executable(ex_timer_buffer src/ex_timer_buffer.cpp)
+target_link_libraries(ex_timer_buffer ${catkin_LIBRARIES} estimator)
+
 add_executable(test_euler src/test_euler.cpp)
 target_link_libraries(test_euler ${catkin_LIBRARIES} estimator)
 
