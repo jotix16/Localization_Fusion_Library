@@ -9,7 +9,7 @@
     <arg name="imu_topic_list" default="[/imu/data]"/>
     <param name="/use_sim_time" value="true" />
 
-    <node pkg="tf2_ros" type="static_transform_publisher" name="map_odom"  args="0 0 0 0 0 0 map odom" />
+    <node pkg="tf2_ros" type="static_transform_publisher" name="map_odom"  args="-8.25156279237 0.304893204352 0 0 0 0 map odom" />
     <node pkg="tf2_ros" type="static_transform_publisher" name="odom_base" args="0 0 0 0 0 0 odom base_link" />
     <node pkg="tf2_ros" type="static_transform_publisher" name="bl_imu" args="0 -0.3 0.52 -1.570796327 0 1.570796327 base_link imu_link" />
 
