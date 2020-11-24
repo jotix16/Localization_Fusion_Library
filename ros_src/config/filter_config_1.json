@@ -1,5 +1,6 @@
 {
     "//FILTER":" Here we define the FILTER's parameters",
+    "data_triggered": false,
     "init_estimate_covariance": [   1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                     0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                     0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -41,7 +42,7 @@
     "odom_0":{
         "topic_name": "/husky_velocity_controller/odom",
         "update_vector":[false, false, false,
-                         false, false, false,
+                         true,  true,  true,
                          true,  true,  true,
                          false, false, false,
                          false, false, false],
@@ -50,7 +51,7 @@
     "imu_0":{
         "topic_name": "/imu/data",
         "update_vector":[false, false, false,
-                         true,  true,  true,
+                         false, false, false,
                          false, false, false,
                          true,  true,  true,
                          true,  true,  true],

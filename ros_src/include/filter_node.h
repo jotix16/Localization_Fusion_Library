@@ -37,10 +37,6 @@
 #include <utilities/filter_euler_zyx.h>
 
 
-using FilterWrapper = iav::state_predictor::filter::FilterCtrvEKF2D;
-
-
-
 template<class FilterT, typename T = double>
 class FilterNode
 {
@@ -118,6 +114,7 @@ class FilterNode
             ROS_INFO_STREAM("Initialize FilterWrapper from path: " << config_file << "\n");
             m_filter_wrapper.reset_config(config_file.c_str());
             m_filter_wrapper.set_time_callback([this]() { return get_time_now();});
+            m_filter_wrapper.set_publish_state([this]() { return publish_current_state();});
 
             // 2. initialize publisher
             m_position_publisher = m_nh.advertise<OdomMsg>("odometry/filtered", 20);
@@ -169,9 +166,9 @@ class FilterNode
                         "must not match the map_frame or odom_frame.");
         }
 
-        inline T get_time_now()
+        inline iav::state_predictor::tTime get_time_now()
         {
-            return static_cast<T>(ros::Time::now().toSec());
+            return static_cast<iav::state_predictor::tTime>(ros::Time::now().toSec());
         }
 
         /**
@@ -224,7 +221,7 @@ class FilterNode
             if(m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_base_link, odom_bl))
             {
                 // 3. publish updated base_link frame
-                publish_current_state();
+                // publish_current_state();
             }
         }
 
@@ -285,7 +282,7 @@ class FilterNode
             if(m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_base_link_imu, transform_map_base_link))
             {
                 // 3. publish updated base_link frame
-                publish_current_state();
+                // publish_current_state();
             }
         }
 
@@ -333,7 +330,7 @@ class FilterNode
             if(m_filter_wrapper.gps_callback(topic_name, &msg_loc, transform_to_base_link))
             {
                 // 3. publish updated base_link frame
-                publish_current_state();
+                // publish_current_state();
             }
         }
 
@@ -598,8 +595,6 @@ class FilterNode
             transformStamped.transform.rotation.w = q.w();
             m_tf_broadcaster.sendTransform(transformStamped);
         }
-
-
 };
 
 // explicit template initialization

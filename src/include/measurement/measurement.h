@@ -23,10 +23,11 @@
 
 #pragma once
 
-#include<iostream>
-#include<iomanip>
+#include <iostream>
+#include <iomanip>
 #include <string>
 #include <array>
+#include <memory>
 
 #include <Eigen/Eigen>
 
@@ -73,6 +74,7 @@ public:
     std::vector<uint> m_update_indices;
 
 public:
+    Measurement() {};
 /**
  * @brief Measurement: Constructor tha creates the measurement.
  * @param[in] time_stamp - Time stamp of the measurement
@@ -140,12 +142,22 @@ public:
         return out.str();
     }
 
-/**
- * @brief Measurement: Defines the operator < as friend of the class. In order to be able to compare measurements.
- * @param[in] m1 - First measurement
- * @param[in] m2 - Second measurement
- * @return returns true if m1 id older than m2.
- */
+    bool operator()(const std::shared_ptr<Measurement<num_state, T>>& m1, const std::shared_ptr<Measurement<num_state, T>>& m2)
+    {
+        return m1->m_time_stamp > m2->m_time_stamp;
+    }
+
+    bool operator()(const Measurement<num_state, T>& m1, const Measurement<num_state, T>& m2)
+    {
+        return m1.m_time_stamp > m2.m_time_stamp;
+    }
+
+    /**
+     * @brief Measurement: Defines the operator < as friend of the class. In order to be able to compare measurements.
+     * @param[in] m1 - First measurement
+     * @param[in] m2 - Second measurement
+     * @return returns true if m1 id older than m2.
+     */
     // template<uint num_state, typename T> // for the case we keep members private and use getters
     friend bool operator< <>(Measurement<num_state, T> m1, Measurement<num_state, T> m2);
 };

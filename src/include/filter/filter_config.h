@@ -158,6 +158,7 @@ struct FilterConfig{
 
     FullStateMatrix m_init_estimation_covariance;
     FullStateMatrix m_process_noise;
+    bool m_data_triggered;
     std::map<std::string, struct SensorConfig> m_sensor_configs;
 
     /**
@@ -195,6 +196,9 @@ struct FilterConfig{
         doc.ParseStream( isw );
 
         // Filter parameters
+        // data-or-time triggered
+        m_data_triggered = !doc.HasMember("data_triggered") ? true : doc["data_triggered"].GetBool();
+
         // Init Estimate Covariance & Process Noise
         for (int i = 0; i < STATE_SIZE; i++)
         {

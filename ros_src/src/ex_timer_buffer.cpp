@@ -3,8 +3,6 @@
 #include <queue>
 #include <vector>
 #include <iostream>
-#include <memory>
-#include <assert.h>
 #include <buffer/filter_buffer.h>
 #include "ros/ros.h"
 
@@ -14,19 +12,19 @@ class Statetype
 {
 public:
     T data;
-    T time;
+    T m_time_stamp;
 public:
-    Statetype() : data(0), time(0) {}
+    Statetype() : data(0), m_time_stamp(0) {}
 
     Statetype(const T m_data, const T m_stamp)
     {
         data = m_data;
-        time = m_stamp;
+        m_time_stamp = m_stamp;
     }
 
     void print()
     {
-        std::cout << "(" << data << ", " << time << ") ";
+        std::cout << "(" << data << ", " << m_time_stamp << ") ";
     }
 };
 typedef Statetype<double> StateD;
@@ -36,32 +34,32 @@ template<typename T=double>
 class Datatype
 {
 public:
+    T m_time_stamp;
     T data;
-    T stamp;
 public:
-    Datatype(/* args */) : data(0), stamp(0)
+    Datatype(/* args */) : data(0), m_time_stamp(0)
     {}
-    Datatype(T d, T t) : data(d), stamp(t)
+    Datatype(T d, T t) : data(d), m_time_stamp(t)
     {}
 
     bool operator()(const std::shared_ptr<Datatype> m1, const std::shared_ptr<Datatype> m2)
     {
-        return m1->stamp > m2->stamp;
+        return m1->m_time_stamp > m2->m_time_stamp;
     }
     bool operator()(const Datatype& m1, const Datatype& m2)
     {
-        return m1.stamp > m2.stamp;
+        return m1.m_time_stamp > m2.m_time_stamp;
     }
 
     void print()
     {
-        std::cout << "(" << data << ", "<< stamp << ") ";
+        std::cout << "(" << data << ", "<< m_time_stamp << ") ";
     }
 };
 typedef Datatype<double> DataD;
 typedef std::shared_ptr<DataD> DataDPtr;
 
-typedef Buffer<Datatype<double>, Statetype<double>, double> BufferD; // define BufferD
+typedef iav::state_predictor::buffer::Buffer<Datatype<double>, Statetype<double>, double> BufferD; // define BufferD
 
 template<class Container>
 void print(Container container, std::string name)
@@ -100,6 +98,7 @@ template<class Buffer, typename T=double>
 class Filter
 {
     typedef Datatype<T> DataT;
+    typedef std::shared_ptr<DataT> DataTPtr;
     typedef Statetype<T> StateT;
     typedef std::shared_ptr<StateT> StateTPtr;
 
@@ -110,45 +109,45 @@ private:
 public:
     Filter(){};
 
-    Filter(DataT d) : state(d.data, d.stamp){}
+    Filter(const DataT& d) : state(d.data, d.m_time_stamp){}
 
-    bool predict(T dt)
+    bool predict(iav::state_predictor::tTime dt)
     {
         state.data += state.data*dt;
-        state.time += dt;
+        state.m_time_stamp += dt;
         return true;
     }
 
-    bool update(DataT measurement)
+    bool update(const DataTPtr& measurement)
     {
-        state.data = measurement.data;
-        state.time = measurement.stamp;
+        state.data = measurement->data;
+        state.m_time_stamp = measurement->m_time_stamp;
         return true;
     }
 
-    bool process_measurement(DataT measurement)
+    bool process_measurement(const DataTPtr& measurement)
     {
-        predict(measurement.stamp - state.time);
+        predict(measurement->m_time_stamp - state.m_time_stamp);
         update(measurement);
     }
 
     StateDPtr get_state()
     {
-        return StateDPtr(new StateT(state.data, state.time));
+        return StateDPtr(new StateT(state.data, state.m_time_stamp));
     }
 
     void print()
     {
-        std::cout << "Filte_: " << "<<" << state.data << ", " << state.time << ">>\n";
+        std::cout << "Filte_: " << "<<" << state.data << ", " << state.m_time_stamp << ">>\n";
     }
 
     void test()
     {
-        T time = 0;
-        b.set_process_measurement_function([this](DataD d) { return this->process_measurement(d);});
-        b.set_predict_function([this](double t) { return this->predict(t);});
+        iav::state_predictor::tTime time = 0;
+        b.set_process_measurement_function([this](DataTPtr d) { return this->process_measurement(d);});
+        b.set_predict_function([this](iav::state_predictor::tTime t) { return this->predict(t);});
         b.set_publish_function([this]() { this->print();});
-        b.set_get_state_function([this]() { return this->get_state();});
+        b.set_get_state_ptr_function([this]() { return this->get_state();});
         b.set_get_time_now([&time]() { return time;});
 
         // FilterStatePtr(new FilterState()) StateDPtr
@@ -190,10 +189,10 @@ public:
 
     void test2()
     {
-        b.set_process_measurement_function([this](DataD d) { return this->process_measurement(d);});
-        b.set_predict_function([this](double t) { return this->predict(t);});
+        b.set_process_measurement_function([this](DataTPtr d) { return this->process_measurement(d);});
+        b.set_predict_function([this](iav::state_predictor::tTime t) { return this->predict(t);});
         b.set_publish_function([this]() { this->print();});
-        b.set_get_state_function([this]() { return this->get_state();});
+        b.set_get_state_ptr_function([this]() { return this->get_state();});
 
         ros::Time::init();
         T init_time =  ros::Time::now().toSec();
@@ -204,6 +203,7 @@ public:
 
         int intervall = 100;
         b.start(intervall, f);
+        // b.start(intervall);
         auto th = std::thread([this, init_time, intervall]()
             {
                 while(ros::Time::now().toSec() - init_time < 2)

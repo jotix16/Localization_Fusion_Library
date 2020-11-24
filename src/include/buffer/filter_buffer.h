@@ -31,8 +31,9 @@
 #include <mutex>
 #include <assert.h>
 #include <buffer/filter_timer.h>
+#include <utilities/filter_utilities.h>
 
-
+namespace iav{ namespace state_predictor { namespace buffer {
 template<class Datatype, class Statetype, typename T=double>
 class Buffer : public CallBackTimer
 {
@@ -52,23 +53,24 @@ class Buffer : public CallBackTimer
         typedef std::priority_queue<DataTPtr, std::vector<DataTPtr>, DataT> MeasurementQueue;
 
         // Callback types
-        typedef std::function<bool(DataT)> ProcessMeasCallback;
-        typedef std::function<bool(T)> PredictCallback;
+        typedef std::function<bool(DataTPtr)> ProcessMeasCallback;
+        typedef std::function<bool(tTime)> PredictCallback;
         typedef std::function<void()> PublishCallback;
         typedef std::function<StateTPtr()> GetStateCallback;
-        typedef std::function<T()> GetTimeNowCallback;
+        typedef std::function<tTime()> GetTimeNowCallback;
 
     public:
         Buffer() : CallBackTimer() {}
         void set_process_measurement_function(ProcessMeasCallback f){ m_process_measurement_callback = f;}
         void set_predict_function(PredictCallback f){ m_predict_callback = f;}
         void set_publish_function(PublishCallback f){ m_publish_callback = f;}
-        void set_get_state_function(GetStateCallback f){ m_get_state_callback = f;}
+        void set_get_state_ptr_function(GetStateCallback f){ m_get_state_callback = f;}
         void set_get_time_now(GetTimeNowCallback f){ m_get_time_now = f;}
 
         void enqueue_measurement(DataTPtr data)
         {
             // std::cout << "Inserting: "; data->print(); std::cout<<"\n";
+            std::lock_guard<std::mutex> guard(m_meas_raw_mutex);
             m_measurement_raw.push(data);
         }
 
@@ -81,10 +83,10 @@ class Buffer : public CallBackTimer
         void periodic_update(Event event=Event())
         {
             T time = m_get_time_now();
-            std::cout <<"Periodic update with time: " << time << "\n";
+            // std::cout <<"Periodic update with time: " << time << "\n";
             swap_n_push();
             integrate_measurement(time);
-            // m_publish_callback();
+            m_publish_callback();
         }
 
         void swap_n_push()
@@ -113,14 +115,14 @@ class Buffer : public CallBackTimer
         **/
         void integrate_measurement(const T time)
         {
-            std::cout <<"Integrate measurements up to time: " << time << "\n";
+            // std::cout <<"Integrate measurements up to time: " << time << "\n";
             if(m_state_history.empty())
             {
                 std::cout << "State_History is empty\n";
                 m_state_history.push_back(m_get_state_callback());
             }
 
-
+            // std::cout << "Measurement queue size: " << m_measurement_queue.size() << "\n";
             // 1. find the first VALID measurement that:
             // - either happens after the current state(bigger timestamp than the current state)
             // - or for which there is a state in the state_history that happened before(this state in the history has smaller time_stamp than the meas)
@@ -129,16 +131,16 @@ class Buffer : public CallBackTimer
             while(!m_measurement_queue.empty())
             {
                 d = m_measurement_queue.top();
-                if(d->stamp < m_state_history.front()->time)
+                if(d->m_time_stamp < m_state_history.front()->m_time_stamp)
                 {
-                    std::cout<<" Our State_History doesn't hold any state that dates before time: " << d->stamp <<", so IGNORING the measurement.\n";
+                    std::cout<<" Our State_History doesn't hold any state that dates before time: " << d->m_time_stamp <<", so IGNORING the measurement.\n";
                     m_measurement_queue.pop();
                 }
-                else if (d->stamp < m_state_history.back()->time)
+                else if (d->m_time_stamp < m_state_history.back()->m_time_stamp)
                 {
                     uint initial_size = static_cast<uint>(m_measurement_queue.size());
-                    go_back_to_time(d->stamp);
-                    std::cout << "Reverted to time: " << d->stamp << " that required the revertion of "
+                    go_back_to_time(d->m_time_stamp);
+                    std::cout << "Reverted to time: " << d->m_time_stamp << " that required the revertion of "
                     << static_cast<uint>(m_measurement_queue.size()) - initial_size<<" measurements.\n";
                     break;
                 }
@@ -148,21 +150,21 @@ class Buffer : public CallBackTimer
             // 2. Integrate measurements in the que since we made sure they are younger than the last measurement integrated
             while(!m_measurement_queue.empty())
             {
-                if(m_measurement_queue.top()->stamp <= time)
+                if(m_measurement_queue.top()->m_time_stamp <= time)
                 {
                     d = m_measurement_queue.top();
                     m_measurement_queue.pop();
 
                     // integrate
-                    m_process_measurement_callback(*d);
+                    m_process_measurement_callback(d);
                     m_state_history.push_back(m_get_state_callback());
                     m_measurement_history.push_back(d);
                 }
                 else
                 {
-                    std::cout << "Last integrated measurement is: ";
-                    d->print();
-                    std:: cout <<"\n";
+                    // std::cout << "Last integrated measurement is: ";
+                    // d->print();
+                    // std:: cout <<"\n";
                     break;
                 }
             }
@@ -174,13 +176,14 @@ class Buffer : public CallBackTimer
         **/
         void go_back_to_time(T time)
         {
+            std::cout <<"Going back to time: " << time << "\n";
             bool ret_val = false;
             // search the right state
             StateTPtr last_history_state;
             while (!m_state_history.empty())
             {
                 last_history_state = m_state_history.back();
-                if(last_history_state->time > time)
+                if(last_history_state->m_time_stamp > time)
                 {
                     m_state_history.pop_back();
                 }
@@ -198,7 +201,7 @@ class Buffer : public CallBackTimer
             while (!m_measurement_history.empty())
             {
                 last_history_measurement = m_measurement_history.back();
-                if(last_history_measurement->stamp > last_history_state->time)
+                if(last_history_measurement->m_time_stamp > last_history_state->m_time_stamp)
                 {
                     m_measurement_queue.push(last_history_measurement);
                     m_measurement_history.pop_back();
@@ -215,13 +218,13 @@ class Buffer : public CallBackTimer
             int poppedMeasurements = 0;
             int poppedStates = 0;
 
-            while (!m_measurement_history.empty() && m_measurement_history.front()->stamp < up_to_time)
+            while (!m_measurement_history.empty() && m_measurement_history.front()->m_time_stamp < up_to_time)
             {
                 m_measurement_history.pop_front();
                 poppedMeasurements++;
             }
 
-            while (!m_state_history.empty() && m_state_history.front()->time < up_to_time)
+            while (!m_state_history.empty() && m_state_history.front()->m_time_stamp < up_to_time)
             {
                 m_state_history.pop_front();
                 poppedStates++;
@@ -241,6 +244,11 @@ class Buffer : public CallBackTimer
             return;
         }
 
+        void start(int intervall)
+        {
+            auto f = [this](Event event) {this->periodic_update(event);};
+            CallBackTimer::start(intervall, f);
+        }
     public:
         MeasurementQueue get_measurement_queue() const { return m_measurement_queue; }
         MeasurementQueue get_measurement_raw() const { return m_measurement_raw; }
@@ -260,3 +268,7 @@ class Buffer : public CallBackTimer
         MeasurementHistoryDeque m_measurement_history;
         FilterStateHistoryDeque m_state_history;
 };
+
+} // end namespace buffer
+} // end namespace state_predictor
+} // end namespace iav
