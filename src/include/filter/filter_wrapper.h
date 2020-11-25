@@ -331,15 +331,23 @@ public:
         else
         {
             DEBUG_W(std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n");
-            // 1. temporal update
+
             // auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
             auto dt = m_time_keeper.time_since_last_update(measurement->m_time_stamp);
             DEBUG_W("\n--------------- Wrapper: Temporal update, dt = "<< dt << ", t = " << m_time_keeper.to_global_time(measurement->m_time_stamp)  <<" ---------------\n");
-            DEBUG_W("\n--------------- Wrapper: Temporal update, now = "<< time_now << ", stamp = " << measurement->m_time_stamp  <<" ---------------\n");
-            temporal_update(dt);
+            DEBUG_W("\n--------------- Wrapper: Temporal update, now = "<< time_now << ", stamp = " << measurement->m_time_stamp << " filter_time = " << get_last_measurement_time() << " ---------------\n");
+            if (dt < -1e-9)
+            {
+                DEBUG_W("\n--------------- DELAYED MEASURMENT!! ---------------\n");
+            }
+            else
+            {
+                // 1. temporal update
+                temporal_update(dt);
 
-            // 2. observation update
-            observation_update(measurement, time_now);
+                // 2. observation update
+                observation_update(measurement, time_now);
+            }
         }
 
         DEBUG_W("\t\t--------------- Wrapper Process_Measurement: OUT -------------------\n");
@@ -350,10 +358,10 @@ public:
     {
         bool ret_val = false;
         // 1. temporal update
-        if (dt < 0)
+        if(dt < 1e-9)
         {
-            DEBUG_W("\n--------------- DELAYED MEASURMENT!! ---------------\n");
-            ret_val = false;
+            DEBUG_W("\n--------------- dt near 0, no temporal_update requied ---------------\n");
+            ret_val = true;
         }
         else if (m_filter.temporal_update(dt))
         {

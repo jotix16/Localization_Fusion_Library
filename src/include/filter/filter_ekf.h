@@ -164,7 +164,7 @@ public:
         // if covariance diagonal elements are near 0 or negative we give them a small value
         StateMatrix I_K_H = this->m_identity;
         I_K_H.noalias() -= K * m.H;
-        this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
+        this->m_covariance = I_K_H * this->m_covariance * I_K_H.transpose();
         this->m_covariance.noalias() += K * m.R * K.transpose();
 
         for (uint i = 0; i < States::STATE_SIZE_M; i++)
