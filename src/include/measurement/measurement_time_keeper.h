@@ -57,8 +57,6 @@ public:
         m_dt_to_global = global_time_now - measurement_time_stamp;
         m_t_last_temporal_update = measurement_time_stamp;
         m_t_last_observation_update = measurement_time_stamp;
-        // if(debug) std::cout << "--------------- Measurement Time Keeper: dt_global: " << m_dt_to_global
-        //                     << ", last_temp: " <<m_t_last_temporal_update<<" -------------------\n";
         m_inizialized = true;
     }
 
@@ -88,6 +86,7 @@ public:
     void update_with_measurement(tTime time_stamp)
     {
         m_t_last_observation_update = time_stamp;
+        if( m_t_last_temporal_update > time_stamp) m_t_last_temporal_update = time_stamp;
     }
 
     /**
