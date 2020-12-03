@@ -38,6 +38,7 @@ class Gps : public SensorBase<T, States>
 public:
     using SensorBaseT   = SensorBase<T, States>;
     using Measurement   = typename SensorBaseT::Measurement;
+    using MeasurementPtr   = typename SensorBaseT::MeasurementPtr;
     using StateVector   = typename SensorBaseT::StateVector;
     using MappingMatrix = typename SensorBaseT::MappingMatrix;
     using Vector        = typename SensorBaseT::Vector;
@@ -151,7 +152,7 @@ public:
      * @param[in] msg - pointer to the gps msg of the measurement
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
      */
-    Measurement gps_callback(
+    MeasurementPtr gps_callback(
         const StateVector& state,
         sensor_msgs::msg::NavSatFix* msg,
         const TransformationMatrix& transform_to_base_link)
@@ -243,9 +244,9 @@ public:
 
         // 6. Create measurement to be handled
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
-        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
-                        update_indices, msg->header.frame_id, m_mahalanobis_threshold);
-        DEBUG(" -> GPS " << meas.print());
+        MeasurementPtr meas( new Measurement(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
+                        update_indices, msg->header.frame_id, m_mahalanobis_threshold));
+        DEBUG(" -> GPS " << meas->print());
         DEBUG("\n\t\t--------------- Gps[" << m_topic_name<< "] Gps_callback: OUT -------------------\n");
         return meas;
     }

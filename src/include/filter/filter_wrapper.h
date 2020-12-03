@@ -31,6 +31,7 @@
 #include <Eigen/Eigen>
 
 #include <utilities/filter_utilities.h>
+#include <buffer/filter_buffer.h>
 #include <filter/filter_config.h>
 #include <filter/filter_ekf.h>
 #include <measurement/measurement_time_keeper.h>
@@ -64,12 +65,16 @@ public:
     using T             = typename FilterT::T;
     using FilterConfig_ = FilterConfig<T>;
     using Measurement   = typename FilterT::Measurement;
+    using MeasurementPtr   = typename std::shared_ptr<Measurement>;
     using States        = typename FilterT::States;
+    using StateCovTime = typename FilterT::StateCovTime;
+    using StateCovTimePtr = typename std::shared_ptr<StateCovTime>;
     using StateVector   = typename FilterT::StateVector;
     using StateMatrix   = typename FilterT::StateMatrix;
     using OdomT = typename sensors::Odom<T,States>;
     using ImuT  = typename sensors::Imu<T,States>;
     using GpsT  = typename sensors::Gps<T,States>;
+    using BufferT = typename buffer::Buffer <Measurement, StateCovTime, T>;
 
     using AngleAxisT            = typename Eigen::AngleAxis<T>;
     using QuaternionT           = typename Eigen::Quaternion<T>;
@@ -92,8 +97,18 @@ private:
     bool m_debug;
     std::mutex m_callback_mutex;
 
+    // functions from ros/adtf node
+    std::function<tTime()> get_time_now;
+    std::function<void()> publish_state;
+
+    // options
+    BufferT m_time_triggered_buffer;
+    bool m_data_triggered;
+    int m_frequency;
+
 public:
     FilterWrapper() = default;
+    // FilterWrapper() : m_debug(false) {}
 
     /**
      * @brief Constructor that inizializes configuration related parameters and time-keeping
@@ -102,6 +117,16 @@ public:
     FilterWrapper(const char* config_path)
     {
         reset_config(config_path);
+    }
+
+    void set_time_callback(std::function<T()> func)
+    {
+        get_time_now = func;
+    }
+
+    void set_publish_state(std::function<void()> func)
+    {
+        publish_state = func;
     }
 
     /**
@@ -116,6 +141,19 @@ public:
         m_time_keeper = MeasurementTimeKeeper();
         m_debug = true;
         create_debug();
+        if (!m_data_triggered) init_buffer();
+    }
+
+    void init_buffer()
+    {
+        std::cout << "********* Initializing timed buffer with a period of " << m_frequency << " milliseconds. *********\n";
+        m_time_triggered_buffer.set_process_measurement_function([this](MeasurementPtr d) { return this->process_measurement(d);});
+        m_time_triggered_buffer.set_predict_function([this](tTime t) { return this->temporal_update(t);});
+        m_time_triggered_buffer.set_publish_function([this]() { this->publish_state();});
+        m_time_triggered_buffer.set_get_state_ptr_function([this]() { return this->get_state_ptr();});
+        m_time_triggered_buffer.set_reset_filter_state([this](StateCovTimePtr state) { return this->reset_filter_state(state);});
+        m_time_triggered_buffer.set_get_time_now([this]() { return this->get_time_now();});
+        m_time_triggered_buffer.start(m_frequency);
     }
 
     /**
@@ -168,12 +206,12 @@ public:
     {
         if (odom_bl)
         {
-            Measurement m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg);
+            MeasurementPtr m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg);
             return handle_measurement(m);
         }
         else
         {
-            Measurement m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg, transform_to_base_link);
+            MeasurementPtr m = m_odom_sensors_hmap[topic_name].odom_callback(get_state(), msg, transform_to_base_link);
             return handle_measurement(m);
         }
     }
@@ -197,7 +235,7 @@ public:
             DEBUG_W("Got IMU but have to wait for odom first. Ignoring\n");
             return false;
         }
-        Measurement m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_base_link_imu, transform_map_base_link);
+        MeasurementPtr m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_base_link_imu, transform_map_base_link);
         return handle_measurement(m);
     }
 
@@ -235,7 +273,7 @@ public:
             }
             return false; // no imu initialized yet so we have to wait.
         }
-       Measurement m = m_gps_sensors_hmap[topic_name].gps_callback(get_state(), msg, transform_to_base_link);
+       MeasurementPtr m = m_gps_sensors_hmap[topic_name].gps_callback(get_state(), msg, transform_to_base_link);
        handle_measurement(m);
     }
 
@@ -245,14 +283,19 @@ public:
      * @param[in] measurement - measurement to be handled
      * @return true if handling was sucessful
      */
-    bool handle_measurement(Measurement& measurement)
+    bool handle_measurement(MeasurementPtr measurement)
     {
-        // TO_DO: this function differentiates the data_triggered and time_triggered option
-        // it calls process_measurement imidiately if data triggered and otherwise puts the measurement in the buffer.
-        bool data_triggered = true;
-        if (data_triggered)
+        if (m_data_triggered)
         {
-            return process_measurement(measurement);
+            if (process_measurement(measurement))
+            {
+                publish_state();
+                return true;
+            }
+        }
+        else
+        {
+            m_time_triggered_buffer.enqueue_measurement(measurement);
         }
         return true;
     }
@@ -263,66 +306,93 @@ public:
      * @param[in] measurement - measurement to be processed
      * @return true if processing was sucessful( either filtered or reseted)
      */
-    bool process_measurement(Measurement& measurement)
+    bool process_measurement(MeasurementPtr measurement)
     {
         DEBUG_W("\n\t\t--------------- Wrapper Process_Measurement: IN -------------------\n");
         // Get global time
-        tTime time_now = m_wall_time.now();
+        // tTime time_now = m_wall_time.now();
+        tTime time_now = get_time_now();
 
         if (!is_initialized()) {
             DEBUG_W("Have to initialize!\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.innovation.transpose() << "\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.z.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement->innovation.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement->z.transpose() << "\n");
             // TO_DO: this is not strictly correct, but should be good enough. If we get an observation
             // and the filter is not set to any state, we reset it.
             // We only consider the parts that are allowed by update_vector
-            // TO_DO: any other way?
+            // TO_DO: any other way? -> If a part of the state is 0 and we get a measurement corresponding to eat we initialize
+            // it with the measurement and the coresponding diagonal element with the variance of the measurement
 
             // Initialize the filter with the first measurement
-            reset(measurement, time_now);
+            reset(*measurement, time_now);
+            DEBUG_W("Reseting timer with: Meas time: " << measurement->m_time_stamp << " Time now:" << time_now <<"\n");
             return true;
         }
         else
         {
             DEBUG_W(std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n");
-            // 1. temporal update
+
             // auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
-            auto dt = m_time_keeper.time_since_last_update(measurement.m_time_stamp);
-            DEBUG_W("\n--------------- Wrapper: Temporal update, dt = "<< dt << ", t = " << m_time_keeper.to_global_time(measurement.m_time_stamp)  <<" ---------------\n");
-            DEBUG_W("\n--------------- Wrapper: Temporal update, now = "<< time_now << ", stamp = " << measurement.m_time_stamp  <<" ---------------\n");
-            if (dt < 0)
+            auto dt = m_time_keeper.time_since_last_update(measurement->m_time_stamp);
+            DEBUG_W("\n--------------- Wrapper: Temporal update, dt = "<< dt << ", t = " << m_time_keeper.to_global_time(measurement->m_time_stamp)  <<" ---------------\n");
+            DEBUG_W("\n--------------- Wrapper: Temporal update, now = "<< time_now << ", stamp = " << measurement->m_time_stamp << " filter_time = " << get_last_measurement_time() << " ---------------\n");
+            if (dt < -1e-9)
             {
                 DEBUG_W("\n--------------- DELAYED MEASURMENT!! ---------------\n");
-                return false;
             }
-            // std::lock_guard<std::mutex> guard(m_callback_mutex);
-            if (m_filter.temporal_update(dt))
+            else
             {
-                m_time_keeper.update_after_temporal_update(dt);
+                // 1. temporal update
+                temporal_update(dt);
 
-                // DEBUG_W(" -> Covar temp: \n");
-                // DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
-                DEBUG_W(std::fixed << std::setprecision(4) << " -> State temp: " << get_state().transpose() << "\n");
+                // 2. observation update
+                observation_update(measurement, time_now);
             }
-            else DEBUG_W("TEMPORAL UPDATE DIDNT HAPPEN\n");
-
-            // 2. observation update
-            if (m_filter.observation_update(measurement))
-            {
-                m_time_keeper.update_with_measurement(measurement.m_time_stamp, time_now);
-
-                DEBUG_W("\n--------------- Wrapper: Observation update! ---------------\n");
-                DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement.innovation.transpose() << "\n");
-                DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement.z.transpose() << "\n");
-                DEBUG_W(std::fixed << std::setprecision(4) << " -> State obsv: " << get_state().transpose() << "\n");
-                DEBUG_W(" -> Covar obsv: \n");
-                DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
-            }
-            else DEBUG_W(" Mahalanobis failed\n");
         }
 
         DEBUG_W("\t\t--------------- Wrapper Process_Measurement: OUT -------------------\n");
         return true;
+    }
+
+    bool temporal_update(tTime dt)
+    {
+        bool ret_val = false;
+        // 1. temporal update
+        if(dt < 1e-9)
+        {
+            DEBUG_W("\n--------------- dt near 0, no temporal_update requied ---------------\n");
+            ret_val = true;
+        }
+        else if (m_filter.temporal_update(dt))
+        {
+            m_time_keeper.update_after_temporal_update(dt);
+            // DEBUG_W(" -> Covar temp: \n");
+            // DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> State temp: " << get_state().transpose() << "\n");
+            ret_val = true;
+        }
+        else DEBUG_W("TEMPORAL UPDATE DIDNT HAPPEN\n");
+
+        return ret_val;
+    }
+
+    bool observation_update(MeasurementPtr measurement, tTime time_now = 0)
+    {
+        bool ret_val = false;
+        if (m_filter.observation_update(*measurement))
+        {
+            m_time_keeper.update_with_measurement(measurement->m_time_stamp);
+
+            DEBUG_W("\n--------------- Wrapper: Observation update! ---------------\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement->innovation.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement->z.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(4) << " -> State obsv: " << get_state().transpose() << "\n");
+            DEBUG_W(" -> Covar obsv: \n");
+            DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
+            ret_val = true;
+        }
+        else DEBUG_W(" Mahalanobis failed\n");
+        return ret_val;
     }
 
     /**
@@ -332,6 +402,15 @@ public:
     inline const StateVector get_state() const
     {
         return m_filter.get_state();
+    }
+
+    /**
+     * @brief FilterWrapper: Getter function for the state estimation
+     * @return the state estimation vector
+     */
+    inline StateCovTimePtr get_state_ptr()
+    {
+        return StateCovTimePtr(new StateCovTime(get_last_measurement_time(), get_state(), get_covariance()));
     }
 
     /**
@@ -362,9 +441,6 @@ public:
      */
     bool reset(const Measurement& measurement, tTime time_now)
     {
-        //TO_DO: check if the measurement is stateful?
-        // either odometry or pose
-
         // 1. reset filter
         StateVector x0;
         x0.setZero();
@@ -419,6 +495,12 @@ public:
         // 2. reset timekeeper
         m_time_keeper.reset(time_now, measurement.m_time_stamp);
         return true;
+    }
+
+    void reset_filter_state(const StateCovTimePtr& state)
+    {
+        m_filter.reset(state);
+        m_time_keeper.reset(0.0, state->m_time_stamp);
     }
 
     /**
@@ -548,6 +630,8 @@ public:
     {
         std::cout << "CONFIG: " << config_path << "\n";
         m_config = FilterConfig_(config_path);
+        m_data_triggered = m_config.m_data_triggered;
+        m_frequency = m_config.m_frequency;
         for (auto x: m_config.m_sensor_configs)
         {
             std::cout<<x.first<<" ";
