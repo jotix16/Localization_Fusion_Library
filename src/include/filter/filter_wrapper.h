@@ -500,7 +500,7 @@ public:
     void reset_filter_state(const StateCovTimePtr& state)
     {
         m_filter.reset(state);
-        m_time_keeper.update_with_measurement(state->m_time_stamp);
+        m_time_keeper.reset(0.0, state->m_time_stamp);
     }
 
     /**

@@ -92,12 +92,12 @@ class Buffer : public CallBackTimer
             T time = m_get_time_now();
             if(m_measurement_queue.empty() & m_state_history.empty())
             {
-                std::cout << " No Measurements yet\n";
+                // std::cout << " No Measurements yet\n";
             }
             else if(m_measurement_queue.empty() & !m_state_history.empty())
             {
                 tTime dt= time - m_state_history.back()->m_time_stamp;
-                if(dt > 0.2 && dt < 10000)
+                if(dt > 0.4 && dt < 10000)
                 {
                     std::cout << "DT: " << dt <<"\n";
                     m_predict_callback( time - m_state_history.back()->m_time_stamp);
@@ -218,7 +218,7 @@ class Buffer : public CallBackTimer
             }
             assert(ret_val == true); // should not hapen, since we make sure in integrate_measurement before calling this function
             //TO_DO: reset filter
-            std::cout << " reseting filter dt: " << old_time-last_history_state->m_time_stamp << " in the past.\n";
+            std::cout << " reseting filter dt: " << old_time-last_history_state->m_time_stamp << ", t_meas-t_state: " <<time-last_history_state->m_time_stamp << " in the past.\n";
             m_reset_filter_state(last_history_state);
 
             // search the right state
