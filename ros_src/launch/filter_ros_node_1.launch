@@ -14,7 +14,7 @@
     <node pkg="tf2_ros" type="static_transform_publisher" name="bl_imu" args="0 -0.3 0.52 -1.570796327 0 1.570796327 base_link imu_link" />
 
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find LocalizationFusionLibrary)/ros_src/rviz/config_file.rviz" />
-    <node pkg="rosbag" type="play" name="rosbagplay" args="$(find LocalizationFusionLibrary)/test/test1.bag --clock -d 5 -s 0" required="true" output="screen"/>
+    <node pkg="rosbag" type="play" name="rosbagplay" args="$(find LocalizationFusionLibrary)/test/test1.bag --clock -d 5 -s 0" required="true"/>
 
     <node name="filter_node" pkg="LocalizationFusionLibrary" type="filter_ros_node" output="screen">
       <param name="config" value="$(find LocalizationFusionLibrary)/ros_src/config/filter_config_1.json"/>
