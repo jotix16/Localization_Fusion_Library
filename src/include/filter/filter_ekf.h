@@ -99,8 +99,8 @@ public:
 
         // update the covariance: P = J * P * J' + Q
         this->m_covariance = jacobian * this->m_covariance * jacobian.transpose();
-        // this->m_covariance.noalias() += dt*this->m_process_noise;
-        this->m_covariance.noalias() += this->m_process_noise;
+        this->m_covariance.noalias() += dt * this->m_process_noise;
+        // this->m_covariance.noalias() += this->m_process_noise;
 
         DEBUG("\t\t--------------- FilterEKF Temporal_Update: OUT ---------------\n");
         return true;
