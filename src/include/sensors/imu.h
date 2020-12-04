@@ -68,6 +68,9 @@ private:
     bool m_init_orientation;
     Matrix3T m_R_map_enu;
     Matrix3T m_R_bl_enu;
+    // such as in robot_loc
+    Matrix3T m_bl_imu_rot_yaw;
+    Vector3T m_bl_imu_offset_vector;
 
 public:
     Imu(){}; // default constructor
@@ -101,27 +104,17 @@ public:
         DEBUG("\n\t\t--------------- IMU[" << m_topic_name<< "] INITIALIZING: IN -------------------\n");
 
         // --------------------- CREATE TRANSFORMATION ---------------------
-
-        QuaternionT q_enu_imu;
-        q_enu_imu =  {msg->orientation.w,
-              msg->orientation.x,
-              msg->orientation.y,
-              msg->orientation.z};
-
-        // R_map_enu = R_map_bl * R_bl_imu * R_enu_imu^-1
-        m_R_map_enu = T_map_bl.rotation() * T_bl_imu.rotation() * euler::quat_to_rot(q_enu_imu).transpose();
-        auto rpy = euler::get_euler_rpy(q_enu_imu);
-        auto q_enu_imu_yaw = euler::get_quat_rpy(0.0, 0.0, rpy[2]);
-        m_R_bl_enu = euler::quat_to_rot(q_enu_imu_yaw) * T_bl_imu.rotation() * euler::quat_to_rot(q_enu_imu).transpose();
+        // as in rob_loc
+        m_bl_imu_offset_vector = euler::get_euler_rpy(T_bl_imu.rotation());
+        m_bl_imu_rot_yaw = euler::quat_to_rot(euler::get_quat_rpy(0.0, 0.0, m_bl_imu_offset_vector[2]).normalized());
         m_init_orientation = true;
+        std::cout << "HEY\n";
 
         // ------------- DEBUG
-        q_enu_imu = euler::rot_to_quat(m_R_map_enu).normalized(); //  q_enu_imu is holding q_map_bl, used only for debugging
-        DEBUG("R_MAP_BL:\n" << T_map_bl.rotation() << "\nP_MAP_BL: " << T_map_bl.translation().transpose() << "\n");
         DEBUG("Initialized at\n"
-            << "--Rotation:\n" << m_R_map_enu << std::endl
-            << "--EULER_TF: " << std::endl <<euler::get_euler_rpy(q_enu_imu).transpose() << std::endl);
-        DEBUG("\n\t\t--------------- IMU[" << m_topic_name<< "] INITIALIZING: OUT -------------------\n");
+            << "--Rotation R_bl_imu_yaw:\n" << m_bl_imu_rot_yaw << std::endl
+            << "--Euler Offset: "<< m_bl_imu_offset_vector.transpose() << std::endl);
+        DEBUG("\n\t\t--------------- IMU[" << m_topic_name<< "] INITIALIZING: OUT -------------------" << std::endl);
         // -------------
     }
 
@@ -160,19 +153,17 @@ public:
         std::vector<uint> update_indices_orientation;
         if (valid_orientation)
         {
-            if(m_init_orientation)
-            {
-                for (uint i = POSITION_SIZE; i < POSE_SIZE; ++i)
-                {
-                    if(States::full_state_to_estimated_state[i] < STATE_SIZE)
-                        update_indices_orientation.push_back(i);
-                }
-                update_size_orientation = update_indices_orientation.size();
-            }
-            else
+            if(!m_init_orientation)
             {
                 initialize(state, msg, transform_base_link_imu, transform_map_base_link);
             }
+
+            for (uint i = POSITION_SIZE; i < POSE_SIZE; ++i)
+            {
+                if(States::full_state_to_estimated_state[i] < STATE_SIZE)
+                    update_indices_orientation.push_back(i);
+            }
+            update_size_orientation = update_indices_orientation.size();
         }
 
         // b- update_indeces for the ANGULAR VELOCITIES in the TWIST measurement
@@ -292,11 +283,11 @@ public:
         const std::vector<uint>& update_indices,
         uint ix1, size_t update_size)
     {
-        DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Orientation: IN -------------------\n");
+        DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Orientation: IN -------------------" << std::endl);
         DEBUG("\n");
         if(update_size == 0)
         {
-            DEBUG("Got IMU orientation but just initialized and update_size=0. Ignoring");
+            DEBUG("Got IMU orientation but just initialized and update_size=0. Ignoring" << std::endl;);
             return;
         }
         // 1. Read orientation and consider m_update_vector
@@ -315,16 +306,16 @@ public:
         rpy[1] = m_update_vector[STATE_PITCH] ? rpy[1] : state(States::full_state_to_estimated_state[STATE_PITCH]);
         rpy[2] = m_update_vector[STATE_YAW] ? rpy[2] : state(States::full_state_to_estimated_state[STATE_YAW]);
 
-        DEBUG("ORIENTATION: " << rpy.transpose() << "\n");
+        DEBUG("ORIENTATION: " << rpy.transpose() << std::endl;);
         orientation = euler::get_quat_rpy(rpy[0], rpy[1], rpy[2]).normalized();
 
-        auto rot_meas = euler::quat_to_rot(orientation);
-        auto rot_imu_bl = transform_bl_imu.rotation().transpose(); // transpose instead of inverse for rotation matrixes
-
-        // 2. Transform measurement to fusion frame
-        // rot_meas = m_R_map_enu * rot_meas * rot_imu_bl; // R_map_enu * R_enu_imu *R_imu_bl
-        rot_meas = transform_map_base_link.rotation() * m_R_bl_enu * rot_meas * rot_imu_bl; // R_map_enu * R_enu_imu *R_imu_bl
-        auto measurement = euler::get_euler_rpy(rot_meas);
+        Vector3T measurement;
+        measurement = rpy - m_bl_imu_offset_vector;
+        measurement[0] = utilities::normalize_angle(measurement[0]);
+        measurement[1] = utilities::normalize_angle(measurement[1]);
+        measurement[2] = utilities::normalize_angle(measurement[2]);
+        measurement = m_bl_imu_rot_yaw * measurement;
+        std::cout << "orient:" << measurement.transpose() << std::endl;
 
         // 3. Transform covariance, not sure for the second transformation
         Matrix3T covariance;
@@ -335,8 +326,7 @@ public:
                 covariance(i, j) = covariance_array[i + j*3];
             }
         }
-        covariance = m_R_map_enu * covariance * m_R_map_enu.transpose();
-        covariance = rot_imu_bl * covariance * rot_imu_bl.transpose(); // not sure if this is right
+        covariance = m_bl_imu_rot_yaw * covariance * m_bl_imu_rot_yaw.transpose();
 
         // 4. Fill sub_measurement vector and sub_covariance matrix, sub_inovation vector
         //  - and state to measurement mapping
