@@ -236,10 +236,13 @@ public:
         // c- fill the LINEAR ACCELERATION part
         if (valid_linear_acceleration)
         {
+            Matrix3T R_enu_imu = Matrix3T::Identity() * -100;
+            if (std::abs(msg->orientation_covariance[0] + 1.0) > 1e-9)
+                R_enu_imu = euler::quat_to_rot(QuaternionT{msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z}.normalized());
             prepare_acceleration(state, msg->linear_acceleration, msg->linear_acceleration_covariance,
                           transform_base_link_imu, sub_measurement,
                           sub_covariance, sub_innovation, state_to_measurement_mapping,
-                          update_indices_acceleration, update_size_orientation + update_size_twist, update_size_acceleration);
+                          update_indices_acceleration, update_size_orientation + update_size_twist, update_size_acceleration, R_enu_imu);
         }
         else
         {
@@ -433,13 +436,13 @@ public:
         const StateVector& state,
         geometry_msgs::msg::Vector3& meas_msg,
         std::array<double, 9> covariance_array,
-        const TransformationMatrix& transform,
+        const TransformationMatrix& transform_bl_imu,
         Vector& sub_measurement,
         Matrix& sub_covariance,
         Vector& sub_innovation,
         MappingMatrix& state_to_measurement_mapping,
         const std::vector<uint>& update_indices,
-        uint ix1, size_t update_size)
+        uint ix1, size_t update_size, Matrix3T R_enu_imu)
     {
         DEBUG("\n\t\t--------------- Imu[" << m_topic_name<< "] Prepare_Acceleration: IN -------------------\n");
         DEBUG("\n");
@@ -461,14 +464,16 @@ public:
         // std::cout << "G: " << measurement[2]<< "\n";
 
         // 2. Transform measurement to fusion frame
-        auto rot = transform.rotation();
+        auto rot = transform_bl_imu.rotation();
 
         // 3. Remove gravity from the accelerations
         if (m_remove_gravity)
         {
+            DEBUG(" -> Noise:\n" << R_enu_imu.transpose() << std::endl);
+            auto rot_enu_imu = R_enu_imu(0,0) < -99 ? rot.transpose() : R_enu_imu.transpose();
             Vector3T gravity_acc;
-            gravity_acc << 0.0 , 0.0 , 9.8;
-            gravity_acc = rot.transpose() * gravity_acc; // R^T = R^^1 for rotation matrixes (transpose instead of inverse)
+            gravity_acc << 0.0 , 0.0 , 9.80665;
+            gravity_acc = rot_enu_imu * gravity_acc; // R^T = R^^1 for rotation matrixes (transpose instead of inverse)
             gravity_acc[0] = m_update_vector[STATE_A_X] ? gravity_acc[0] : 0;
             gravity_acc[1] = m_update_vector[STATE_A_Y] ? gravity_acc[1] : 0;
             gravity_acc[2] = m_update_vector[STATE_A_Z] ? gravity_acc[2] : 0;
