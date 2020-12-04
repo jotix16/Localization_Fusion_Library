@@ -37,7 +37,7 @@ namespace euler{
      * @return return the rotation matrix
      */
   	template <typename T>
-	Eigen::Matrix<T,3,3> quat_to_rot(const Eigen::Quaternion<T>& q)
+	Eigen::Matrix<T,3,3> quat_to_rot(const Eigen::Quaternion<T> q)
 	{
 		T d = q.x()*q.x() + q.y()*q.y() + q.z()*q.z() + q.w()*q.w();
 		assert(d != T(0.0));
@@ -143,7 +143,7 @@ namespace euler{
      * @return return the quaternion
      */
   	template <typename T>
-	Eigen::Quaternion<T> get_quat_rpy(const T& roll, const T& pitch, const T& yaw)
+	Eigen::Quaternion<T> get_quat_rpy(const T roll, const T pitch, const T yaw)
 	{
 		T halfYaw = T(yaw) * T(0.5);
 		T halfPitch = T(pitch) * T(0.5);
