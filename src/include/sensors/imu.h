@@ -315,7 +315,6 @@ public:
         measurement[1] = utilities::normalize_angle(measurement[1]);
         measurement[2] = utilities::normalize_angle(measurement[2]);
         measurement = m_bl_imu_rot_yaw * measurement;
-        std::cout << "orient:" << measurement.transpose() << std::endl;
 
         // 3. Transform covariance, not sure for the second transformation
         Matrix3T covariance;
