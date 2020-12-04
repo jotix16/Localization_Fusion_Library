@@ -136,6 +136,13 @@ public:
         z = z_ix < STATE_SIZE ? state(z_ix) : 0.0;
         return {x, y, z};
     }
+
+    Matrix4T get_transformation_from_state(const StateVector& state)
+    {
+        Matrix4T T_odom_bl = Matrix4T::Identity();
+        T_odom_bl.template block<3,3>(0,0) = get_rotation_from_state(state);
+        T_odom_bl.template block<3,1>(0,3) = get_translation_from_state(state);
+    }
 };
 
 template<typename T, typename States>
