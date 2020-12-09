@@ -102,6 +102,7 @@ public:
         this->m_covariance.noalias() += dt * this->m_process_noise;
         // this->m_covariance.noalias() += this->m_process_noise;
 
+        DEBUG(" --> JACOB: \n" << jacobian << std::endl);
         DEBUG("\t\t--------------- FilterEKF Temporal_Update: OUT ---------------\n");
         return true;
     }
@@ -147,7 +148,10 @@ public:
         Matrix K(num_state, m.z.rows());
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
-        // DEBUG(std::fixed << std::setprecision(9) << "ph_t:\n" << ph_t << "\n");
+        DEBUG(std::fixed << std::setprecision(9) << "--> Cov:\n" << this->m_covariance << "\n");
+        DEBUG(std::fixed << std::setprecision(9) << "--> H:\n" << m.H.transpose() << "\n");
+        DEBUG(std::fixed << std::setprecision(9) << "--> ph_t:\n" << ph_t << "\n");
+        DEBUG(std::fixed << std::setprecision(9) << "--> K:\n" << K << "\n");
 
         this->m_state.noalias() += K * innovation;
 
