@@ -280,7 +280,7 @@ public:
     void prepare_pose(
         const StateVector& state,
         geometry_msgs::msg::PoseWithCovariance* msg,
-        const TransformationMatrix& transform,
+        const TransformationMatrix& transform_bl_sensor,
         Vector& sub_measurement,
         Matrix& sub_covariance,
         Vector& sub_innovation,
@@ -298,6 +298,7 @@ public:
         // - the orientation in form of a (R)otation-matrix |R R R T|
         // - and position as (T)ranslation-vector.          |R R R T|
         //                                                  |0 0 0 1|
+        // auto T_odom_bl = this->get_transformation_from_state(state);
         auto state_rot = this->get_rotation_from_state(state);
         auto state_translation =  this->get_translation_from_state(state);
         // consider m_update_vector
@@ -327,7 +328,7 @@ public:
             // - consider m_update_vector
             // -- extract roll pitch yaw
             auto rpy = euler::get_euler_rpy(orientation);
-            auto rpy_state = euler::get_euler_rpy(Matrix3T(state_rot * transform.rotation())); // transform rpy in sensor frame R_map_bl * R_bl_sensor
+            auto rpy_state = euler::get_euler_rpy(Matrix3T(state_rot * transform_bl_sensor.rotation())); // transform rpy in sensor frame R_map_bl * R_bl_sensor
             // // -- ignore roll pitch yaw according to m_update_vector
             rpy[0] = m_update_vector[STATE_ROLL] ?  rpy[0] : rpy_state[0];
             rpy[1] = m_update_vector[STATE_PITCH] ? rpy[1] : rpy_state[1];
@@ -338,18 +339,18 @@ public:
 
         if(valid_position)
         {
-            auto position_state = state_translation + state_rot * transform.translation(); // transform position from state in sensor frame P_map_bl + R_map_bl*P_bl_sensor
+            auto position_state = state_translation + state_rot * transform_bl_sensor.translation(); // transform position from state in sensor frame P_sens_odom = P_odom_bl + R_odom_bl*P_bl_sensor
             position[0] = m_update_vector[STATE_X] ? msg->pose.position.x : position_state[0];
             position[1] = m_update_vector[STATE_Y] ? msg->pose.position.y : position_state[1];
-            position[2] = m_update_vector[STATE_Z] ? msg->pose.position.z : position_state[2]; // position P_map_sensor
+            position[2] = m_update_vector[STATE_Z] ? msg->pose.position.z : position_state[2]; // position P_odom_sensor
         }
         else DEBUG("Position is being ignored according to m_update_vector!\n");
 
         // 3. Transform pose to fusion frame
-        auto transform_inv = transform.inverse(); // T_sensor_bl
+        auto transform_inv = transform_bl_sensor.inverse(); // T_sensor_bl
         auto rot = transform_inv.rotation(); // R_sensor_bl
-        position += rot_mat *  transform_inv.translation(); // position in map frame: P_map_bl = P_map_sensor + R_map_sensor*P_sensor_bl
-        rot_mat *= rot; // R_map_bl = R_map_sensor * R_sensor_bl
+        position += rot_mat *  transform_inv.translation(); // position in odom frame: P_odom_bl = P_odom_sensor + R_odom_sensor*P_sensor_bl
+        rot_mat *= rot; // R_odom_bl = R_odom_sensor * R_sensor_bl
 
         // 4. Compute measurement vector
         Vector6T measurement;

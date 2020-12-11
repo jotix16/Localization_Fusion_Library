@@ -429,7 +429,7 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 			jacobi(States::V_X, States::A_X) = dt;
 			jacobi(States::V_Y, States::A_Y) = dt;
-			jacobi(States::V_Z, States::A_Y) = dt;
+			jacobi(States::V_Z, States::A_Z) = dt;
 
 			//The nonlinear part
 			T v_x = dt * state[States::V_X];

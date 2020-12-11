@@ -58,7 +58,7 @@ class Buffer : public CallBackTimer
         typedef std::function<void()> PublishCallback;
         typedef std::function<StateTPtr()> GetStateCallback;
         typedef std::function<tTime()> GetTimeNowCallback;
-        typedef std::function<void(StateTPtr)> ResetFilterState;
+        typedef std::function<void(StateTPtr)> ResetFilterStateCallback;
 
     public:
         Buffer() : CallBackTimer() {}
@@ -66,9 +66,13 @@ class Buffer : public CallBackTimer
         void set_predict_function(PredictCallback f){ m_predict_callback = f;}
         void set_publish_function(PublishCallback f){ m_publish_callback = f;}
         void set_get_state_ptr_function(GetStateCallback f){ m_get_state_callback = f;}
-        void set_reset_filter_state(ResetFilterState f){ m_reset_filter_state = f;}
+        void set_reset_filter_state(ResetFilterStateCallback f){ m_reset_filter_state = f;}
         void set_get_time_now(GetTimeNowCallback f){ m_get_time_now = f;}
 
+        /**
+         * @brief Buffer: Inserts data in the m_measurement_raw queue
+         * @param[in] data - measurement to be queued
+         */
         void enqueue_measurement(DataTPtr data)
         {
             // std::cout << "Inserting: "; data->print(); std::cout<<"\n";
@@ -77,11 +81,13 @@ class Buffer : public CallBackTimer
         }
 
         /**
-         * - [x]call integrate_function(Time t) that integrates all measurements up to time t
-         * - [x]publish latest estimated state and the map_bl transformation
-         * - [x]publish the accelerometer if required
-         * - []clear out expired history data
-         **/
+         * @brief Buffer: It is a function triggered periodically that integrates functions up to the current time. It is responsible to
+         *  - call **integrate_function**(Time t) that integrates all measurements up to current time _t_
+         *  - publish latest estimated state and the map_bl transformation
+         *  - publish the accelerometer if required
+         *  - clear out expired history data
+         * @param[in] data - measurement to be queued
+         */
         void periodic_update(Event event=Event())
         {
             int time_needed = std::chrono::duration_cast<std::chrono::milliseconds>(event.current_expected-event.last_real).count();
@@ -111,6 +117,9 @@ class Buffer : public CallBackTimer
             }
         }
 
+       /**
+        * @brief Buffer: locks m_measurement_raw and inserts all its measurements to m_measurement_queue
+        */
         void swap_n_push()
         {
             std::lock_guard<std::mutex> guard(m_meas_raw_mutex);
@@ -129,12 +138,14 @@ class Buffer : public CallBackTimer
         }
 
         /**
-         * - [x]integrate all measurements with older timestamp than t
-         * - [x]if any of the measurements is older than the current time of the filter -> go back to the time of the measurement
-         * - [x]after any measurement integration add measurement and state in their respective history_dequeues
-         * - []if no measurement for still keep updating up to the current time t
-         * - [x]if filter not yet initialized assume the process measurement will take care of it(so do nothing)
-        **/
+         * @brief Buffer: It integrates measurements up to time t
+         *  - integrate all measurements with older timestamp than t
+         *  - if any of the measurements is older than the current time of the filter -> go back to the first 'state S' with timestamp older than that of the measurement
+         *  - relocate all measurement in the history with timestamp bigger than that of 'state S' to the m_measurement_queue so that they can be integrated again
+         *  - if no measurement the last m_timeout seconds update up to the current time t
+         *  - if filter not yet initialized don't do anything
+         * @param[in] time - time up to which to integrate measurements
+         */
         void integrate_measurement(const T time)
         {
             // std::cout <<"Integrate measurements up to time: " << time << "\n";
@@ -194,9 +205,11 @@ class Buffer : public CallBackTimer
         }
 
         /**
-         * - [x]Finds the latest filter state before the given timestamp and makes it the current state again and discards the later states
-         * - [x]insert all measurements between the older filter timestamp and now into the measurements queue.
-        **/
+         * @brief Buffer: Functions that implements the go back to time logic required when facing delayed measurementss
+         *  - Finds the latest filter state before the given timestamp and makes it the current state again and discards the later states
+         *  - insert all measurements between the older filter timestamp and now into the measurements queue so that they can be integrated again.
+         * @param[in] time - time up to which we go back in time
+         */
         void go_back_to_time(T time)
         {
             bool ret_val = false;
@@ -235,6 +248,10 @@ class Buffer : public CallBackTimer
             }
         }
 
+        /**
+         * @brief Buffer: Functions that state and measurement histories
+         * @param[in] up_to_time - time up to which we clear the histories
+         */
         void clear_expired_history(const T up_to_time)
         {
             std::cout << "\n----- Buffer::clear_expired_history() -----"
@@ -260,7 +277,10 @@ class Buffer : public CallBackTimer
                     "\n---- Buffer::clear_expired_history() ----\n";
         }
 
-        void clear_measurement_queue()
+        /**
+         * @brief Buffer: Functions that clears the measurement queue
+         */
+        void clear_measurement_queues()
         {
             while (!m_measurement_queue.empty()) //  && ros::ok()
             {
@@ -269,12 +289,17 @@ class Buffer : public CallBackTimer
             return;
         }
 
+        /**
+         * @brief Buffer: Starts the thread that periodically (every 'intervall' seconds) calls periodic_update()
+         *  @param[in] intervall - time intervall which decides how often we integrate measurements
+         */
         void start(int intervall)
         {
             m_update_interval = intervall;
             auto f = [this](Event event) {this->periodic_update(event);};
             CallBackTimer::start(intervall, f);
         }
+
     public:
         MeasurementQueue get_measurement_queue() const { return m_measurement_queue; }
         MeasurementQueue get_measurement_raw() const { return m_measurement_raw; }
@@ -287,10 +312,10 @@ class Buffer : public CallBackTimer
         PublishCallback m_publish_callback;
         GetStateCallback m_get_state_callback;
         GetTimeNowCallback m_get_time_now;
-        ResetFilterState m_reset_filter_state;
+        ResetFilterStateCallback m_reset_filter_state;
 
-        MeasurementQueue m_measurement_raw;
         std::mutex m_meas_raw_mutex;
+        MeasurementQueue m_measurement_raw;
         MeasurementQueue m_measurement_queue;
         MeasurementHistoryDeque m_measurement_history;
         FilterStateHistoryDeque m_state_history;

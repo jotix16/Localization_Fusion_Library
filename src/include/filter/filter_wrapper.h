@@ -230,11 +230,11 @@ public:
         const TransformationMatrix& transform_base_link_imu,
         const TransformationMatrix& transform_map_base_link)
     {
-        if (!is_initialized())
-        {
-            DEBUG_W("Got IMU but have to wait for odom first. Ignoring\n");
-            return false;
-        }
+        // if (!is_initialized())
+        // {
+        //     DEBUG_W("Got IMU but have to wait for odom first. Ignoring\n");
+        //     return false;
+        // }
         MeasurementPtr m = m_imu_sensors_hmap[topic_name].imu_callback(get_state(), msg, transform_base_link_imu, transform_map_base_link);
         return handle_measurement(m);
     }
@@ -330,7 +330,7 @@ public:
         }
         else
         {
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> State:       " << get_state().transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(9) << " -> State:       " << get_state().transpose() << "\n");
 
             // auto dt = m_time_keeper.time_since_last_temporal_update(time_now);
             auto dt = m_time_keeper.time_since_last_update(measurement->m_time_stamp);
@@ -366,9 +366,9 @@ public:
         else if (m_filter.temporal_update(dt))
         {
             m_time_keeper.update_after_temporal_update(dt);
-            // DEBUG_W(" -> Covar temp: \n");
-            // DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> State temp: " << get_state().transpose() << "\n");
+            DEBUG_W(" -> Covar temp: \n");
+            DEBUG_W(std::fixed << std::setprecision(9) << get_covariance() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(9) << " -> State temp: " << get_state().transpose() << "\n");
             ret_val = true;
         }
         else DEBUG_W("TEMPORAL UPDATE DIDNT HAPPEN\n");
@@ -384,11 +384,11 @@ public:
             m_time_keeper.update_with_measurement(measurement->m_time_stamp);
 
             DEBUG_W("\n--------------- Wrapper: Observation update! ---------------\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Innovation:  " << measurement->innovation.transpose() << "\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> Measurement: " << measurement->z.transpose() << "\n");
-            DEBUG_W(std::fixed << std::setprecision(4) << " -> State obsv: " << get_state().transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(9) << " -> Innovation:  " << measurement->innovation.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(9) << " -> Measurement: " << measurement->z.transpose() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(9) << " -> State obsv: " << get_state().transpose() << "\n");
             DEBUG_W(" -> Covar obsv: \n");
-            DEBUG_W(std::fixed << std::setprecision(4) << get_covariance() << "\n");
+            DEBUG_W(std::fixed << std::setprecision(9) << get_covariance() << "\n");
             ret_val = true;
         }
         else DEBUG_W(" Mahalanobis failed\n");
@@ -488,7 +488,7 @@ public:
 
         DEBUG_W("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
         if (huge_noise) DEBUG_W("VERY BIG INITIAL ESTIMATION COVARIANCE\n");
-        DEBUG_W("RESETING\n" << "State\n" << x0.transpose() << std::setprecision(9) << "\nInit Covariance:\n" << init_cov << "\nProcess Noise\n" << process_noise << std::setprecision(4));
+        DEBUG_W("RESETING\n" << "State\n" << std::setprecision(9) << x0.transpose()<< "\nInit Covariance:\n" << init_cov << "\nProcess Noise\n" << process_noise << std::setprecision(4));
         DEBUG_W("\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
         m_filter.reset(x0, init_cov, process_noise);
 
