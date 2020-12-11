@@ -1,3 +1,26 @@
+/*! \file
+*
+* Copyright (c) 1983-2020 IAV GmbH. All rights reserved.
+*
+* \authors Mikel Zhobro, Robert Treiber IAV GmbH
+*
+* Correspondence should be directed to IAV.
+*
+* IAV GmbH\n
+* Carnotstraße 1\n
+* 10587 Berlin
+*
+* GERMANY
+*
+* \note
+* Neither IAV GmbH nor the authors admit liability
+* nor provide any warranty for any of this software.
+* Until the distribution is granted by IAV GmbH
+* this source code is under non disclosure and must
+* only be used within projects with controlling
+* interest of IAV GmbH.
+*/
+
 #pragma once
 #include <chrono>
 #include <atomic>
@@ -17,21 +40,33 @@ class Event
 class CallBackTimer
 {
 public:
+    /**
+     * @brief CallBackTimer: Default constructor
+     */
     CallBackTimer()
     :_execute(false)
     {}
 
+    /**
+     * @brief CallBackTimer: Destructor
+     */
     ~CallBackTimer() {
         if( _execute.load(std::memory_order_acquire) ) {
             end();
         };
     }
 
+    /**
+     * @brief CallBackTimer: Methods that periodic calling
+     */
     void stop()
     {
         _execute.store(false, std::memory_order_release);
     }
 
+    /**
+     * @brief CallBackTimer: Method that stops the periodic calling and stops(joins) the thread
+     */
     void end()
     {
         stop();
@@ -39,6 +74,11 @@ public:
             _thd.join();
     }
 
+    /**
+     * @brief CallBackTimer: Method that starts the thread that periodically calls func
+     * @param[in] interval - time duration in seconds which decides the rate we publish the estimated state.
+     * @param[in] func - function that will be called periodically
+     */
     void start(int interval, std::function<void(Event)> func)
     {
         if( _execute.load(std::memory_order_acquire) )
@@ -68,6 +108,9 @@ public:
         });
     }
 
+    /**
+     * @brief CallBackTimer: Checks if thread is running
+     */
     bool is_running() const noexcept {
         return ( _execute.load(std::memory_order_acquire) &&
                  _thd.joinable() );
