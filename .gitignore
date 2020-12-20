@@ -1,0 +1,25 @@
+.deps/python_virtualenv/
+build/
+bin/
+.build/
+.bin/
+.vscode
+
+# ignore cmake build files
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+# ignore debug files
+DEBUG*
+
+# bag
+rosario.bag

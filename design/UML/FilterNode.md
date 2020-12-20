@@ -1,0 +1,1 @@
+![](../images/LocalizationFusionLibrary_UML-FilterNode.svg)

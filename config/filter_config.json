@@ -1,0 +1,92 @@
+{
+    "//FILTER":" Here we define the FILTER's parameters",
+    "init_estimate_covariance": [   1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9
+                                ],
+
+    "process_noise": [  1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+                ],
+
+    "//SENSORS":" Here we define the SENSORS' parameters",
+    "sensor_inputs" : [3, 2, 0, 0],
+
+    "odom_0":{
+        "topic_name": "odom_0_topic",
+        "update_vector":[true, true, true,
+                         true, true, true,
+                         true, true, true,
+                         false, false, true,
+                         false, false, false],
+        "mahalanobis_thresh": 5.0,
+        "pose_mahalanobis_thresh": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+        "speed_mahalanobis_thresh": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]},
+
+    "odom_1":{
+        "topic_name": "odom_1_topic",
+        "update_vector":[true, true, true,
+                         true, true, true,
+                         true, true, true,
+                         false, false, false,
+                         false, false, false],
+        "mahalanobis_thresh": 5.0,
+        "pose_mahalanobis_thresh": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+        "speed_mahalanobis_thresh": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]},
+
+    "odom_2":{
+        "topic_name": "odom_2_topic",
+        "update_vector":[true, true, true,
+                         true, true, true,
+                         true, true, true,
+                         false, false, false,
+                         false, false, false],
+        "mahalanobis_thresh": 5.0,
+        "pose_mahalanobis_thresh": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+        "speed_mahalanobis_thresh": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]},
+
+    "pose_0":{
+        "topic_name": "pose_0_topic",
+        "update_vector":[true, true, true,
+                         true, true, true,
+                         true, true, true,
+                         false, false, false,
+                         false, false, false],
+        "mahalanobis_thresh": 5.0,
+        "pose_mahalanobis_thresh": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]},
+
+    "pose_1":{
+        "topic_name": "pose_1_topic",
+        "update_vector":[true, true, true,
+                            true, true, true,
+                            true, true, true,
+                            false, false, false,
+                            false, false, false],
+        "mahalanobis_thresh": 5.0,
+        "pose_mahalanobis_thresh": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]}
+  }
