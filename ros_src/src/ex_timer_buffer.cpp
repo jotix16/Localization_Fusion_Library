@@ -175,7 +175,7 @@ public:
 
         b.clear_expired_history(2);
         ::print(b);
-        b.clear_measurement_queue();
+        b.clear_measurement_queues();
         ::print(b);
 
         // Edge case 2: Our history doesnt go as back in history as required by measurement
