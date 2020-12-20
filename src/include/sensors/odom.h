@@ -37,6 +37,7 @@ class Odom : public SensorBase<T, States>
 public:
     using SensorBaseT   = SensorBase<T, States>;
     using Measurement   = typename SensorBaseT::Measurement;
+    using MeasurementPtr   = typename SensorBaseT::MeasurementPtr;
     using StateVector   = typename SensorBaseT::StateVector;
     using MappingMatrix = typename SensorBaseT::MappingMatrix;
     using Vector        = typename SensorBaseT::Vector;
@@ -86,7 +87,7 @@ public:
      * @param[in] msg - odom msg
      * @param[out] transformed and processed measurement corersponding to the msg
      */
-    Measurement odom_callback(
+    MeasurementPtr odom_callback(
         const StateVector& state,
         nav_msgs::msg::Odometry* msg)
     {
@@ -170,10 +171,10 @@ public:
 
         // 4. Create measurement to be handled
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
-        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
-                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold);
+        MeasurementPtr meas(new Measurement(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
+                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold));
 
-        DEBUG(" -> Odom " << meas.print());
+        DEBUG(" -> Odom " << meas->print());
         debug_msg(msg, TransformationMatrix::Identity());
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Odom_callback_identity: OUT -------------------\n");
         return meas;
@@ -188,7 +189,7 @@ public:
      * @param[in] transform_to_base_link - transf from sensor frame to base_link frame where angular velocity and acceleration are fused
      * @param[out] transformed and processed measurement corersponding to the msg
      */
-    Measurement odom_callback(
+    MeasurementPtr odom_callback(
         const StateVector& state,
         nav_msgs::msg::Odometry* msg,
         const TransformationMatrix& transform_to_base_link)
@@ -208,8 +209,6 @@ public:
         // 1. Create vector the same size as the submeasurement
         // - its elements are the corresponding parts of the state we are estimating
         // - the size of this index-vector enables initializing of the submeasurement matrixes
-        // TO_DO: we are not ignoring nan & inf measurements
-
         // a. POSE PART
         uint start_index, end_index;
         start_index = valid_position ?  0 : POSITION_SIZE;
@@ -258,9 +257,9 @@ public:
 
         // 4. Create measurement to be handled
         tTime stamp_sec = static_cast<tTime>(msg->header.stamp.sec + 1e-9*static_cast<double>(msg->header.stamp.nanosec));
-        Measurement meas(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
-                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold);
-        DEBUG(" -> Odom " << meas.print());
+        MeasurementPtr meas(new Measurement(stamp_sec, sub_measurement, sub_covariance, sub_innovation, state_to_measurement_mapping,
+                        sub_u_indices, msg->header.frame_id, m_mahalanobis_threshold));
+        DEBUG(" -> Odom " << meas->print());
         debug_msg(msg, transform_to_base_link);
         DEBUG("\t\t--------------- Odom[" << m_topic_name<< "] Odom_callback: OUT -------------------\n");
         return meas;
@@ -281,7 +280,7 @@ public:
     void prepare_pose(
         const StateVector& state,
         geometry_msgs::msg::PoseWithCovariance* msg,
-        const TransformationMatrix& transform,
+        const TransformationMatrix& transform_bl_sensor,
         Vector& sub_measurement,
         Matrix& sub_covariance,
         Vector& sub_innovation,
@@ -299,6 +298,7 @@ public:
         // - the orientation in form of a (R)otation-matrix |R R R T|
         // - and position as (T)ranslation-vector.          |R R R T|
         //                                                  |0 0 0 1|
+        // auto T_odom_bl = this->get_transformation_from_state(state);
         auto state_rot = this->get_rotation_from_state(state);
         auto state_translation =  this->get_translation_from_state(state);
         // consider m_update_vector
@@ -328,7 +328,7 @@ public:
             // - consider m_update_vector
             // -- extract roll pitch yaw
             auto rpy = euler::get_euler_rpy(orientation);
-            auto rpy_state = euler::get_euler_rpy(Matrix3T(state_rot * transform.rotation())); // transform rpy in sensor frame R_map_bl * R_bl_sensor
+            auto rpy_state = euler::get_euler_rpy(Matrix3T(state_rot * transform_bl_sensor.rotation())); // transform rpy in sensor frame R_map_bl * R_bl_sensor
             // // -- ignore roll pitch yaw according to m_update_vector
             rpy[0] = m_update_vector[STATE_ROLL] ?  rpy[0] : rpy_state[0];
             rpy[1] = m_update_vector[STATE_PITCH] ? rpy[1] : rpy_state[1];
@@ -339,18 +339,18 @@ public:
 
         if(valid_position)
         {
-            auto position_state = state_translation + state_rot * transform.translation(); // transform position from state in sensor frame P_map_bl + R_map_bl*P_bl_sensor
+            auto position_state = state_translation + state_rot * transform_bl_sensor.translation(); // transform position from state in sensor frame P_sens_odom = P_odom_bl + R_odom_bl*P_bl_sensor
             position[0] = m_update_vector[STATE_X] ? msg->pose.position.x : position_state[0];
             position[1] = m_update_vector[STATE_Y] ? msg->pose.position.y : position_state[1];
-            position[2] = m_update_vector[STATE_Z] ? msg->pose.position.z : position_state[2]; // position P_map_sensor
+            position[2] = m_update_vector[STATE_Z] ? msg->pose.position.z : position_state[2]; // position P_odom_sensor
         }
         else DEBUG("Position is being ignored according to m_update_vector!\n");
 
         // 3. Transform pose to fusion frame
-        auto transform_inv = transform.inverse(); // T_sensor_bl
+        auto transform_inv = transform_bl_sensor.inverse(); // T_sensor_bl
         auto rot = transform_inv.rotation(); // R_sensor_bl
-        position += rot_mat *  transform_inv.translation(); // position in map frame: P_map_bl = P_map_sensor + R_map_sensor*P_sensor_bl
-        rot_mat *= rot; // R_map_bl = R_map_sensor * R_sensor_bl
+        position += rot_mat *  transform_inv.translation(); // position in odom frame: P_odom_bl = P_odom_sensor + R_odom_sensor*P_sensor_bl
+        rot_mat *= rot; // R_odom_bl = R_odom_sensor * R_sensor_bl
 
         // 4. Compute measurement vector
         Vector6T measurement;

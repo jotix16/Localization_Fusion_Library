@@ -30,9 +30,6 @@
 
 namespace iav{ namespace state_predictor { namespace filter {
 
-//TO_DO: we can use dynamic process noise covariance. Especially for cases when
-// we don't want to increase the covariance estimation of the state when the vehicle is not moving
-
 /**
  * @brief Filter class that inherits from FilterBase class
  * @param<template> MotionModelT - The motion model used. This defines the state to be estimated too.
@@ -102,9 +99,10 @@ public:
 
         // update the covariance: P = J * P * J' + Q
         this->m_covariance = jacobian * this->m_covariance * jacobian.transpose();
-        // this->m_covariance.noalias() += dt*this->m_process_noise;
-        this->m_covariance.noalias() += this->m_process_noise;
+        this->m_covariance.noalias() += dt * this->m_process_noise;
+        // this->m_covariance.noalias() += this->m_process_noise;
 
+        DEBUG(" --> JACOB: \n" << jacobian << std::endl);
         DEBUG("\t\t--------------- FilterEKF Temporal_Update: OUT ---------------\n");
         return true;
     }
@@ -150,7 +148,10 @@ public:
         Matrix K(num_state, m.z.rows());
         K.setZero();
         K.noalias() = ph_t * hph_t_r_inv;
-        // DEBUG(std::fixed << std::setprecision(9) << "ph_t:\n" << ph_t << "\n");
+        DEBUG(std::fixed << std::setprecision(9) << "--> Cov:\n" << this->m_covariance << "\n");
+        DEBUG(std::fixed << std::setprecision(9) << "--> H:\n" << m.H.transpose() << "\n");
+        DEBUG(std::fixed << std::setprecision(9) << "--> ph_t:\n" << ph_t << "\n");
+        DEBUG(std::fixed << std::setprecision(9) << "--> K:\n" << K << "\n");
 
         this->m_state.noalias() += K * innovation;
 
@@ -167,7 +168,7 @@ public:
         // if covariance diagonal elements are near 0 or negative we give them a small value
         StateMatrix I_K_H = this->m_identity;
         I_K_H.noalias() -= K * m.H;
-        this->m_covariance = I_K_H *this->m_covariance * I_K_H.transpose();
+        this->m_covariance = I_K_H * this->m_covariance * I_K_H.transpose();
         this->m_covariance.noalias() += K * m.R * K.transpose();
 
         for (uint i = 0; i < States::STATE_SIZE_M; i++)

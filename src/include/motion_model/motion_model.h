@@ -30,8 +30,6 @@
 #include <utilities/filter_utilities.h>
 
 
-//TO_DO: No AngleWrapping done yet, with the motivation that
-// 	 	 it is better done in KalmanWrapper after both observation_step and prediction_step
 namespace iav{ namespace state_predictor { namespace motion_model {
 
 	/**
@@ -370,7 +368,6 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 		 * @param[in] dt - The time-difference for which the prediction has to be performed
 		 * @return the bounded value
 		 */
-		//TO_DO
 		static void compute_jacobian(StateMatrix& jacobi, const StateVector& state, const tTime& dt)
 		{
 			T dt_2 = 0.5 * dt;
@@ -432,9 +429,8 @@ namespace iav{ namespace state_predictor { namespace motion_model {
 
 			jacobi(States::V_X, States::A_X) = dt;
 			jacobi(States::V_Y, States::A_Y) = dt;
-			jacobi(States::V_Z, States::A_Y) = dt;
+			jacobi(States::V_Z, States::A_Z) = dt;
 
-			//TO_DO
 			//The nonlinear part
 			T v_x = dt * state[States::V_X];
 			T v_y = dt * state[States::V_Y];

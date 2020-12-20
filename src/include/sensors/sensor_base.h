@@ -25,7 +25,7 @@
 #pragma once
 
 #include <iomanip>
-
+#include <memory>
 #include <vector>
 #include <Eigen/Eigen>
 
@@ -43,7 +43,7 @@ public:
     static constexpr uint num_state = States::STATE_SIZE_M;
 
     using Measurement = typename measurement::Measurement<num_state, T>;
-
+    using MeasurementPtr = typename std::shared_ptr<Measurement>;
     using StateVector =   typename Eigen::Matrix<T, num_state, 1>;
     using MappingMatrix = typename Eigen::Matrix<T, Eigen::Dynamic, num_state>;
     using Vector =        typename Eigen::Matrix<T, Eigen::Dynamic, 1>;
@@ -135,6 +135,13 @@ public:
         y = y_ix < STATE_SIZE ? state(y_ix) : 0.0;
         z = z_ix < STATE_SIZE ? state(z_ix) : 0.0;
         return {x, y, z};
+    }
+
+    Matrix4T get_transformation_from_state(const StateVector& state)
+    {
+        Matrix4T T_odom_bl = Matrix4T::Identity();
+        T_odom_bl.template block<3,3>(0,0) = get_rotation_from_state(state);
+        T_odom_bl.template block<3,1>(0,3) = get_translation_from_state(state);
     }
 };
 

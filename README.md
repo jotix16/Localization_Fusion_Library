@@ -7,15 +7,17 @@ In order to be able to run the LocalizationFusionLibrary as a ROS node do the fo
 mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/
 catkin_make
-git clone ...   # Clone the library in /catkin_ws/src
-cp -r path/to/library/localiztionfusionlibrary  ~/catkin_ws/src/ # or copy
+cd src/
+git clone git@gitlab.iavgroup.local:AD-platform/Tools/libraries/localizationfusionlibrary.git  # Clone the library in /catkin_ws/src
+cd ~/catkin_ws/
+# cp -r path/to/library/localiztionfusionlibrary  ~/catkin_ws/src/ # or copy
 catkin_make # Build the ros package
 ```
 3. In order to start the node on a test bag do
 ```bash
 cd ~/catkin_ws/
 source devel/setup.bash
-roslaunch LocalizationFusionLibrary filter_ros_node.launch
+roslaunch LocalizationFusionLibrary filter_ros_node_1.launch
 ```
 ## Tips and tricks
 In order to get autocompletion capabilities for ROS related code and to add VSCode shortcuts for building and running add the folder and files as following:

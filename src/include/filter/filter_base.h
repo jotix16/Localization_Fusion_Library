@@ -47,6 +47,18 @@ public:
     using Matrix = typename Measurement::Matrix;
     using Vector = typename Measurement::Vector;
 
+public:
+    class StateCovTime
+    {
+        public:
+            tTime m_time_stamp;
+            StateVector m_state;
+            StateMatrix m_covariance;
+            StateCovTime(const tTime time_stamp, const StateVector state, const StateMatrix covariance)
+            : m_time_stamp{time_stamp}, m_state{state}, m_covariance{covariance}
+            {}
+    };
+
 protected:
     bool m_initialized;
     MotionModelT m_motion_model;
@@ -98,6 +110,17 @@ public:
         m_covariance = P0;
         m_process_noise = Q;
         m_initialized = true;
+    }
+
+    /**
+     * @brief FilterBase: Resets/initializes the filter
+     * @param[in] x0 - initial state estimation
+     * @param[in] P0 - initial covariance estimation
+     */
+    void reset(const std::shared_ptr<StateCovTime>& state)
+    {
+        m_state = state->m_state;
+        m_covariance = state->m_covariance;
     }
 
     /**

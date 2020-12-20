@@ -37,10 +37,6 @@
 #include <utilities/filter_euler_zyx.h>
 
 
-using FilterWrapper = iav::state_predictor::filter::FilterCtrvEKF2D;
-
-
-
 template<class FilterT, typename T = double>
 class FilterNode
 {
@@ -117,6 +113,8 @@ class FilterNode
             m_nh_param.param("config", config_file, std::string("WTF"));
             ROS_INFO_STREAM("Initialize FilterWrapper from path: " << config_file << "\n");
             m_filter_wrapper.reset_config(config_file.c_str());
+            m_filter_wrapper.set_time_callback([this]() { return get_time_now();});
+            m_filter_wrapper.set_publish_state([this]() { return publish_current_state();});
 
             // 2. initialize publisher
             m_position_publisher = m_nh.advertise<OdomMsg>("odometry/filtered", 20);
@@ -168,6 +166,11 @@ class FilterNode
                         "must not match the map_frame or odom_frame.");
         }
 
+        inline iav::state_predictor::tTime get_time_now()
+        {
+            return static_cast<iav::state_predictor::tTime>(ros::Time::now().toSec());
+        }
+
         /**
          * @brief FilterNode: Callback for receiving all odom msgs. It extracts transformation matrixes
          * to the fusing frames and calls the corresponding callback from filter_wrapper.
@@ -176,7 +179,6 @@ class FilterNode
          */
         void odom_callback(const OdomMsg::ConstPtr& msg, std::string topic_name)
         {
-
             // 1. get transformations from map and base_link to the sensor frame
             std::string msgChildFrame = (msg->child_frame_id == "" ? m_baselink_frame_id : msg->child_frame_id);
             std::string msgFrame = (msg->header.frame_id == "" ? m_odom_frame_id : msg->header.frame_id);
@@ -219,7 +221,7 @@ class FilterNode
             if(m_filter_wrapper.odom_callback(topic_name, &msg_loc, transform_to_base_link, odom_bl))
             {
                 // 3. publish updated base_link frame
-                publish_current_state();
+                // publish_current_state();
             }
         }
 
@@ -280,7 +282,7 @@ class FilterNode
             if(m_filter_wrapper.imu_callback(topic_name, &msg_loc, transform_base_link_imu, transform_map_base_link))
             {
                 // 3. publish updated base_link frame
-                publish_current_state();
+                // publish_current_state();
             }
         }
 
@@ -328,7 +330,7 @@ class FilterNode
             if(m_filter_wrapper.gps_callback(topic_name, &msg_loc, transform_to_base_link))
             {
                 // 3. publish updated base_link frame
-                publish_current_state();
+                // publish_current_state();
             }
         }
 
@@ -593,8 +595,6 @@ class FilterNode
             transformStamped.transform.rotation.w = q.w();
             m_tf_broadcaster.sendTransform(transformStamped);
         }
-
-
 };
 
 // explicit template initialization
